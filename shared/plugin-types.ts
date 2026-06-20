@@ -85,14 +85,14 @@ export interface StudyPlanReportGenerateOneOutput {
 // ============================================================
 
 export interface AcademicDiagnosisReportGeneratorOneInput {
+  /** 学生学习困扰描述 */
+  learning_problems?: string;
   /** 学生所在年级 */
   student_grade: string;
   /** 学生所在地区 */
   student_region?: string;
   /** 学生各科成绩详情 */
   subject_scores: string;
-  /** 学生学习困扰描述 */
-  learning_problems?: string;
 }
 
 /**
@@ -107,3 +107,51 @@ export interface AcademicDiagnosisReportGeneratorOneOutput {
   response?: string;
 }
 // ---- end:academic_diagnosis_report_generator_1 ----
+
+// ---- plugin:high_school_search_by_region_1 ----
+// ============================================================
+// 插件 high_school_search_by_region_1 (按地区搜索重点高中名单) 的类型定义
+// 由 get_plugin_ai_json 自动生成
+// ============================================================
+
+export interface HighSchoolSearchByRegionOneInput {
+  /** 需要搜索高中的地区（如：北京市海淀区、广东省广州市） */
+  region: string;
+}
+
+/**
+ * capabilityClient.load('high_school_search_by_region_1').call<HighSchoolSearchByRegionOneOutput>('searchSummary', input)
+ * 直接返回此类型，无 .data 包装，直接解构使用：
+ * const { summary } = result;
+ */
+export interface HighSchoolSearchByRegionOneOutput {
+  /** [object Object] */
+  summary: string;
+}
+// ---- end:high_school_search_by_region_1 ----
+
+// ---- plugin:high_school_admission_score_query_1 ----
+// ============================================================
+// 插件 high_school_admission_score_query_1 (高中录取分数线查询) 的类型定义
+// 由 get_plugin_ai_json 自动生成
+// ============================================================
+
+export interface HighSchoolAdmissionScoreQueryOneInput {
+  /** 地区（如：北京市、上海市浦东新区等） */
+  region: string;
+  /** 目标学校名称 */
+  school_name: string;
+  /** 考试类型（中考/高考） */
+  exam_type: string;
+}
+
+/**
+ * capabilityClient.load('high_school_admission_score_query_1').call<HighSchoolAdmissionScoreQueryOneOutput>('searchSummary', input)
+ * 直接返回此类型，无 .data 包装，直接解构使用：
+ * const { summary } = result;
+ */
+export interface HighSchoolAdmissionScoreQueryOneOutput {
+  /** [object Object] */
+  summary: string;
+}
+// ---- end:high_school_admission_score_query_1 ----

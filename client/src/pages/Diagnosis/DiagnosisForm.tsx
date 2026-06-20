@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Loader2, FileText, Search, Sparkles } from 'lucide-react';
 import { axiosForBackend } from '@lark-apaas/client-toolkit/utils/getAxiosForBackend';
 import { logger } from '@lark-apaas/client-toolkit/logger';
+import { capabilityClient } from '@lark-apaas/client-toolkit';
 import {
   Form,
   FormControl,
@@ -71,7 +72,7 @@ const HS_MODES: Array<{ value: string; label: string }> = [
   { value: '3+3', label: '3+3（六选三）' },
 ];
 
-const SCHOOL_LIST: string[] = [
+const DEFAULT_SCHOOLS: string[] = [
   '华中师范大学第一附属中学', '武汉中学', '武汉二中', '武汉六中',
   '武汉外国语学校', '武汉实验外国语学校', '武汉十一中',
   '武钢三中', '武汉三中', '武汉育才高级中学', '武汉汉铁高级中学',
@@ -224,7 +225,10 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
   const [schoolOpen, setSchoolOpen] = useState(false);
   const [scoreSuggesting, setScoreSuggesting] = useState(false);
   const [scoreSuggested, setScoreSuggested] = useState(false);
+  const [fetchedSchools, setFetchedSchools] = useState<string[]>([]);
+  const [schoolsLoading, setSchoolsLoading] = useState(false);
   const customRegionRef = useRef('');
+  const schoolCacheRef = useRef<Record<string, string[]>>({});
 
   const form = useForm<DiagnosisFormData>({
     resolver: zodResolver(diagnosisFormSchema) as unknown as Parameters<typeof useForm<DiagnosisFormData>>[0]['resolver'],
@@ -239,43 +243,104 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
   const isHighSchool = ['高一', '高二', '高三'].includes(watchedGrade);
   const isMiddleSchool = ['初一', '初二', '初三'].includes(watchedGrade);
 
+  const displaySchools = fetchedSchools.length > 0 ? fetchedSchools : DEFAULT_SCHOOLS;
   const filteredSchools = schoolSearch
-    ? SCHOOL_LIST.filter((s) => s.includes(schoolSearch))
-    : SCHOOL_LIST;
+    ? displaySchools.filter((s) => s.includes(schoolSearch))
+    : displaySchools;
 
   useEffect(() => {
-    if (!watchedRegion || scoreSuggested) return;
+    if (!watchedRegion || isCustomRegion) return;
+    if (schoolCacheRef.current[watchedRegion]) {
+      setFetchedSchools(schoolCacheRef.current[watchedRegion]);
+      return;
+    }
+    let cancelled = false;
+    const fetchSchools = async () => {
+      setSchoolsLoading(true);
+      try {
+        const streamResult = capabilityClient
+          .load('high_school_search_by_region_1')
+          .callStream('searchSummary', { region: watchedRegion });
+        let fullContent = '';
+        for await (const chunk of streamResult as AsyncIterable<Record<string, unknown>>) {
+          if (cancelled) break;
+          const delta = typeof chunk?.content === 'string' ? chunk.content : '';
+          if (delta) fullContent += delta;
+        }
+        if (cancelled) return;
+        const names = fullContent.split(/[\n\r]+/)
+          .map((line: string) => line.replace(/^[\d]+[.、)\uff0e]\s*/, '').replace(/^[-*\u2022]\s*/, '').trim())
+          .filter((name: string) => name.length >= 3 && name.length <= 30 && /[\u4e00-\u9fa5]/.test(name) && !name.includes('名单') && !name.includes('以上'));
+        const unique = [...new Set(names)];
+        schoolCacheRef.current[watchedRegion] = unique;
+        setFetchedSchools(unique);
+      } catch (err) {
+        if (!cancelled) {
+          logger.error('搜索学校失败', JSON.stringify({
+            pluginInstanceId: 'high_school_search_by_region_1',
+            actionKey: 'searchSummary',
+            outputMode: 'stream',
+            inputKeys: ['region'],
+            error: err instanceof Error ? err.message : String(err),
+          }));
+        }
+      } finally {
+        if (!cancelled) setSchoolsLoading(false);
+      }
+    };
+    fetchSchools();
+    return () => { cancelled = true; };
+  }, [watchedRegion, isCustomRegion]);
+
+  const watchedSchool = form.watch('targetSchool');
+
+  useEffect(() => {
+    if (!watchedRegion || !watchedSchool || scoreSuggested) return;
+    const isHS = ['高一', '高二', '高三'].includes(watchedGrade);
+    const isMS = ['初一', '初二', '初三'].includes(watchedGrade);
+    if (!isHS && !isMS) return;
+    const examType = isHS ? '高考' : '中考';
+    let cancelled = false;
     const fetchScore = async () => {
       setScoreSuggesting(true);
       try {
-        const res = await axiosForBackend({
-          url: '/api/admission-policies',
-          method: 'GET',
-          params: { region: watchedRegion },
-        });
-        const policies: Array<{ year: number; admissionLines: Array<{ score: number }> }> = res.data?.items ?? [];
-        const recent = policies.slice(0, 3);
-        if (recent.length > 0) {
-          const topScores = recent
-            .map((p) => {
-              const lines = p.admissionLines ?? [];
-              return lines.length > 0 ? Math.max(...lines.map((l) => l.score)) : null;
-            })
-            .filter((s): s is number => s != null);
-          if (topScores.length > 0) {
-            const avg = Math.round(topScores.reduce((a, b) => a + b, 0) / topScores.length);
-            form.setValue('targetScore', avg);
-            setScoreSuggested(true);
-          }
+        const streamResult = capabilityClient
+          .load('high_school_admission_score_query_1')
+          .callStream('searchSummary', {
+            region: watchedRegion,
+            school_name: watchedSchool,
+            exam_type: examType,
+          });
+        let fullContent = '';
+        for await (const chunk of streamResult as AsyncIterable<Record<string, unknown>>) {
+          if (cancelled) break;
+          const delta = typeof chunk?.content === 'string' ? chunk.content : '';
+          if (delta) fullContent += delta;
+        }
+        if (cancelled) return;
+        const matches = fullContent.match(/(\d{3})\s*分/g);
+        const scores = matches?.map((m: string) => parseInt(m, 10)).filter((n: number) => n >= 200 && n <= 900) ?? [];
+        if (scores.length > 0) {
+          form.setValue('targetScore', Math.max(...scores));
+          setScoreSuggested(true);
         }
       } catch (err) {
-        logger.error('获取分数线失败', String(err));
+        if (!cancelled) {
+          logger.error('获取分数线失败', JSON.stringify({
+            pluginInstanceId: 'high_school_admission_score_query_1',
+            actionKey: 'searchSummary',
+            outputMode: 'stream',
+            inputKeys: ['region', 'school_name', 'exam_type'],
+            error: err instanceof Error ? err.message : String(err),
+          }));
+        }
       } finally {
-        setScoreSuggesting(false);
+        if (!cancelled) setScoreSuggesting(false);
       }
     };
     fetchScore();
-  }, [watchedRegion, scoreSuggested, form]);
+    return () => { cancelled = true; };
+  }, [watchedRegion, watchedSchool, scoreSuggested, watchedGrade, form]);
 
   const cities = PROVINCE_CITIES[selectedProvince] || [];
 
@@ -600,7 +665,15 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
             name="targetSchool"
             render={({ field }) => (
               <FormItem className="relative">
-                <FormLabel>目标院校</FormLabel>
+                <FormLabel>
+                  目标院校
+                  {schoolsLoading && (
+                    <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-pen-blue">
+                      <Loader2 className="size-3 animate-spin" />
+                      搜索中
+                    </span>
+                  )}
+                </FormLabel>
                 <FormControl>
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -616,23 +689,35 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
                         setSchoolSearch(e.target.value);
                       }}
                     />
-                    {schoolOpen && filteredSchools.length > 0 && (
-                      <div className="absolute top-full z-50 mt-1 max-h-40 w-full overflow-auto rounded-md border-2 border-ink/20 bg-card shadow-md">
-                        {filteredSchools.map((school) => (
-                          <button
-                            key={school}
-                            type="button"
-                            className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              field.onChange(school);
-                              setSchoolSearch('');
-                              setSchoolOpen(false);
-                            }}
-                          >
-                            {school}
-                          </button>
-                        ))}
+                    {schoolOpen && (
+                      <div className="absolute top-full z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border-2 border-ink/20 bg-card shadow-md">
+                        {schoolsLoading ? (
+                          <div className="flex items-center gap-2 px-3 py-3 text-xs text-muted-foreground">
+                            <Loader2 className="size-3 animate-spin" />
+                            正在从互联网搜索学校...
+                          </div>
+                        ) : filteredSchools.length > 0 ? (
+                          filteredSchools.map((school) => (
+                            <button
+                              key={school}
+                              type="button"
+                              className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                field.onChange(school);
+                                setSchoolSearch('');
+                                setSchoolOpen(false);
+                                setScoreSuggested(false);
+                              }}
+                            >
+                              {school}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-3 py-3 text-xs text-muted-foreground">
+                            暂无匹配学校，请直接输入
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -651,20 +736,20 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
                   {scoreSuggesting && (
                     <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-pen-blue">
                       <Loader2 className="size-3 animate-spin" />
-                      智能推荐中
+                      查询分数线
                     </span>
                   )}
                   {scoreSuggested && field.value != null && (
                     <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-emerald-600">
                       <Sparkles className="size-3" />
-                      已推荐
+                      已匹配
                     </span>
                   )}
                 </FormLabel>
                 <FormControl>
                   <Input
                     type="number"
-                    placeholder="根据历年分数线推荐"
+                    placeholder="选择院校后自动匹配"
                     value={
                       field.value !== undefined && field.value !== null
                         ? String(field.value)

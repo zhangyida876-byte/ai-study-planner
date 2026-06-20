@@ -1,0 +1,37 @@
+{
+  "id": "high_school_admission_score_query_1",
+  "pluginKey": "@official-plugins/ai-search-summary",
+  "pluginVersion": "1.0.11",
+  "name": "高中录取分数线查询",
+  "description": "根据地区和目标学校名称搜索该校最近一年的中考/高考录取分数线，返回具体分数线数据，供学情诊断表单的目标分数推荐功能使用。",
+  "icon": "",
+  "paramsSchema": {
+    "properties": {
+      "region": {
+        "type": "string",
+        "description": "地区（如：北京市、上海市浦东新区等）"
+      },
+      "school_name": {
+        "type": "string",
+        "description": "目标学校名称"
+      },
+      "exam_type": {
+        "type": "string",
+        "description": "考试类型（中考/高考）"
+      }
+    },
+    "required": [
+      "region",
+      "school_name",
+      "exam_type"
+    ],
+    "type": "object"
+  },
+  "formValue": {
+    "query": "{{input.region}} {{input.school_name}} 2024年 {{input.exam_type}} 录取分数线",
+    "instruction": "提取该校最近一年的具体录取分数线数据，仅返回分数线数值，如无明确数据则返回'未查询到相关数据'，不要多余内容。"
+  },
+  "createdAt": 1781954870015,
+  "updatedAt": 1781954870015,
+  "createdBy": 7074919885251330052
+}

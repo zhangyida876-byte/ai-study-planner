@@ -1,0 +1,27 @@
+{
+  "id": "high_school_search_by_region_1",
+  "pluginKey": "@official-plugins/ai-search-summary",
+  "pluginVersion": "1.0.11",
+  "name": "按地区搜索重点高中名单",
+  "description": "根据用户输入的地区，搜索当地的省级/市级示范性高中和重点高中名单，返回学校名称列表，用于学情诊断表单的目标院校下拉选择。",
+  "icon": "",
+  "paramsSchema": {
+    "type": "object",
+    "properties": {
+      "region": {
+        "type": "string",
+        "description": "需要搜索高中的地区（如：北京市海淀区、广东省广州市）"
+      }
+    },
+    "required": [
+      "region"
+    ]
+  },
+  "formValue": {
+    "query": "{{input.region}} 省级示范性高中 市级示范性高中 重点高中 名单",
+    "instruction": "仅返回该地区的所有省级/市级示范性高中和重点高中的学校名称列表，不要其他解释性内容，每个学校名称单独一行，不要编号。"
+  },
+  "createdAt": 1781954868526,
+  "updatedAt": 1781954868526,
+  "createdBy": 7074919885251330052
+}
