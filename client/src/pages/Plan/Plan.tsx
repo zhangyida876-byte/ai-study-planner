@@ -26,7 +26,7 @@ import PlanTimeline from './PlanTimeline';
 import PlanScoreInput, { type ExamType } from './PlanScoreInput';
 import PlanSchoolRecommend from './PlanSchoolRecommend';
 import { PROVINCE_CITIES, PROVINCES, EXAM_TYPE_CONFIG } from './regionData';
-import type { AdmissionPolicy } from '@shared/api.interface';
+import type { AdmissionPolicy, AdmissionLine } from '@shared/api.interface';
 
 const EXAM_TYPES: ExamType[] = ['小升初', '中考', '高考'];
 const HS_MODES = [
@@ -468,13 +468,15 @@ const Plan: React.FC = () => {
                                 <tr className="border-b-[3px] border-ink">
                                   <th className="py-1.5 text-left font-marker">学校</th>
                                   <th className="py-1.5 text-right font-marker">分数</th>
+                                  <th className="py-1.5 text-right font-marker">录取率</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {lines.map((line: { batch: string; school: string; score: number }, idx: number) => (
+                                {lines.map((line: AdmissionLine, idx: number) => (
                                   <tr key={idx} className="border-b-2 border-dashed border-ink/20">
                                     <td className="py-1.5">{line.school}</td>
                                     <td className="py-1.5 text-right font-bold text-marker-red">{line.score}</td>
+                                    <td className="py-1.5 text-right text-xs text-pen-blue">{line.rate || '-'}</td>
                                   </tr>
                                 ))}
                               </tbody>

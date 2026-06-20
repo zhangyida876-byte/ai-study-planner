@@ -108,6 +108,7 @@ export interface AdmissionLine {
   batch: string;
   school: string;
   score: number;
+  rate?: string;
 }
 
 export interface AdmissionPolicy {
