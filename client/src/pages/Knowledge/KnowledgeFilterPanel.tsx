@@ -85,61 +85,63 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
   const cities = PROVINCE_CITIES[province] || [];
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="w-32">
-          <label className="mb-1 block text-xs font-bold text-ink">地区</label>
-          {isCustomRegion ? (
-            <div className="flex gap-1">
-              <Input
-                value={customRegionText}
-                onChange={(e) => onCustomRegionTextChange(e.target.value)}
-                placeholder="输入地区"
-                className="font-hand h-9 text-sm"
-                onKeyDown={(e) => { if (e.key === 'Enter') onCustomRegionSubmit(); }}
-              />
-              <button
-                type="button"
-                onClick={onCustomRegionSubmit}
-                className="text-xs text-pen-blue hover:underline"
-              >
-                确定
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-1">
-              <Select value={province} onValueChange={onProvinceChange}>
-                <SelectTrigger className="font-hand h-9 w-24 text-sm">
-                  <SelectValue placeholder="省/市" />
+    <div className="space-y-5">
+      {/* Row 1: Region */}
+      <div>
+        <label className="mb-2 block text-sm font-bold text-ink">地区</label>
+        {isCustomRegion ? (
+          <div className="flex gap-2">
+            <Input
+              value={customRegionText}
+              onChange={(e) => onCustomRegionTextChange(e.target.value)}
+              placeholder="输入地区名称"
+              className="font-hand h-10 flex-1"
+              onKeyDown={(e) => { if (e.key === 'Enter') onCustomRegionSubmit(); }}
+            />
+            <button
+              type="button"
+              onClick={onCustomRegionSubmit}
+              className="rounded-lg border-[3px] border-ink bg-postit-yellow px-4 py-2 font-hand text-sm font-bold shadow-hard"
+            >
+              确定
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            <Select value={province} onValueChange={onProvinceChange}>
+              <SelectTrigger className="font-hand h-10 w-36">
+                <SelectValue placeholder="选择省/市" />
+              </SelectTrigger>
+              <SelectContent>
+                {PROVINCES.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+                <SelectItem value="__custom__">自定义地区...</SelectItem>
+              </SelectContent>
+            </Select>
+            {province && cities.length > 0 && (
+              <Select value={city} onValueChange={onCityChange}>
+                <SelectTrigger className="font-hand h-10 w-36">
+                  <SelectValue placeholder="选择市/区" />
                 </SelectTrigger>
                 <SelectContent>
-                  {PROVINCES.map((p) => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  {cities.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
                   ))}
-                  <SelectItem value="__custom__">自定义...</SelectItem>
                 </SelectContent>
               </Select>
-              {province && cities.length > 0 && (
-                <Select value={city} onValueChange={onCityChange}>
-                  <SelectTrigger className="font-hand h-9 w-20 text-sm">
-                    <SelectValue placeholder="市" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cities.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
+      </div>
 
-        <div className="w-24">
-          <label className="mb-1 block text-xs font-bold text-ink">年级</label>
+      {/* Row 2: Grade + Semester */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div>
+          <label className="mb-2 block text-sm font-bold text-ink">年级</label>
           <Select value={grade} onValueChange={onGradeChange}>
-            <SelectTrigger className="font-hand h-9 text-sm">
-              <SelectValue placeholder="年级" />
+            <SelectTrigger className="font-hand h-10">
+              <SelectValue placeholder="选择年级" />
             </SelectTrigger>
             <SelectContent>
               {GRADES.map((g) => (
@@ -149,11 +151,11 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
           </Select>
         </div>
 
-        <div className="w-24">
-          <label className="mb-1 block text-xs font-bold text-ink">学期</label>
+        <div>
+          <label className="mb-2 block text-sm font-bold text-ink">学期</label>
           <Select value={semester} onValueChange={onSemesterChange}>
-            <SelectTrigger className="font-hand h-9 text-sm">
-              <SelectValue placeholder="学期" />
+            <SelectTrigger className="font-hand h-10">
+              <SelectValue placeholder="选择学期" />
             </SelectTrigger>
             <SelectContent>
               {SEMESTERS.map((s) => (
@@ -163,10 +165,10 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
           </Select>
         </div>
 
-        <div className="w-28">
-          <label className="mb-1 block text-xs font-bold text-ink">学科</label>
+        <div>
+          <label className="mb-2 block text-sm font-bold text-ink">学科</label>
           <Select value={subject} onValueChange={onSubjectChange}>
-            <SelectTrigger className="font-hand h-9 text-sm">
+            <SelectTrigger className="font-hand h-10">
               <SelectValue placeholder="全部学科" />
             </SelectTrigger>
             <SelectContent>
@@ -178,10 +180,10 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
           </Select>
         </div>
 
-        <div className="w-28">
-          <label className="mb-1 block text-xs font-bold text-ink">教材版本</label>
+        <div>
+          <label className="mb-2 block text-sm font-bold text-ink">教材版本</label>
           <Select value={version} onValueChange={onVersionChange}>
-            <SelectTrigger className="font-hand h-9 text-sm">
+            <SelectTrigger className="font-hand h-10">
               <SelectValue placeholder="全部版本" />
             </SelectTrigger>
             <SelectContent>
@@ -194,9 +196,10 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
         </div>
       </div>
 
+      {/* Row 3: Search */}
       <div className="flex items-center gap-3">
         <Input
-          className="font-hand h-10 flex-1"
+          className="font-hand h-11 flex-1"
           placeholder="输入知识点关键词搜索..."
           value={searchInput}
           onChange={(e) => onSearchInputChange(e.target.value)}
@@ -205,7 +208,7 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
         <button
           type="button"
           onClick={onSearch}
-          className="flex items-center gap-1.5 rounded-lg border-[3px] border-ink bg-postit-yellow px-4 py-2 font-hand text-sm font-bold shadow-hard transition-transform hover:-translate-y-0.5"
+          className="flex h-11 items-center gap-1.5 rounded-lg border-[3px] border-ink bg-postit-yellow px-5 font-hand text-sm font-bold shadow-hard transition-transform hover:-translate-y-0.5"
         >
           搜索
         </button>

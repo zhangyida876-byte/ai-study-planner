@@ -59,10 +59,15 @@ export class KnowledgeService {
   async search(
     keyword: string,
     page: number,
-    pageSize: number
+    pageSize: number,
+    filters?: { version?: string; subject?: string; chapter?: string }
   ): Promise<KnowledgePointSearchResponse> {
     const offset = (page - 1) * pageSize;
-    const whereClause = ilike(knowledgePoint.name, `%${keyword}%`);
+    const conditions = [ilike(knowledgePoint.name, `%${keyword}%`)];
+    if (filters?.version) conditions.push(eq(knowledgePoint.version, filters.version));
+    if (filters?.subject) conditions.push(eq(knowledgePoint.subject, filters.subject));
+    if (filters?.chapter) conditions.push(eq(knowledgePoint.chapter, filters.chapter));
+    const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
 
     const [items, countResult] = await Promise.all([
       this.db

@@ -13,13 +13,17 @@ export class KnowledgeController {
   @Get('search')
   async search(
     @Query('keyword') keyword: string,
+    @Query('version') version?: string,
+    @Query('subject') subject?: string,
+    @Query('chapter') chapter?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string
   ) {
     return this.knowledgeService.search(
       keyword,
       parseInt(page || '1', 10),
-      parseInt(pageSize || '20', 10)
+      parseInt(pageSize || '20', 10),
+      { version, subject, chapter }
     );
   }
 
