@@ -1,0 +1,40 @@
+{
+  "id": "study_plan_report_generate_1",
+  "pluginKey": "@official-plugins/ai-text-generate",
+  "pluginVersion": "1.0.17",
+  "name": "升学规划报告生成",
+  "description": "根据学生各科成绩和地区升学政策分数线，生成包含分数预测、梯度目标、分数拆解和可达性评估的升学规划报告",
+  "icon": "",
+  "paramsSchema": {
+    "type": "object",
+    "properties": {
+      "student_scores": {
+        "type": "string",
+        "description": "学生当前各科成绩明细，包含科目名称、分数、满分值"
+      },
+      "region_admission_policy": {
+        "type": "string",
+        "description": "目标地区升学政策及各批次学校录取分数线数据"
+      },
+      "student_additional_info": {
+        "type": "string",
+        "description": "学生其他相关信息（如年级、偏好专业、意向学校等，可选）"
+      }
+    },
+    "required": [
+      "student_scores",
+      "region_admission_policy"
+    ]
+  },
+  "formValue": {
+    "prompt": "你是一位专业的升学规划指导专家，拥有丰富的高考/升学志愿填报和学业规划经验，擅长根据学生成绩和当地政策制定科学合理的升学方案。\n\n请根据以下信息生成一份专业的升学规划报告：\n\n学生成绩信息：\n{{input.student_scores}}\n\n地区升学政策及分数线：\n{{input.region_admission_policy}}\n\n学生其他信息（如有）：\n{{input.student_additional_info}}\n\n报告内容要求：\n# 升学规划报告\n\n## 一、当前成绩分析与学校定位\n1. 总分及各科成绩优劣势分析\n2. 目前分数对应的批次/院校层次定位\n3. 总分/单科在同批次中的竞争力评估\n\n## 二、梯度目标规划\n按照保底、稳健、冲刺三个梯度分别制定目标：\n| 梯度类型 | 目标院校层次 | 目标总分 | 达成概率 |\n|----------|--------------|----------|----------|\n| 保底     |              |          |          |\n| 稳健     |              |          |          |\n| 冲刺     |              |          |          |\n\n## 三、各科分数拆解目标\n针对三个梯度分别制定各科需要达到的分数要求：\n| 科目 | 当前分数 | 保底目标 | 稳健目标 | 冲刺目标 | 提升空间 | 提升建议 |\n|------|----------|----------|----------|----------|----------|----------|\n|      |          |          |          |          |          |          |\n\n## 四、可达性评估与实施建议\n1. 各梯度目标的可行性分析\n2. 重点提升科目和优先级排序\n3. 阶段性学习规划建议\n4. 志愿填报注意事项\n\n输出要求：\n- 全部内容使用标准Markdown格式\n- 数据准确客观，分析有理有据\n- 建议切实可行，具有可操作性\n- 语言专业严谨，同时通俗易懂\n- 表格对齐整齐，排版美观",
+    "modelID": "87",
+    "modelParams": {
+      "maxTokens": 8192,
+      "temperature": 0.5
+    }
+  },
+  "createdAt": 1781930872145,
+  "updatedAt": 1781930872145,
+  "createdBy": 7074919885251330052
+}

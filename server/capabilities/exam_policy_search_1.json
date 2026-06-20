@@ -1,0 +1,36 @@
+{
+  "id": "exam_policy_search_1",
+  "pluginKey": "@official-plugins/ai-search-summary",
+  "pluginVersion": "1.0.11",
+  "name": "中考考情政策搜索",
+  "description": "搜索互联网上最新的中考考情政策信息，根据地区、年份和关键词返回当地中考政策、考纲考点、考试动态的网页搜索摘要，用于辅助升学规划报告补充最新政策信息。",
+  "icon": "",
+  "paramsSchema": {
+    "properties": {
+      "region": {
+        "type": "string",
+        "description": "中考所在地区（如北京市、上海市、广东省等）"
+      },
+      "year": {
+        "type": "string",
+        "description": "中考年份（如2025年、2026年等）"
+      },
+      "keyword": {
+        "type": "string",
+        "description": "补充搜索关键词（如政策调整、考纲变化、报名时间等，可选）"
+      }
+    },
+    "required": [
+      "region",
+      "year"
+    ],
+    "type": "object"
+  },
+  "formValue": {
+    "query": "{{input.year}} {{input.region}} 中考政策 考纲考点 考试动态 {{input.keyword}}",
+    "instruction": "请整理并提炼搜索到的中考相关信息，重点关注政策调整、考纲变化、考试时间安排、报名要求、录取规则等核心内容，按照政策要点、考纲考点、重要动态三个分类进行结构化呈现，确保信息准确、时效性强，内容简洁明了。"
+  },
+  "createdAt": 1781930864080,
+  "updatedAt": 1781930864080,
+  "createdBy": 7074919885251330052
+}

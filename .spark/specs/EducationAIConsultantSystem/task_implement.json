@@ -98,7 +98,7 @@
     {
       "id": 4,
       "name": "插件开发",
-      "status": "in_progress",
+      "status": "completed",
       "type": "normal",
       "subtasks": [
         "读取plugin-guide技能文档",
@@ -124,12 +124,13 @@
       "dependencies": [
         3
       ],
-      "beginTime": 1781930815717
+      "beginTime": 1781930815717,
+      "endTime": 1781930979081
     },
     {
       "id": 5,
       "name": "工作台首页模块开发（含前后端）",
-      "status": "pending",
+      "status": "in_progress",
       "type": "normal",
       "subtasks": [
         "检查shared目录下公告相关类型定义，确保前后端契约一致",
@@ -157,12 +158,13 @@
         2,
         3,
         4
-      ]
+      ],
+      "beginTime": 1781930979275
     },
     {
       "id": 6,
       "name": "学情诊断模块开发（含前后端）",
-      "status": "pending",
+      "status": "in_progress",
       "type": "normal",
       "subtasks": [
         "检查shared目录下诊断记录相关类型定义，确保前后端契约一致",
@@ -200,12 +202,13 @@
         2,
         3,
         4
-      ]
+      ],
+      "beginTime": 1781930979275
     },
     {
       "id": 7,
       "name": "升学规划模块开发（含前后端）",
-      "status": "pending",
+      "status": "in_progress",
       "type": "normal",
       "subtasks": [
         "检查shared目录下规划记录、政策相关类型定义，确保前后端契约一致",
@@ -251,12 +254,13 @@
         2,
         3,
         4
-      ]
+      ],
+      "beginTime": 1781930979275
     },
     {
       "id": 8,
       "name": "知识点查询模块开发（含前后端）",
-      "status": "pending",
+      "status": "in_progress",
       "type": "normal",
       "subtasks": [
         "检查shared目录下知识点相关类型定义，确保前后端契约一致",
@@ -299,7 +303,8 @@
         2,
         3,
         4
-      ]
+      ],
+      "beginTime": 1781930979275
     },
     {
       "id": 9,
