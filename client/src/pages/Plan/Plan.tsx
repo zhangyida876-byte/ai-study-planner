@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Copy, FileText, Clock, Search, Loader2 } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
@@ -78,6 +78,16 @@ const Plan: React.FC = () => {
   const hasScores = Object.values(scores).some((v) => v > 0);
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
   const isGaokao = examType === '高考';
+  const groupedLines = useMemo(() => {
+    if (!currentPolicy?.admissionLines) return [] as Array<[string, typeof currentPolicy.admissionLines]>;
+    const groups = new Map<string, typeof currentPolicy.admissionLines>();
+    for (const line of currentPolicy.admissionLines) {
+      if (!groups.has(line.batch)) groups.set(line.batch, []);
+      groups.get(line.batch)!.push(line);
+    }
+    return Array.from(groups.entries());
+  }, [currentPolicy]);
+  const dataYearMismatch = currentPolicy ? currentPolicy.year !== examYear : false;
 
   const handleScoreChange = useCallback((key: string, val: string): void => {
     const num = val === '' ? 0 : parseInt(val, 10);
@@ -424,12 +434,17 @@ const Plan: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="text-center">
-                    <span className="text-sm text-muted-foreground">
-                      {currentPolicy.region} {currentPolicy.year}年{examType}总分
-                    </span>
-                    <div className="font-marker text-3xl font-bold text-marker-red">{currentPolicy.totalScore}分</div>
-                  </div>
+                   <div className="text-center">
+                     <span className="text-sm text-muted-foreground">
+                       {currentPolicy.region} {currentPolicy.year}年{examType}总分
+                     </span>
+                     <div className="font-marker text-3xl font-bold text-marker-red">{currentPolicy.totalScore}分</div>
+                     {dataYearMismatch && (
+                       <span className="mt-1 inline-block rounded border-2 border-dashed border-pen-blue px-2 py-0.5 text-xs text-pen-blue">
+                         当前显示 {currentPolicy.year} 年数据（最新可用）
+                       </span>
+                     )}
+                   </div>
                   <div>
                     <h3 className="mb-2 font-marker text-base font-bold">科目分值构成</h3>
                     <div className="space-y-1">
@@ -441,29 +456,34 @@ const Plan: React.FC = () => {
                       ))}
                     </div>
                   </div>
-                  {currentPolicy.admissionLines.length > 0 && (
+                   {groupedLines.length > 0 && (
                     <div>
                       <h3 className="mb-2 font-marker text-base font-bold">录取分数线</h3>
-                      <table className="w-full font-hand text-sm">
-                        <thead>
-                          <tr className="border-b-[3px] border-ink">
-                            <th className="py-1.5 text-left font-marker">批次</th>
-                            <th className="py-1.5 text-left font-marker">学校</th>
-                            <th className="py-1.5 text-right font-marker">分数</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {currentPolicy.admissionLines.map((line, idx) => (
-                            <tr key={idx} className="border-b-2 border-dashed border-ink/20">
-                              <td className="py-1.5">{line.batch}</td>
-                              <td className="py-1.5">{line.school}</td>
-                              <td className="py-1.5 text-right font-bold text-marker-red">{line.score}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                      <div className="space-y-3">
+                        {groupedLines.map(([batch, lines]) => (
+                          <div key={batch}>
+                            <div className="mb-1 text-xs font-bold text-pen-blue">{batch}</div>
+                            <table className="w-full font-hand text-sm">
+                              <thead>
+                                <tr className="border-b-[3px] border-ink">
+                                  <th className="py-1.5 text-left font-marker">学校</th>
+                                  <th className="py-1.5 text-right font-marker">分数</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {lines.map((line: { batch: string; school: string; score: number }, idx: number) => (
+                                  <tr key={idx} className="border-b-2 border-dashed border-ink/20">
+                                    <td className="py-1.5">{line.school}</td>
+                                    <td className="py-1.5 text-right font-bold text-marker-red">{line.score}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  )}
+                   )}
                   {currentPolicy.policyContent && (
                     <div>
                       <h3 className="mb-2 font-marker text-base font-bold">政策摘要</h3>
