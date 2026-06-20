@@ -17,6 +17,7 @@ export type DiagnosisStatus = 'pending' | 'generating' | 'completed' | 'failed';
 
 export interface DiagnosisRecord {
   id: string;
+  studentName: string;
   grade: string;
   region: string;
   scores: Record<string, number>;
@@ -28,6 +29,7 @@ export interface DiagnosisRecord {
 
 export interface DiagnosisRecordListItem {
   id: string;
+  studentName: string;
   grade: string;
   region: string;
   status: DiagnosisStatus;
@@ -35,6 +37,7 @@ export interface DiagnosisRecordListItem {
 }
 
 export interface CreateDiagnosisRequest {
+  studentName: string;
   grade: string;
   region: string;
   scores: Record<string, number>;

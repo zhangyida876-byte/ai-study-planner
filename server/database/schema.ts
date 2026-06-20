@@ -207,6 +207,7 @@ export const diagnosisRecord = pgTable("diagnosis_record", {
   problemDesc: text("problem_desc"),
   report: text("report"),
   status: varchar("status", { length: 20 }).notNull().default('pending'),
+  studentName: varchar("student_name", { length: 100 }).notNull(),
   // System field: Creation time (auto-filled, do not modify)
   createdAt: customTimestamptz("_created_at", { precision: 3 }).notNull().default(sql`CURRENT_TIMESTAMP`),
   // System field: Creator (auto-filled, do not modify)

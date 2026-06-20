@@ -23,6 +23,7 @@ export class DiagnosisService {
       this.db
         .select({
           id: diagnosisRecord.id,
+          studentName: diagnosisRecord.studentName,
           grade: diagnosisRecord.grade,
           region: diagnosisRecord.region,
           status: diagnosisRecord.status,
@@ -61,6 +62,7 @@ export class DiagnosisService {
     const row = rows[0];
     return {
       id: row.id,
+      studentName: row.studentName,
       grade: row.grade,
       region: row.region,
       scores: (row.scores ?? {}) as Record<string, number>,
@@ -75,6 +77,7 @@ export class DiagnosisService {
     const rows = await this.db
       .insert(diagnosisRecord)
       .values({
+        studentName: dto.studentName,
         grade: dto.grade,
         region: dto.region,
         scores: dto.scores,

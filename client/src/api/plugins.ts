@@ -9,10 +9,14 @@ export const PLUGIN_IDS = {
 } as const;
 
 export interface DiagnosisReportInput {
+  student_name?: string;
   student_grade: string;
   student_region?: string;
   subject_scores: string;
   learning_problems?: string;
+  target_school?: string;
+  target_score?: string;
+  exam_date?: string;
 }
 
 export interface PlanReportInput {
