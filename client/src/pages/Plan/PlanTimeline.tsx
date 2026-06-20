@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Clock, Star, BookOpen, Calendar, MapPin, User } from 'lucide-react';
+import { Clock, Star, BookOpen, Calendar, MapPin, User, Target, Zap, CheckCircle } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import type { ExamType } from './PlanScoreInput';
@@ -80,6 +80,14 @@ const nodeTextSizes = {
   medium: 'text-base font-semibold',
   low: 'text-sm',
 };
+
+const phaseColors = [
+  'border-marker-red bg-marker-red/5',
+  'border-pen-blue bg-pen-blue/5',
+  'border-postit-yellow bg-postit-yellow/30',
+  'border-emerald-500 bg-emerald-500/5',
+  'border-ink/30 bg-accent',
+];
 
 const PlanTimeline: React.FC<PlanTimelineProps> = ({
   content,
@@ -193,21 +201,56 @@ const PlanTimeline: React.FC<PlanTimelineProps> = ({
             </WobblyCard>
           )}
 
+          {/* Horizontal Summary Axis */}
+          {nodes.length > 0 && (
+            <div className="rounded-lg border-2 border-ink/20 bg-accent/50 p-4">
+              <h4 className="mb-3 font-marker text-sm font-bold text-ink">阶段总览</h4>
+              <div className="flex items-center gap-0 overflow-x-auto">
+                {nodes.map((node, idx) => (
+                  <React.Fragment key={node.index}>
+                    <div
+                      className={`flex min-w-[100px] flex-shrink-0 flex-col items-center rounded-lg border-2 px-3 py-2 ${phaseColors[idx % phaseColors.length]}`}
+                    >
+                      <span className={`font-marker text-xs font-bold ${
+                        node.importance === 'high' ? 'text-marker-red' :
+                        node.importance === 'medium' ? 'text-pen-blue' : 'text-ink/70'
+                      }`}>
+                        {node.title.length > 8 ? node.title.slice(0, 8) + '...' : node.title}
+                      </span>
+                      {node.importance === 'high' && <Star className="mt-1 size-3 text-marker-red" />}
+                      {node.importance === 'medium' && <BookOpen className="mt-1 size-3 text-pen-blue" />}
+                      {node.importance === 'low' && <CheckCircle className="mt-1 size-3 text-ink/40" />}
+                    </div>
+                    {idx < nodes.length - 1 && (
+                      <div className="mx-1 h-0.5 w-4 flex-shrink-0 bg-ink/20" />
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Timeline Nodes */}
           <div className="relative">
             <div
               className="absolute left-[15px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-marker-red via-pen-blue to-ink/20"
               aria-hidden="true"
             />
-            <div className="space-y-4">
+            <div className="space-y-5">
               {nodes.length > 0 ? (
-                nodes.map((node) => (
+                nodes.map((node, idx) => (
                   <div key={node.index} className="relative pl-10">
                     <div
                       className={`absolute left-[7px] top-1.5 size-4 rounded-full border-2 bg-white ${nodeColors[node.importance as keyof typeof nodeColors]}`}
                       aria-hidden="true"
                     />
-                    <div>
+                    <div
+                      className={`rounded-lg border-2 border-dashed p-3 ${
+                        node.importance === 'high' ? 'border-marker-red/30 bg-marker-red/[0.02]' :
+                        node.importance === 'medium' ? 'border-pen-blue/30 bg-pen-blue/[0.02]' :
+                        'border-ink/15 bg-white/40'
+                      }`}
+                    >
                       <h3
                         className={`font-marker ${nodeTextSizes[node.importance as keyof typeof nodeTextSizes]} ${
                           node.importance === 'high'
@@ -225,8 +268,39 @@ const PlanTimeline: React.FC<PlanTimelineProps> = ({
                         )}
                         {node.title}
                       </h3>
+
+                      {/* Phase Key Points */}
+                      {node.importance === 'high' && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-marker-red/10 px-2 py-0.5 text-xs font-hand font-bold text-marker-red">
+                            <Target className="size-3" />
+                            核心重点阶段
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-pen-blue/10 px-2 py-0.5 text-xs font-hand font-bold text-pen-blue">
+                            <Zap className="size-3" />
+                            关键突破期
+                          </span>
+                        </div>
+                      )}
+                      {node.importance === 'medium' && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-pen-blue/10 px-2 py-0.5 text-xs font-hand font-bold text-pen-blue">
+                            <Target className="size-3" />
+                            能力提升期
+                          </span>
+                        </div>
+                      )}
+                      {node.importance === 'low' && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-ink/5 px-2 py-0.5 text-xs font-hand text-ink/60">
+                            <CheckCircle className="size-3" />
+                            基础巩固期
+                          </span>
+                        </div>
+                      )}
+
                       {node.body && (
-                        <div className="mt-1 font-hand text-sm leading-relaxed text-ink/70 prose-headings:font-marker">
+                        <div className="mt-2 font-hand text-sm leading-relaxed text-ink/70 prose-headings:font-marker">
                           <Streamdown>{node.body}</Streamdown>
                         </div>
                       )}

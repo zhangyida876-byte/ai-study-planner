@@ -32,6 +32,7 @@ export interface PlanReportInput {
 export interface TimelineInput {
   current_grade: string;
   region: string;
+  exam_year?: string;
 }
 
 export interface PolicySearchInput {

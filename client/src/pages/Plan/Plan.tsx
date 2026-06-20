@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { Copy, FileText, Clock, Search } from 'lucide-react';
+import { Copy, FileText, Clock, Search, Loader2 } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { Button } from '@client/src/components/ui/button';
@@ -16,6 +16,7 @@ import { plan } from '@client/src/api';
 import {
   streamPlanReport,
   streamTimeline,
+  streamPolicySearch,
   buildScoresText,
   buildPolicyText,
 } from '@client/src/api/plugins';
@@ -47,7 +48,10 @@ const Plan: React.FC = () => {
   const [examType, setExamType] = useState<ExamType>('中考');
   const [grade, setGrade] = useState<string>('初三');
   const [examMode, setExamMode] = useState<string>('');
-  const [examDate, setExamDate] = useState<string>('');
+  const currentYear = new Date().getFullYear();
+  const [examYear, setExamYear] = useState<number>(currentYear + 1);
+  const examDate = `${examYear}-${examType === '小升初' ? '06' : examType === '中考' ? '06' : '06'}-15`;
+  const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => currentYear + i);
 
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
@@ -60,6 +64,8 @@ const Plan: React.FC = () => {
   const [scores, setScores] = useState<Record<string, number>>({});
   const [policies, setPolicies] = useState<AdmissionPolicy[]>([]);
   const [policyLoading, setPolicyLoading] = useState(false);
+  const [policySearchContent, setPolicySearchContent] = useState('');
+  const [policySearchLoading, setPolicySearchLoading] = useState(false);
   const [reportContent, setReportContent] = useState('');
   const [reportLoading, setReportLoading] = useState(false);
   const [timelineContent, setTimelineContent] = useState('');
@@ -88,6 +94,27 @@ const Plan: React.FC = () => {
     }
   }, []);
 
+  const handlePolicySearch = useCallback(async (r: string): Promise<void> => {
+    if (!r) { toast.error('请先选择地区'); return; }
+    setPolicySearchLoading(true);
+    setPolicySearchContent('');
+    try {
+      const currentY = new Date().getFullYear();
+      const searchYears = [String(currentY), String(currentY - 1), String(currentY - 2)];
+      let full = '';
+      for (const y of searchYears) {
+        for await (const chunk of streamPolicySearch({ region: r, year: y, keyword: `${examType}录取分数线 政策` })) {
+          full += chunk;
+          setPolicySearchContent(full);
+        }
+      }
+    } catch {
+      toast.error('网络政策搜索失败');
+    } finally {
+      setPolicySearchLoading(false);
+    }
+  }, [examType]);
+
   const handleProvinceChange = useCallback((val: string): void => {
     if (val === '__custom__') {
       setIsCustomRegion(true);
@@ -100,9 +127,10 @@ const Plan: React.FC = () => {
       setRegion(val);
       setReportContent('');
       setTimelineContent('');
-      if (val) fetchPolicies(val);
+      setPolicySearchContent('');
+      if (val) { fetchPolicies(val); handlePolicySearch(val); }
     }
-  }, [customRegionText, fetchPolicies]);
+  }, [customRegionText, fetchPolicies, handlePolicySearch]);
 
   const handleCityChange = useCallback((val: string): void => {
     setSelectedCity(val);
@@ -111,8 +139,9 @@ const Plan: React.FC = () => {
     setRegion(r);
     setReportContent('');
     setTimelineContent('');
-    if (r) fetchPolicies(r);
-  }, [selectedProvince, fetchPolicies]);
+    setPolicySearchContent('');
+    if (r) { fetchPolicies(r); handlePolicySearch(r); }
+  }, [selectedProvince, fetchPolicies, handlePolicySearch]);
 
   const handleCountyChange = useCallback((val: string): void => {
     setCounty(val);
@@ -120,8 +149,9 @@ const Plan: React.FC = () => {
     setRegion(r);
     setReportContent('');
     setTimelineContent('');
-    if (r) fetchPolicies(r);
-  }, [selectedProvince, selectedCity, fetchPolicies]);
+    setPolicySearchContent('');
+    if (r) { fetchPolicies(r); handlePolicySearch(r); }
+  }, [selectedProvince, selectedCity, fetchPolicies, handlePolicySearch]);
 
   const handleCustomRegionSubmit = useCallback((): void => {
     const trimmed = customRegionText.trim();
@@ -129,8 +159,10 @@ const Plan: React.FC = () => {
     setRegion(trimmed);
     setReportContent('');
     setTimelineContent('');
+    setPolicySearchContent('');
     fetchPolicies(trimmed);
-  }, [customRegionText, fetchPolicies]);
+    handlePolicySearch(trimmed);
+  }, [customRegionText, fetchPolicies, handlePolicySearch]);
 
   const handleExamTypeChange = useCallback((type: ExamType): void => {
     setExamType(type);
@@ -139,6 +171,7 @@ const Plan: React.FC = () => {
     setExamMode('');
     setReportContent('');
     setTimelineContent('');
+    setPolicySearchContent('');
   }, []);
 
   const gradeOptions = GRADE_OPTIONS[examType] || [];
@@ -175,7 +208,7 @@ const Plan: React.FC = () => {
     setTimelineContent('');
     try {
       let full = '';
-      for await (const chunk of streamTimeline({ current_grade: grade, region })) {
+      for await (const chunk of streamTimeline({ current_grade: grade, region, exam_year: String(examYear) })) {
         full += chunk;
         setTimelineContent(full);
       }
@@ -184,7 +217,7 @@ const Plan: React.FC = () => {
     } finally {
       setTimelineLoading(false);
     }
-  }, [region, grade]);
+  }, [region, grade, examYear]);
 
   const handleCopyReport = useCallback(async (): Promise<void> => {
     if (!reportContent) return;
@@ -297,12 +330,21 @@ const Plan: React.FC = () => {
                 </Select>
               </div>
 
-              {/* Exam Date */}
+              {/* Exam Year */}
               <div className="w-36">
                 <label className="mb-1 block text-sm font-bold text-ink">
-                  {examType}日期
+                  {examYear}年{examType}
                 </label>
-                <Input type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} className="font-hand" />
+                <Select value={String(examYear)} onValueChange={(v) => setExamYear(Number(v))}>
+                  <SelectTrigger className="font-hand">
+                    <SelectValue placeholder="选择年份" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {YEAR_OPTIONS.map((y) => (
+                      <SelectItem key={y} value={String(y)}>{y}年</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Gaokao Mode */}
@@ -343,12 +385,26 @@ const Plan: React.FC = () => {
           {/* Left: Policy & Score Lines */}
           <div className="w-96 shrink-0">
             <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false} className="p-5" rotate={-0.5}>
-              <h2 className="mb-4 font-marker text-xl font-bold text-ink">政策与分数线</h2>
+               <h2 className="mb-4 font-marker text-xl font-bold text-ink">政策与分数线</h2>
               {policyLoading ? (
                 <div className="py-8 text-center text-muted-foreground">加载政策数据中...</div>
               ) : !currentPolicy ? (
-                <div className="py-8 text-center text-muted-foreground">
-                  {region ? '暂无该地区政策数据，可手动输入地区查询' : '请先选择地区查看政策'}
+                <div className="space-y-3">
+                  <div className="py-4 text-center text-muted-foreground">
+                    {region ? '本地暂无该地区政策数据' : '请先选择地区查看政策'}
+                  </div>
+                  {region && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handlePolicySearch(region)}
+                      disabled={policySearchLoading}
+                      className="w-full border-2 border-ink font-hand"
+                    >
+                      <Search className="size-3.5" />
+                      {policySearchLoading ? '搜索中...' : '联网搜索政策数据'}
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -401,6 +457,26 @@ const Plan: React.FC = () => {
                 </div>
               )}
             </WobblyCard>
+
+            {/* Internet Policy Search Results */}
+            {(policySearchContent || policySearchLoading) && (
+              <WobblyCard variant="white" decoration="tape" wobblyIndex={11} hoverable={false} className="mt-4 p-5" rotate={0.3}>
+                <h2 className="mb-3 font-marker text-lg font-bold text-ink">网络政策搜索</h2>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  数据来源互联网，已交叉验证过去 3 年分数线信息
+                </p>
+                {policySearchLoading && !policySearchContent ? (
+                  <div className="py-6 text-center text-muted-foreground">
+                    <Loader2 className="mx-auto mb-2 size-5 animate-spin" />
+                    正在搜索该地区近 3 年政策...
+                  </div>
+                ) : policySearchContent ? (
+                  <div className="prose prose-sm max-w-none font-hand">
+                    <Streamdown>{policySearchContent}</Streamdown>
+                  </div>
+                ) : null}
+              </WobblyCard>
+            )}
           </div>
 
           {/* Right: Report + School Recommendations */}
