@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Clock, AlertTriangle, Star, BookOpen, Flag } from 'lucide-react';
+import { Clock, Star, BookOpen, Calendar, MapPin, User } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import type { ExamType } from './PlanScoreInput';
@@ -9,6 +9,7 @@ interface PlanTimelineProps {
   loading: boolean;
   examType: ExamType;
   examDate?: string;
+  grade?: string;
 }
 
 function getCountdown(examDate: string): number | null {
@@ -32,39 +33,66 @@ function getUrgencyLevel(days: number): { color: string; label: string } {
   return { color: 'text-emerald-600', label: '储备阶段' };
 }
 
+interface SummaryInfo {
+  title: string;
+  content: string;
+}
+
+interface TimelineNode {
+  title: string;
+  body: string;
+  importance: string;
+  index: number;
+}
+
+function parseContent(content: string): { summary: SummaryInfo | null; nodes: TimelineNode[] } {
+  if (!content) return { summary: null, nodes: [] };
+  const sections = content.split(/\n#{1,3}\s+/).filter(Boolean);
+  if (sections.length === 0) return { summary: null, nodes: [] };
+
+  const firstSection = sections[0];
+  const firstLines = firstSection.split('\n').filter(Boolean);
+  const summaryTitle = firstLines[0]?.replace(/^#+\s*/, '').trim() || '备考概览';
+  const summaryContent = firstLines.slice(1).join('\n');
+
+  const nodes = sections.slice(1).map((section, idx) => {
+    const lines = section.split('\n').filter(Boolean);
+    const title = lines[0]?.replace(/^#+\s*/, '').trim() || '';
+    const body = lines.slice(1).join('\n');
+    const importance = idx < 2 ? 'high' : idx < 4 ? 'medium' : 'low';
+    return { title, body, importance, index: idx };
+  });
+
+  return {
+    summary: { title: summaryTitle, content: summaryContent },
+    nodes,
+  };
+}
+
+const nodeColors = {
+  high: 'bg-marker-red border-marker-red',
+  medium: 'bg-pen-blue border-pen-blue',
+  low: 'bg-ink/40 border-ink/40',
+};
+
+const nodeTextSizes = {
+  high: 'text-lg font-bold',
+  medium: 'text-base font-semibold',
+  low: 'text-sm',
+};
+
 const PlanTimeline: React.FC<PlanTimelineProps> = ({
   content,
   loading,
   examType,
   examDate,
+  grade,
 }) => {
   const countdown = examDate ? getCountdown(examDate) : null;
   const examLabel = getExamLabel(examType);
   const urgency = countdown != null ? getUrgencyLevel(countdown) : null;
 
-  const timelineNodes = useMemo(() => {
-    if (!content) return [];
-    const sections = content.split(/\n#{1,3}\s+/).filter(Boolean);
-    return sections.map((section, idx) => {
-      const lines = section.split('\n').filter(Boolean);
-      const title = lines[0]?.replace(/^#+\s*/, '').trim() || '';
-      const body = lines.slice(1).join('\n');
-      const importance = idx < 2 ? 'high' : idx < 4 ? 'medium' : 'low';
-      return { title, body, importance, index: idx };
-    });
-  }, [content]);
-
-  const nodeColors = {
-    high: 'bg-marker-red border-marker-red',
-    medium: 'bg-pen-blue border-pen-blue',
-    low: 'bg-ink/40 border-ink/40',
-  };
-
-  const nodeTextSizes = {
-    high: 'text-lg font-bold',
-    medium: 'text-base font-semibold',
-    low: 'text-sm',
-  };
+  const { summary, nodes } = useMemo(() => parseContent(content), [content]);
 
   return (
     <WobblyCard
@@ -84,11 +112,9 @@ const PlanTimeline: React.FC<PlanTimelineProps> = ({
           </span>
         </div>
         {countdown != null && urgency && (
-          <div className="flex items-center gap-2">
-            <span className={`font-hand text-sm font-bold ${urgency.color}`}>
-              {urgency.label}
-            </span>
-          </div>
+          <span className={`font-hand text-sm font-bold ${urgency.color}`}>
+            {urgency.label}
+          </span>
         )}
       </div>
 
@@ -124,54 +150,95 @@ const PlanTimeline: React.FC<PlanTimelineProps> = ({
           </div>
         </div>
       ) : content ? (
-        <div className="relative">
-          {/* Vertical timeline line */}
-          <div
-            className="absolute left-[15px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-marker-red via-pen-blue to-ink/20"
-            aria-hidden="true"
-          />
-
-          <div className="space-y-4">
-            {timelineNodes.length > 0 ? (
-              timelineNodes.map((node) => (
-                <div key={node.index} className="relative pl-10">
-                  {/* Timeline dot */}
-                  <div
-                    className={`absolute left-[7px] top-1.5 size-4 rounded-full border-2 bg-white ${nodeColors[node.importance as keyof typeof nodeColors]}`}
-                    aria-hidden="true"
-                  />
-                  {/* Node content */}
-                  <div>
-                    <h3
-                      className={`font-marker ${nodeTextSizes[node.importance as keyof typeof nodeTextSizes]} ${
-                        node.importance === 'high'
-                          ? 'text-marker-red'
-                          : node.importance === 'medium'
-                          ? 'text-pen-blue'
-                          : 'text-ink'
-                      }`}
-                    >
-                      {node.importance === 'high' && (
-                        <Star className="mr-1.5 inline size-4" />
-                      )}
-                      {node.importance === 'medium' && (
-                        <BookOpen className="mr-1.5 inline size-3.5" />
-                      )}
-                      {node.title}
-                    </h3>
-                    {node.body && (
-                      <div className="mt-1 font-hand text-sm leading-relaxed text-ink/70 prose-headings:font-marker">
-                        <Streamdown>{node.body}</Streamdown>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="pl-10 font-hand prose-headings:font-marker prose-sm max-w-none">
-                <Streamdown>{content}</Streamdown>
+        <div className="space-y-5">
+          {/* Summary Card */}
+          {summary && (
+            <WobblyCard
+              variant="yellow"
+              decoration="tack"
+              wobblyIndex={10}
+              hoverable={false}
+              className="p-4"
+              rotate={-0.3}
+            >
+              <div className="mb-3 flex items-center gap-2">
+                <Calendar className="size-5 text-marker-red" />
+                <h3 className="font-marker text-lg font-bold text-ink">
+                  {summary.title}
+                </h3>
               </div>
-            )}
+              {grade && (
+                <div className="mb-2 flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full border-2 border-ink bg-white px-2 py-0.5 text-xs font-hand">
+                    <User className="size-3" />
+                    {grade}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full border-2 border-ink bg-white px-2 py-0.5 text-xs font-hand">
+                    <MapPin className="size-3" />
+                    {examLabel}
+                  </span>
+                  {countdown != null && (
+                    <span className="inline-flex items-center gap-1 rounded-full border-2 border-marker-red bg-marker-red/10 px-2 py-0.5 text-xs font-hand font-bold text-marker-red">
+                      <Clock className="size-3" />
+                      倒计时 {countdown} 天
+                    </span>
+                  )}
+                </div>
+              )}
+              {summary.content && (
+                <div className="font-hand text-sm leading-relaxed text-ink/80">
+                  <Streamdown>{summary.content}</Streamdown>
+                </div>
+              )}
+            </WobblyCard>
+          )}
+
+          {/* Timeline Nodes */}
+          <div className="relative">
+            <div
+              className="absolute left-[15px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-marker-red via-pen-blue to-ink/20"
+              aria-hidden="true"
+            />
+            <div className="space-y-4">
+              {nodes.length > 0 ? (
+                nodes.map((node) => (
+                  <div key={node.index} className="relative pl-10">
+                    <div
+                      className={`absolute left-[7px] top-1.5 size-4 rounded-full border-2 bg-white ${nodeColors[node.importance as keyof typeof nodeColors]}`}
+                      aria-hidden="true"
+                    />
+                    <div>
+                      <h3
+                        className={`font-marker ${nodeTextSizes[node.importance as keyof typeof nodeTextSizes]} ${
+                          node.importance === 'high'
+                            ? 'text-marker-red'
+                            : node.importance === 'medium'
+                            ? 'text-pen-blue'
+                            : 'text-ink'
+                        }`}
+                      >
+                        {node.importance === 'high' && (
+                          <Star className="mr-1.5 inline size-4" />
+                        )}
+                        {node.importance === 'medium' && (
+                          <BookOpen className="mr-1.5 inline size-3.5" />
+                        )}
+                        {node.title}
+                      </h3>
+                      {node.body && (
+                        <div className="mt-1 font-hand text-sm leading-relaxed text-ink/70 prose-headings:font-marker">
+                          <Streamdown>{node.body}</Streamdown>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="pl-10 font-hand prose-headings:font-marker prose-sm max-w-none">
+                  <Streamdown>{content}</Streamdown>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       ) : (

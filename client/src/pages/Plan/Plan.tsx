@@ -31,6 +31,12 @@ const HS_MODES = [
   { value: '3+3', label: '3+3（六选三）' },
 ];
 
+const GRADE_OPTIONS: Record<ExamType, string[]> = {
+  '小升初': ['三年级', '四年级', '五年级', '六年级'],
+  '中考': ['初一', '初二', '初三'],
+  '高考': ['高一', '高二', '高三'],
+};
+
 function buildPolicyContext(policies: AdmissionPolicy[]): string {
   if (!policies.length) return '暂无该地区政策数据';
   const p = policies[0];
@@ -39,6 +45,7 @@ function buildPolicyContext(policies: AdmissionPolicy[]): string {
 
 const Plan: React.FC = () => {
   const [examType, setExamType] = useState<ExamType>('中考');
+  const [grade, setGrade] = useState<string>('初三');
   const [examMode, setExamMode] = useState<string>('');
   const [examDate, setExamDate] = useState<string>('');
 
@@ -127,11 +134,14 @@ const Plan: React.FC = () => {
 
   const handleExamTypeChange = useCallback((type: ExamType): void => {
     setExamType(type);
+    setGrade(GRADE_OPTIONS[type][GRADE_OPTIONS[type].length - 1] || '');
     setScores({});
     setExamMode('');
     setReportContent('');
     setTimelineContent('');
   }, []);
+
+  const gradeOptions = GRADE_OPTIONS[examType] || [];
 
   const handleGenerateReport = useCallback(async (): Promise<void> => {
     if (!region) { toast.error('请先选择地区'); return; }
@@ -142,10 +152,12 @@ const Plan: React.FC = () => {
       await plan.createPlanRecord({ region, scores });
       const scoresText = buildScoresText(scores);
       const policyText = buildPolicyContext(policies);
-      let full = '';
+       let full = '';
       for await (const chunk of streamPlanReport({
+        student_grade: grade,
         student_scores: scoresText,
         region_admission_policy: policyText,
+        exam_date: examDate || undefined,
       })) {
         full += chunk;
         setReportContent(full);
@@ -155,14 +167,13 @@ const Plan: React.FC = () => {
     } finally {
       setReportLoading(false);
     }
-  }, [region, scores, policies, hasScores]);
+  }, [region, scores, policies, hasScores, grade, examDate]);
 
   const handleGenerateTimeline = useCallback(async (): Promise<void> => {
     if (!region) { toast.error('请先选择地区'); return; }
     setTimelineLoading(true);
     setTimelineContent('');
     try {
-      const grade = EXAM_TYPE_CONFIG[examType]?.grade || '初三';
       let full = '';
       for await (const chunk of streamTimeline({ current_grade: grade, region })) {
         full += chunk;
@@ -173,7 +184,7 @@ const Plan: React.FC = () => {
     } finally {
       setTimelineLoading(false);
     }
-  }, [region, examType]);
+  }, [region, grade]);
 
   const handleCopyReport = useCallback(async (): Promise<void> => {
     if (!reportContent) return;
@@ -270,6 +281,21 @@ const Plan: React.FC = () => {
                   </Button>
                 </div>
               )}
+
+               {/* Grade Selector */}
+              <div className="w-28">
+                <label className="mb-1 block text-sm font-bold text-ink">年级</label>
+                <Select value={grade} onValueChange={setGrade}>
+                  <SelectTrigger className="font-hand">
+                    <SelectValue placeholder="选择年级" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {gradeOptions.map((g) => (
+                      <SelectItem key={g} value={g}>{g}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {/* Exam Date */}
               <div className="w-36">
@@ -417,7 +443,7 @@ const Plan: React.FC = () => {
         </div>
 
         {/* Bottom: Timeline */}
-        <PlanTimeline content={timelineContent} loading={timelineLoading} examType={examType} examDate={examDate} />
+        <PlanTimeline content={timelineContent} loading={timelineLoading} examType={examType} examDate={examDate} grade={grade} />
       </div>
     </div>
   );
