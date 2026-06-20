@@ -88,6 +88,7 @@ interface KnowledgeFilterPanelProps {
   onVersionChange: (val: string) => void;
   onSearchInputChange: (val: string) => void;
   onSearch: () => void;
+  onReset: () => void;
   isCustomRegion: boolean;
   onCustomRegionToggle: () => void;
   customRegionText: string;
@@ -112,6 +113,7 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
   onVersionChange,
   onSearchInputChange,
   onSearch,
+  onReset,
   isCustomRegion,
   onCustomRegionToggle,
   customRegionText,
@@ -254,6 +256,13 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
           className="flex h-11 items-center gap-1.5 rounded-lg border-[3px] border-ink bg-postit-yellow px-5 font-hand text-sm font-bold shadow-hard transition-transform hover:-translate-y-0.5"
         >
           搜索
+        </button>
+        <button
+          type="button"
+          onClick={onReset}
+          className="flex h-11 items-center gap-1.5 rounded-lg border-[3px] border-ink bg-accent px-5 font-hand text-sm font-bold shadow-hard transition-transform hover:-translate-y-0.5"
+        >
+          重置
         </button>
       </div>
     </div>

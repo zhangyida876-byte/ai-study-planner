@@ -211,6 +211,28 @@ const Knowledge: React.FC = () => {
     setIsCustomRegion(false);
   }, [customRegionText]);
 
+  const handleReset = useCallback((): void => {
+    setProvince('');
+    setCity('');
+    setRegion('');
+    setIsCustomRegion(false);
+    setCustomRegionText('');
+    setGrade('');
+    setSemester('');
+    setSubject('__all__');
+    setVersion('__all__');
+    setSearchInput('');
+    setKeyword('');
+    setItems([]);
+    setTotal(0);
+    setPage(1);
+    setSelectedId(null);
+    setDetail(null);
+    setSelectedChapter('');
+    setChapterUnits([]);
+    setHasQueried(false);
+  }, []);
+
   const handleSelectItem = async (id: string) => {
     setSelectedId(id);
     setDetailLoading(true);
@@ -257,6 +279,7 @@ const Knowledge: React.FC = () => {
             onVersionChange={setVersion}
             onSearchInputChange={setSearchInput}
             onSearch={handleSearch}
+            onReset={handleReset}
             isCustomRegion={isCustomRegion}
             onCustomRegionToggle={() => setIsCustomRegion(!isCustomRegion)}
             customRegionText={customRegionText}
