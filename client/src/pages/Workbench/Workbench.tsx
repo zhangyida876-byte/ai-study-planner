@@ -48,7 +48,7 @@ const featureCards: FeatureCardConfig[] = [
     variant: 'white',
   },
   {
-    title: '知识点查询',
+    title: '知识点查询&解读',
     description: '各版本各学科知识点双向查询与详情',
     icon: BookOpen,
     iconColor: 'text-pen-blue',

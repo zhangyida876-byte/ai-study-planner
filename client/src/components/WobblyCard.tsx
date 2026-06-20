@@ -53,7 +53,12 @@ const WobblyCard: React.FC<WobblyCardProps> = ({
       {...props}
     >
       {decoration === 'tape' && (
-        <div className="absolute -top-3 left-1/2 z-10 h-6 w-24 -translate-x-1/2 rotate-1 border-x border-ink/10 bg-amber-50/40" />
+        <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L14 8H20L15 12L17 18L12 14L7 18L9 12L4 8H10L12 2Z" fill="#ff4d4d" stroke="#2d2d2d" strokeWidth="2" strokeLinejoin="round" />
+            <line x1="12" y1="14" x2="12" y2="22" stroke="#2d2d2d" strokeWidth="2.5" strokeLinecap="round" />
+          </svg>
+        </div>
       )}
       {decoration === 'tack' && (
         <div className="absolute -top-2 left-1/2 z-10 size-4 -translate-x-1/2 rounded-full border-2 border-ink bg-marker-red" />
