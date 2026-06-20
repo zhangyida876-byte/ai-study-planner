@@ -9,7 +9,7 @@
     "customToaster": true
   },
   "scripts": {
-    "dev": "npm run upgrade && ./scripts/dev.sh",
+    "dev": "./scripts/dev.sh",
     "dev:server": "NODE_ENV=development nest start --watch",
     "dev:client": "NODE_ENV=development vite --config vite.config.ts",
     "gen:db-schema": "npx -y @lark-apaas/db-schema-sync@latest --output server/database/schema.ts --export-custom-types",
@@ -29,7 +29,9 @@
     "type:check:server": "tsc --noEmit --project tsconfig.node.json",
     "lint": "node ./scripts/lint.js",
     "format": "prettier --write \"{server,client,test}/**/*.{js,ts,tsx,json,md}\"",
-    "upgrade": "fullstack-cli sync --disable-gen-openapi"
+    "prepare": "chmod +x .githooks/pre-commit 2>/dev/null; git config core.hooksPath .githooks 2>/dev/null || true",
+    "precommit": "node scripts/hooks/run-precommit.js",
+    "postinstall": "fullstack-cli action-plugin init"
   },
   "dependencies": {
     "@lark-apaas/fullstack-nestjs-core": "^1.1.22",
@@ -59,7 +61,7 @@
     "@headlessui/react": "^2.2.9",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.2.2",
-    "@lark-apaas/client-toolkit": "^1.2.31",
+    "@lark-apaas/client-toolkit": "^1.2.51",
     "@lark-apaas/fullstack-presets": "^1.1.0",
     "@lark-apaas/fullstack-vite-preset": "^1.0.1",
     "@nestjs/cli": "^10.4.9",
