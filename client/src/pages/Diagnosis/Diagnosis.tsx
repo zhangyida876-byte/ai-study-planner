@@ -50,8 +50,46 @@ const diagnosisFormSchema = z.object({
 
 type DiagnosisFormData = z.infer<typeof diagnosisFormSchema>;
 
-const GRADE_OPTIONS = ['初一', '初二', '初三', '高一', '高二', '高三'];
-const REGION_OPTIONS = ['十堰', '武汉', '襄阳', '宜昌', '荆州'];
+const GRADE_OPTIONS = [
+  '一年级', '二年级', '三年级', '四年级', '五年级', '六年级',
+  '初一', '初二', '初三',
+  '高一', '高二', '高三',
+  '中职',
+];
+const PROVINCE_CITIES: Record<string, string[]> = {
+  '北京市': ['东城区', '西城区', '朝阳区', '海淀区', '丰台区', '通州区', '大兴区', '昌平区'],
+  '天津市': ['和平区', '南开区', '河西区', '河东区', '滨海新区', '武清区'],
+  '上海市': ['黄浦区', '徐汇区', '长宁区', '静安区', '普陀区', '虹口区', '浦东新区', '闵行区', '宝山区', '嘉定区', '松江区'],
+  '重庆市': ['渝中区', '江北区', '沙坪坝区', '九龙坡区', '南岸区', '北碚区', '渝北区', '巴南区'],
+  '河北省': ['石家庄', '唐山', '秦皇岛', '邯郸', '保定', '廊坊', '沧州', '邢台', '衡水'],
+  '山西省': ['太原', '大同', '长治', '晋城', '临汾', '运城', '晋中', '吕梁'],
+  '内蒙古': ['呼和浩特', '包头', '鄂尔多斯', '赤峰', '通辽', '呼伦贝尔'],
+  '辽宁省': ['沈阳', '大连', '鞍山', '抚顺', '本溪', '锦州', '营口'],
+  '吉林省': ['长春', '吉林', '四平', '通化', '延边', '松原'],
+  '黑龙江省': ['哈尔滨', '齐齐哈尔', '大庆', '牡丹江', '佳木斯', '绥化'],
+  '江苏省': ['南京', '苏州', '无锡', '常州', '南通', '徐州', '扬州', '镇江', '泰州', '连云港'],
+  '浙江省': ['杭州', '宁波', '温州', '嘉兴', '绍兴', '金华', '台州', '湖州'],
+  '安徽省': ['合肥', '芜湖', '蚌埠', '马鞍山', '安庆', '阜阳', '宿州', '滁州'],
+  '福建省': ['福州', '厦门', '泉州', '漳州', '莆田', '三明', '龙岩', '宁德'],
+  '江西省': ['南昌', '九江', '赣州', '景德镇', '上饶', '宜春', '吉安'],
+  '山东省': ['济南', '青岛', '烟台', '潍坊', '淄博', '临沂', '济宁', '泰安', '威海', '德州'],
+  '河南省': ['郑州', '洛阳', '开封', '南阳', '新乡', '安阳', '焦作', '许昌', '商丘'],
+  '湖北省': ['武汉', '宜昌', '襄阳', '荆州', '十堰', '黄石', '孝感', '黄冈', '荆门', '咸宁'],
+  '湖南省': ['长沙', '株洲', '湘潭', '衡阳', '岳阳', '常德', '邵阳', '永州'],
+  '广东省': ['广州', '深圳', '东莞', '佛山', '珠海', '惠州', '中山', '汕头', '湛江', '茂名'],
+  '广西': ['南宁', '桂林', '柳州', '北海', '玉林', '梧州', '百色'],
+  '海南省': ['海口', '三亚', '儋州', '琼海'],
+  '四川省': ['成都', '绵阳', '德阳', '宜宾', '泸州', '达州', '南充', '乐山', '自贡'],
+  '贵州省': ['贵阳', '遵义', '毕节', '六盘水', '安顺', '铜仁'],
+  '云南省': ['昆明', '曲靖', '大理', '玉溪', '红河', '楚雄', '文山'],
+  '西藏': ['拉萨', '日喀则', '昌都', '林芝'],
+  '陕西省': ['西安', '咸阳', '宝鸡', '渭南', '汉中', '延安', '榆林', '安康'],
+  '甘肃省': ['兰州', '天水', '白银', '酒泉', '张掖', '武威', '庆阳'],
+  '青海省': ['西宁', '海东', '海西'],
+  '宁夏': ['银川', '石嘴山', '吴忠', '中卫', '固原'],
+  '新疆': ['乌鲁木齐', '克拉玛依', '喀什', '伊犁', '阿克苏', '昌吉'],
+};
+
 const CUSTOM_REGION_KEY = '__custom__';
 
 const SUBJECT_FIELDS: Array<{
@@ -67,7 +105,7 @@ const SUBJECT_FIELDS: Array<{
   { name: 'biology', label: '生物', max: 100 },
   { name: 'history', label: '历史', max: 100 },
   { name: 'geography', label: '地理', max: 100 },
-  { name: 'politics', label: '政治', max: 100 },
+  { name: 'politics', label: '政治&道法', max: 100 },
 ];
 
 const FORM_DEFAULTS: DiagnosisFormData = {
@@ -92,6 +130,7 @@ const Diagnosis: React.FC = () => {
   const [reportContent, setReportContent] = useState('');
   const [copied, setCopied] = useState(false);
   const [isCustomRegion, setIsCustomRegion] = useState(false);
+  const [regionSearch, setRegionSearch] = useState('');
   const customRegionRef = useRef('');
 
   const form = useForm<DiagnosisFormData>({
@@ -148,6 +187,8 @@ const Diagnosis: React.FC = () => {
           });
         }
 
+        setIsCustomRegion(false);
+        setRegionSearch('');
         toast.success('诊断报告生成完成');
       } catch (error) {
         logger.error('诊断报告生成失败', String(error));
@@ -187,6 +228,7 @@ const Diagnosis: React.FC = () => {
       } else {
         setIsCustomRegion(false);
         customRegionRef.current = '';
+        setRegionSearch('');
         form.setValue('region', value);
       }
     },
@@ -253,15 +295,53 @@ const Diagnosis: React.FC = () => {
                       >
                         <FormControl>
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder="请选择地区" />
+                            <SelectValue placeholder="请选择或搜索地区" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {REGION_OPTIONS.map((r: string) => (
-                            <SelectItem key={r} value={r}>
-                              {r}
-                            </SelectItem>
-                          ))}
+                          <div
+                            className="p-1"
+                            onKeyDown={(e) => e.stopPropagation()}
+                          >
+                            <Input
+                              placeholder="搜索省/市/区..."
+                              value={regionSearch}
+                              onChange={(e) => setRegionSearch(e.target.value)}
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                          {Object.entries(PROVINCE_CITIES)
+                            .filter(
+                              ([province, cities]) =>
+                                !regionSearch ||
+                                province.includes(regionSearch) ||
+                                cities.some((c) =>
+                                  c.includes(regionSearch)
+                                )
+                            )
+                            .slice(0, 30)
+                            .map(([province, cities]) => (
+                              <React.Fragment key={province}>
+                                <SelectItem value={province}>
+                                  {province}
+                                </SelectItem>
+                                {cities
+                                  .filter(
+                                    (c) =>
+                                      !regionSearch ||
+                                      c.includes(regionSearch)
+                                  )
+                                  .map((city) => (
+                                    <SelectItem
+                                      key={`${province}-${city}`}
+                                      value={`${province}-${city}`}
+                                      className="pl-8"
+                                    >
+                                      {city}
+                                    </SelectItem>
+                                  ))}
+                              </React.Fragment>
+                            ))}
                           <SelectItem value={CUSTOM_REGION_KEY}>
                             手动输入...
                           </SelectItem>
