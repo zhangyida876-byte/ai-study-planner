@@ -1,7 +1,7 @@
 /* eslint-disable */
 /** auto generated, do not edit */
-import { customType } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
+import { sql } from 'drizzle-orm';
+import { index, integer, jsonb, pgTable, text, uuid, varchar, customType } from "drizzle-orm/pg-core"
 
 export const customTimestamptz = customType<{
   data: Date;
@@ -117,3 +117,110 @@ export const fileAttachmentArray = customType<{
   },
 });
 
+export const admissionPolicy = pgTable("admission_policy", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  region: varchar("region", { length: 100 }).notNull(),
+  year: integer("year").notNull(),
+  totalScore: integer("total_score").notNull(),
+  /**
+   * @type Record<string, number>
+   */
+  scoreStructure: jsonb("score_structure").notNull().default('{}'),
+  /**
+   * @type Array<{batch: string, school: string, score: number}>
+   */
+  admissionLines: jsonb("admission_lines").notNull().default('[]'),
+  policyContent: text("policy_content"),
+  // System field: Creation time (auto-filled, do not modify)
+  createdAt: customTimestamptz("_created_at", { precision: 3 }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  // System field: Creator (auto-filled, do not modify)
+  createdBy: userProfile("_created_by").default(sql`CASE
+    WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
+  // System field: Update time (auto-filled, do not modify)
+  updatedAt: customTimestamptz("_updated_at", { precision: 3 }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  // System field: Updater (auto-filled, do not modify)
+  updatedBy: userProfile("_updated_by").default(sql`CASE
+    WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
+}, (table) => [
+  index("idx_admission_policy_region").on(table.region),
+]);
+
+export const knowledgePoint = pgTable("knowledge_point", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  version: varchar("version", { length: 100 }).notNull(),
+  subject: varchar("subject", { length: 100 }).notNull(),
+  chapter: varchar("chapter", { length: 200 }).notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  /**
+   * @type {coreKnowledge: string, solutionMethods: string, commonMistakes: string}
+   */
+  content: jsonb("content").notNull().default('{}'),
+  // System field: Creation time (auto-filled, do not modify)
+  createdAt: customTimestamptz("_created_at", { precision: 3 }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  // System field: Creator (auto-filled, do not modify)
+  createdBy: userProfile("_created_by").default(sql`CASE
+    WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
+  // System field: Update time (auto-filled, do not modify)
+  updatedAt: customTimestamptz("_updated_at", { precision: 3 }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  // System field: Updater (auto-filled, do not modify)
+  updatedBy: userProfile("_updated_by").default(sql`CASE
+    WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
+}, (table) => [
+  index("idx_knowledge_point_version").on(table.version),
+  index("idx_knowledge_point_subject").on(table.subject),
+]);
+
+export const planRecord = pgTable("plan_record", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  region: varchar("region", { length: 100 }).notNull(),
+  /**
+   * @type Record<string, number>
+   */
+  scores: jsonb("scores").notNull().default('{}'),
+  policyData: jsonb("policy_data"),
+  planReport: text("plan_report"),
+  /**
+   * @type Array<{date: string, title: string, content: string}>
+   */
+  timeline: jsonb("timeline"),
+  status: varchar("status", { length: 20 }).notNull().default('pending'),
+  // System field: Creation time (auto-filled, do not modify)
+  createdAt: customTimestamptz("_created_at", { precision: 3 }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  // System field: Creator (auto-filled, do not modify)
+  createdBy: userProfile("_created_by").default(sql`CASE
+    WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
+  // System field: Update time (auto-filled, do not modify)
+  updatedAt: customTimestamptz("_updated_at", { precision: 3 }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  // System field: Updater (auto-filled, do not modify)
+  updatedBy: userProfile("_updated_by").default(sql`CASE
+    WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
+});
+
+export const diagnosisRecord = pgTable("diagnosis_record", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  grade: varchar("grade", { length: 50 }).notNull(),
+  region: varchar("region", { length: 100 }).notNull(),
+  /**
+   * @type Record<string, number>
+   */
+  scores: jsonb("scores").notNull().default('{}'),
+  problemDesc: text("problem_desc"),
+  report: text("report"),
+  status: varchar("status", { length: 20 }).notNull().default('pending'),
+  // System field: Creation time (auto-filled, do not modify)
+  createdAt: customTimestamptz("_created_at", { precision: 3 }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  // System field: Creator (auto-filled, do not modify)
+  createdBy: userProfile("_created_by").default(sql`CASE
+    WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
+  // System field: Update time (auto-filled, do not modify)
+  updatedAt: customTimestamptz("_updated_at", { precision: 3 }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  // System field: Updater (auto-filled, do not modify)
+  updatedBy: userProfile("_updated_by").default(sql`CASE
+    WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
+});
+
+// table aliases
+export const admissionPolicyTable = admissionPolicy;
+export const diagnosisRecordTable = diagnosisRecord;
+export const knowledgePointTable = knowledgePoint;
+export const planRecordTable = planRecord;

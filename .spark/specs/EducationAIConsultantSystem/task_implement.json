@@ -67,7 +67,7 @@
     {
       "id": 3,
       "name": "数据库服务创建",
-      "status": "in_progress",
+      "status": "completed",
       "type": "normal",
       "subtasks": [
         "读取miaoda-skill技能文档",
@@ -92,12 +92,13 @@
       "dependencies": [
         2
       ],
-      "beginTime": 1781930556693
+      "beginTime": 1781930556693,
+      "endTime": 1781930815540
     },
     {
       "id": 4,
       "name": "插件开发",
-      "status": "pending",
+      "status": "in_progress",
       "type": "normal",
       "subtasks": [
         "读取plugin-guide技能文档",
@@ -122,7 +123,8 @@
       "acceptance": "5个插件实例创建完成，调用代码骨架生成，Schema校验通过",
       "dependencies": [
         3
-      ]
+      ],
+      "beginTime": 1781930815717
     },
     {
       "id": 5,
