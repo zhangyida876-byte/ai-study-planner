@@ -28,7 +28,7 @@
     {
       "id": 2,
       "name": "代码架构设计",
-      "status": "in_progress",
+      "status": "completed",
       "type": "normal",
       "subtasks": [
         "读取coding-guide、animation-skill、forms-skill、table-skill相关技能文档",
@@ -61,12 +61,13 @@
       "dependencies": [
         1
       ],
-      "beginTime": 1781930283664
+      "beginTime": 1781930283664,
+      "endTime": 1781930556524
     },
     {
       "id": 3,
       "name": "数据库服务创建",
-      "status": "pending",
+      "status": "in_progress",
       "type": "normal",
       "subtasks": [
         "读取miaoda-skill技能文档",
@@ -90,7 +91,8 @@
       "acceptance": "4张业务表创建成功，mock数据插入完成，类型定义同步到shared",
       "dependencies": [
         2
-      ]
+      ],
+      "beginTime": 1781930556693
     },
     {
       "id": 4,
