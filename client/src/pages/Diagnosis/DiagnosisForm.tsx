@@ -1,9 +1,11 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Loader2, FileText } from 'lucide-react';
+import { Loader2, FileText, Search, Sparkles } from 'lucide-react';
+import { axiosForBackend } from '@lark-apaas/client-toolkit/utils/getAxiosForBackend';
+import { logger } from '@lark-apaas/client-toolkit/logger';
 import {
   Form,
   FormControl,
@@ -32,6 +34,8 @@ const diagnosisFormSchema = z.object({
   studentName: z.string().optional(),
   grade: z.string().min(1, '请选择年级'),
   region: z.string().min(1, '请选择地区'),
+  boardingType: z.string().optional(),
+  monthlyStudyHours: z.number().optional(),
   examMode: z.string().optional(),
   examDate: z.string().optional(),
   targetSchool: z.string().optional(),
@@ -57,9 +61,23 @@ const GRADE_OPTIONS = [
   '中职',
 ];
 
+const BOARDING_OPTIONS = [
+  { value: 'day', label: '走读' },
+  { value: 'boarding', label: '住读' },
+];
+
 const HS_MODES: Array<{ value: string; label: string }> = [
   { value: '3+1+2', label: '3+1+2（物理/历史 二选一）' },
   { value: '3+3', label: '3+3（六选三）' },
+];
+
+const SCHOOL_LIST: string[] = [
+  '华中师范大学第一附属中学', '武汉中学', '武汉二中', '武汉六中',
+  '武汉外国语学校', '武汉实验外国语学校', '武汉十一中',
+  '武钢三中', '武汉三中', '武汉育才高级中学', '武汉汉铁高级中学',
+  '武汉市第四十九中学', '武汉光谷第一中学', '武汉光谷第二高级中学',
+  '华师一附中光谷分校', '武汉睿升学校', '武汉经济技术开发区第一中学',
+  '洪山高级中学', '武汉市第十五中学', '武汉市第二十中学',
 ];
 
 const PROVINCE_CITIES: Record<string, string[]> = {
@@ -139,6 +157,8 @@ const FORM_DEFAULTS: DiagnosisFormData = {
   studentName: '',
   grade: '',
   region: '',
+  boardingType: undefined,
+  monthlyStudyHours: undefined,
   examMode: undefined,
   examDate: '',
   targetSchool: '',
@@ -200,6 +220,10 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
   const [county, setCounty] = useState('');
   const [isCustomRegion, setIsCustomRegion] = useState(false);
   const [provinceSearch, setProvinceSearch] = useState('');
+  const [schoolSearch, setSchoolSearch] = useState('');
+  const [schoolOpen, setSchoolOpen] = useState(false);
+  const [scoreSuggesting, setScoreSuggesting] = useState(false);
+  const [scoreSuggested, setScoreSuggested] = useState(false);
   const customRegionRef = useRef('');
 
   const form = useForm<DiagnosisFormData>({
@@ -211,7 +235,47 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
   const watchedMode = form.watch('examMode');
   const watchedPhysics = form.watch('physics');
   const watchedHistory = form.watch('history');
+  const watchedRegion = form.watch('region');
   const isHighSchool = ['高一', '高二', '高三'].includes(watchedGrade);
+  const isMiddleSchool = ['初一', '初二', '初三'].includes(watchedGrade);
+
+  const filteredSchools = schoolSearch
+    ? SCHOOL_LIST.filter((s) => s.includes(schoolSearch))
+    : SCHOOL_LIST;
+
+  useEffect(() => {
+    if (!watchedRegion || scoreSuggested) return;
+    const fetchScore = async () => {
+      setScoreSuggesting(true);
+      try {
+        const res = await axiosForBackend({
+          url: '/api/admission-policies',
+          method: 'GET',
+          params: { region: watchedRegion },
+        });
+        const policies: Array<{ year: number; admissionLines: Array<{ score: number }> }> = res.data?.items ?? [];
+        const recent = policies.slice(0, 3);
+        if (recent.length > 0) {
+          const topScores = recent
+            .map((p) => {
+              const lines = p.admissionLines ?? [];
+              return lines.length > 0 ? Math.max(...lines.map((l) => l.score)) : null;
+            })
+            .filter((s): s is number => s != null);
+          if (topScores.length > 0) {
+            const avg = Math.round(topScores.reduce((a, b) => a + b, 0) / topScores.length);
+            form.setValue('targetScore', avg);
+            setScoreSuggested(true);
+          }
+        }
+      } catch (err) {
+        logger.error('获取分数线失败', String(err));
+      } finally {
+        setScoreSuggesting(false);
+      }
+    };
+    fetchScore();
+  }, [watchedRegion, scoreSuggested, form]);
 
   const cities = PROVINCE_CITIES[selectedProvince] || [];
 
@@ -450,8 +514,63 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
           )}
         />
 
+        {/* Boarding Type */}
+        <FormField
+          control={form.control}
+          name="boardingType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>走读/住读</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="请选择" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {BOARDING_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Monthly Study Hours */}
+        <FormField
+          control={form.control}
+          name="monthlyStudyHours"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>每月可支配学习时间（小时）</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  placeholder="如：120"
+                  min={0}
+                  max={720}
+                  value={
+                    field.value !== undefined && field.value !== null
+                      ? String(field.value)
+                      : ''
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    field.onChange(raw === '' ? undefined : Number(raw));
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         {/* Exam Date (for middle/high school) */}
-        {(isHighSchool || ['初一', '初二', '初三'].includes(watchedGrade)) && (
+        {(isHighSchool || isMiddleSchool) && (
           <FormField
             control={form.control}
             name="examDate"
@@ -474,20 +593,49 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
           />
         )}
 
-        {/* Target School & Score */}
+        {/* Target School (searchable) & Score */}
         <div className="grid grid-cols-2 gap-3">
           <FormField
             control={form.control}
             name="targetSchool"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="relative">
                 <FormLabel>目标院校</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="如：华中师范大学一附中"
-                    {...field}
-                    value={field.value ?? ''}
-                  />
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="搜索或输入院校名称"
+                      className="pl-8"
+                      {...field}
+                      value={field.value ?? ''}
+                      onFocus={() => setSchoolOpen(true)}
+                      onBlur={() => setTimeout(() => setSchoolOpen(false), 200)}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        setSchoolSearch(e.target.value);
+                      }}
+                    />
+                    {schoolOpen && filteredSchools.length > 0 && (
+                      <div className="absolute top-full z-50 mt-1 max-h-40 w-full overflow-auto rounded-md border-2 border-ink/20 bg-card shadow-md">
+                        {filteredSchools.map((school) => (
+                          <button
+                            key={school}
+                            type="button"
+                            className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              field.onChange(school);
+                              setSchoolSearch('');
+                              setSchoolOpen(false);
+                            }}
+                          >
+                            {school}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -498,11 +646,25 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
             name="targetScore"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>目标分数</FormLabel>
+                <FormLabel>
+                  目标分数
+                  {scoreSuggesting && (
+                    <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-pen-blue">
+                      <Loader2 className="size-3 animate-spin" />
+                      智能推荐中
+                    </span>
+                  )}
+                  {scoreSuggested && field.value != null && (
+                    <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-emerald-600">
+                      <Sparkles className="size-3" />
+                      已推荐
+                    </span>
+                  )}
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="number"
-                    placeholder="目标分数线"
+                    placeholder="根据历年分数线推荐"
                     value={
                       field.value !== undefined && field.value !== null
                         ? String(field.value)

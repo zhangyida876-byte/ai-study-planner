@@ -85,6 +85,8 @@ const Diagnosis: React.FC = () => {
         target_school: data.targetSchool || undefined,
         target_score: data.targetScore != null ? String(data.targetScore) : undefined,
         exam_date: data.examDate || undefined,
+        boarding_type: data.boardingType || undefined,
+        monthly_study_hours: data.monthlyStudyHours != null ? String(data.monthlyStudyHours) : undefined,
       });
 
       let fullContent = '';

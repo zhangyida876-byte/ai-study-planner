@@ -17,6 +17,8 @@ export interface DiagnosisReportInput {
   target_school?: string;
   target_score?: string;
   exam_date?: string;
+  boarding_type?: string;
+  monthly_study_hours?: string;
 }
 
 export interface PlanReportInput {
