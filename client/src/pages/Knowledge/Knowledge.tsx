@@ -1,34 +1,26 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ArrowRight, Search, BookOpen, Filter } from 'lucide-react';
+import { ArrowRight, Search, BookOpen } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { knowledge } from '@client/src/api';
 import type { KnowledgePoint, KnowledgePointListItem } from '@shared/api.interface';
 import KnowledgeDetailPanel from './KnowledgeDetailPanel';
+import KnowledgeFilterPanel, { REGION_VERSION_MAP } from './KnowledgeFilterPanel';
 
-type QueryMode = 'version' | 'search';
-
-const VERSIONS = ['人教版', '北师大版', '苏教版'];
-const SUBJECTS = [
-  '数学', '语文', '英语', '物理', '化学', '生物', '历史', '地理',
-];
 const PAGE_SIZE = 20;
 
 const Knowledge: React.FC = () => {
-  const [mode, setMode] = useState<QueryMode>('version');
-  const [version, setVersion] = useState('');
-  const [subject, setSubject] = useState('');
-  const [chapter, setChapter] = useState('');
-  const [keyword, setKeyword] = useState('');
+  const [province, setProvince] = useState('');
+  const [city, setCity] = useState('');
+  const [region, setRegion] = useState('');
+  const [isCustomRegion, setIsCustomRegion] = useState(false);
+  const [customRegionText, setCustomRegionText] = useState('');
+  const [grade, setGrade] = useState('');
+  const [semester, setSemester] = useState('');
+  const [subject, setSubject] = useState('__all__');
+  const [version, setVersion] = useState('__all__');
   const [searchInput, setSearchInput] = useState('');
+  const [keyword, setKeyword] = useState('');
   const [items, setItems] = useState<KnowledgePointListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -39,14 +31,19 @@ const Knowledge: React.FC = () => {
   const [chapters, setChapters] = useState<string[]>([]);
   const [hasQueried, setHasQueried] = useState(false);
 
+  const effectiveVersion = version === '__all__'
+    ? (province ? REGION_VERSION_MAP[province] || '' : '')
+    : version;
+  const effectiveSubject = subject === '__all__' ? '' : subject;
+
   const fetchList = useCallback(async (fetchPage?: number) => {
     const currentPage = fetchPage ?? page;
     setLoading(true);
     try {
       const res = await knowledge.getKnowledgePoints({
-        version: version || undefined,
-        subject: subject || undefined,
-        chapter: chapter || undefined,
+        version: effectiveVersion || undefined,
+        subject: effectiveSubject || undefined,
+        chapter: chapters.length > 0 ? chapters[0] : undefined,
         page: currentPage,
         pageSize: PAGE_SIZE,
       });
@@ -62,7 +59,7 @@ const Knowledge: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [version, subject, chapter, page]);
+  }, [effectiveVersion, effectiveSubject, chapters, page]);
 
   const fetchSearch = useCallback(async (kw: string, searchPage: number) => {
     if (!kw.trim()) return;
@@ -79,16 +76,14 @@ const Knowledge: React.FC = () => {
     }
   }, []);
 
-  // Version mode: auto-fetch when filters change, reset to page 1
   useEffect(() => {
-    if (mode === 'version' && (version || subject || chapter)) {
+    if (effectiveVersion || effectiveSubject || grade || semester) {
       setHasQueried(true);
       setPage(1);
       fetchList(1);
     }
-  }, [mode, version, subject, chapter]);
+  }, [effectiveVersion, effectiveSubject, grade, semester]);
 
-  // Search mode: fetch when keyword changes
   const handleSearch = () => {
     if (!searchInput.trim()) return;
     const kw = searchInput.trim();
@@ -100,19 +95,31 @@ const Knowledge: React.FC = () => {
     fetchSearch(kw, 1);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSearch();
-  };
+  const handleProvinceChange = useCallback((val: string): void => {
+    if (val === '__custom__') {
+      setIsCustomRegion(true);
+    } else {
+      setIsCustomRegion(false);
+      setProvince(val);
+      setCity('');
+      setRegion(val);
+      const autoVersion = REGION_VERSION_MAP[val];
+      if (autoVersion) setVersion(autoVersion);
+    }
+  }, []);
 
-  const handleModeChange = (val: string) => {
-    setMode(val as QueryMode);
-    setItems([]);
-    setTotal(0);
-    setPage(1);
-    setSelectedId(null);
-    setDetail(null);
-    setHasQueried(false);
-  };
+  const handleCityChange = useCallback((val: string): void => {
+    setCity(val);
+    const r = [province, val].filter(Boolean).join(' ');
+    setRegion(r);
+  }, [province]);
+
+  const handleCustomRegionSubmit = useCallback((): void => {
+    const trimmed = customRegionText.trim();
+    if (!trimmed) return;
+    setRegion(trimmed);
+    setIsCustomRegion(false);
+  }, [customRegionText]);
 
   const handleSelectItem = async (id: string) => {
     setSelectedId(id);
@@ -132,115 +139,42 @@ const Knowledge: React.FC = () => {
   return (
     <div className="min-h-screen bg-paper-dots p-4 lg:p-6">
       <div className="mx-auto max-w-6xl">
-        {/* Header */}
         <h1 className="mb-6 font-marker text-3xl font-bold">
           知识点查询
         </h1>
 
-        {/* Search Bar */}
         <WobblyCard
           decoration="tape"
           wobblyIndex={0}
           hoverable={false}
           className="mb-6 p-5"
         >
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-            {/* Mode Toggle */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant={mode === 'version' ? 'default' : 'outline'}
-                size="sm"
-                className="font-hand"
-                onClick={() => handleModeChange('version')}
-              >
-                <Filter className="size-4" />
-                按版本查询
-              </Button>
-              <Button
-                variant={mode === 'search' ? 'default' : 'outline'}
-                size="sm"
-                className="font-hand"
-                onClick={() => handleModeChange('search')}
-              >
-                <Search className="size-4" />
-                按知识点搜索
-              </Button>
-            </div>
-
-            {mode === 'version' ? (
-              <div className="flex flex-1 flex-wrap items-center gap-3">
-                <Select value={version} onValueChange={setVersion}>
-                  <SelectTrigger className="font-hand w-40">
-                    <SelectValue placeholder="教材版本" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {VERSIONS.map((v: string) => (
-                      <SelectItem key={v} value={v}>
-                        {v}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={subject} onValueChange={setSubject}>
-                  <SelectTrigger className="font-hand w-32">
-                    <SelectValue placeholder="学科" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SUBJECTS.map((s: string) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={chapter} onValueChange={setChapter}>
-                  <SelectTrigger className="font-hand w-44">
-                    <SelectValue placeholder="章节" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {chapters.length > 0 ? (
-                      chapters.map((c: string) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="__none__" disabled>
-                        请先选择版本和学科
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
-              <div className="flex flex-1 items-center gap-3">
-                <Input
-                  className="font-hand h-10 flex-1"
-                  placeholder="输入知识点关键词..."
-                  value={searchInput}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setSearchInput(e.target.value)
-                  }
-                  onKeyDown={handleKeyDown}
-                />
-                <Button
-                  className="font-hand h-10"
-                  onClick={handleSearch}
-                  disabled={!searchInput.trim()}
-                >
-                  <Search className="size-4" />
-                  搜索
-                </Button>
-              </div>
-            )}
-          </div>
+          <KnowledgeFilterPanel
+            region={region}
+            province={province}
+            city={city}
+            grade={grade}
+            semester={semester}
+            subject={subject}
+            version={version}
+            searchInput={searchInput}
+            onProvinceChange={handleProvinceChange}
+            onCityChange={handleCityChange}
+            onGradeChange={setGrade}
+            onSemesterChange={setSemester}
+            onSubjectChange={setSubject}
+            onVersionChange={setVersion}
+            onSearchInputChange={setSearchInput}
+            onSearch={handleSearch}
+            isCustomRegion={isCustomRegion}
+            onCustomRegionToggle={() => setIsCustomRegion(!isCustomRegion)}
+            customRegionText={customRegionText}
+            onCustomRegionTextChange={setCustomRegionText}
+            onCustomRegionSubmit={handleCustomRegionSubmit}
+          />
         </WobblyCard>
 
-        {/* Content Area */}
         <div className="flex flex-col gap-6 lg:flex-row">
-          {/* List Area */}
           <div className="min-w-0 flex-1">
             {loading ? (
               <div className="flex items-center justify-center py-20">
@@ -313,7 +247,6 @@ const Knowledge: React.FC = () => {
                   )}
                 </WobblyCard>
 
-                {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="mt-4 flex items-center justify-center gap-3">
                     <Button
@@ -324,7 +257,7 @@ const Knowledge: React.FC = () => {
                       onClick={() => {
                         const newPage = page - 1;
                         setPage(newPage);
-                        if (mode === 'search') fetchSearch(keyword, newPage);
+                        if (keyword) fetchSearch(keyword, newPage);
                         else fetchList(newPage);
                       }}
                     >
@@ -341,7 +274,7 @@ const Knowledge: React.FC = () => {
                       onClick={() => {
                         const newPage = page + 1;
                         setPage(newPage);
-                        if (mode === 'search') fetchSearch(keyword, newPage);
+                        if (keyword) fetchSearch(keyword, newPage);
                         else fetchList(newPage);
                       }}
                     >
@@ -353,7 +286,6 @@ const Knowledge: React.FC = () => {
             )}
           </div>
 
-          {/* Detail Panel - Desktop */}
           <div className="hidden w-96 shrink-0 lg:block">
             <div className="sticky top-6">
               <WobblyCard
@@ -369,7 +301,6 @@ const Knowledge: React.FC = () => {
             </div>
           </div>
 
-          {/* Detail Panel - Mobile/Tablet (< 1024px) */}
           {selectedId && (
             <div className="lg:hidden">
               <WobblyCard
