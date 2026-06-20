@@ -85,14 +85,14 @@ export interface StudyPlanReportGenerateOneOutput {
 // ============================================================
 
 export interface AcademicDiagnosisReportGeneratorOneInput {
-  /** 学生学习困扰描述 */
-  learning_problems?: string;
   /** 学生所在年级 */
   student_grade: string;
   /** 学生所在地区 */
   student_region?: string;
   /** 学生各科成绩详情 */
   subject_scores: string;
+  /** 学生学习困扰描述 */
+  learning_problems?: string;
 }
 
 /**
@@ -155,3 +155,35 @@ export interface HighSchoolAdmissionScoreQueryOneOutput {
   summary: string;
 }
 // ---- end:high_school_admission_score_query_1 ----
+
+// ---- plugin:knowledge_point_deep_analysis_1 ----
+// ============================================================
+// 插件 knowledge_point_deep_analysis_1 (知识点深度分析AI插件) 的类型定义
+// 由 get_plugin_ai_json 自动生成
+// ============================================================
+
+export interface KnowledgePointDeepAnalysisOneInput {
+  /** 具体知识点名称，如一元二次方程的解法、光合作用的原理等 */
+  knowledge_point: string;
+  /** 教材版本，如人教版、苏教版、北师大版等 */
+  textbook_version: string;
+  /** 学科名称，如语文、数学、英语、物理、化学等 */
+  subject: string;
+  /** 年级学期，如七年级上册、高一下学期等 */
+  grade_semester: string;
+  /** 章节名称或编号，如第一章 有理数、第二章 细胞的基本结构等 */
+  chapter: string;
+}
+
+/**
+ * capabilityClient.load('knowledge_point_deep_analysis_1').call<KnowledgePointDeepAnalysisOneOutput>('textGenerate', input)
+ * 直接返回此类型，无 .data 包装，直接解构使用：
+ * const { content, response } = result;
+ */
+export interface KnowledgePointDeepAnalysisOneOutput {
+  /** [object Object] */
+  content: string;
+  /** [object Object] */
+  response?: string;
+}
+// ---- end:knowledge_point_deep_analysis_1 ----

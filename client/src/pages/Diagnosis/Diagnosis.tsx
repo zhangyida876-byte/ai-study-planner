@@ -3,7 +3,7 @@ import { Copy, Check, Loader2, Clock, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import { diagnosis as diagnosisApi } from '@client/src/api';
-import { streamDiagnosisReport, buildScoresText } from '@client/src/api/plugins';
+import { streamDiagnosisReport, buildScoresText, buildDiagnosisPrompt, type DiagnosisFormContext } from '@client/src/api/plugins';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { Button } from '@/components/ui/button';
@@ -75,18 +75,32 @@ const Diagnosis: React.FC = () => {
       });
       recordId = createRes.id;
 
-      const scoresText = buildScoresText(scores);
+      const scoreMaxValues: Record<string, number> = {
+        '语文': 150, '数学': 150, '英语': 150,
+        '物理': 100, '化学': 100, '生物': 100,
+        '历史': 100, '地理': 100, '政治&道法': 100,
+      };
+      const formCtx: DiagnosisFormContext = {
+        grade: data.grade,
+        region: data.region,
+        scores,
+        scoreMaxValues,
+        examType: data.grade.includes('高') ? '高考模拟' : data.grade.includes('初') ? '中考模拟' : '期末统考',
+        boardingType: data.boardingType,
+        monthlyStudyHours: data.monthlyStudyHours,
+        examMode: data.examMode,
+        problemDesc: data.problemDesc,
+        targetSchool: data.targetSchool,
+        targetScore: data.targetScore,
+        examDate: data.examDate,
+      };
+      const scoresText = buildScoresText(scores, scoreMaxValues);
+      const learningProblems = buildDiagnosisPrompt(formCtx);
       const generator = streamDiagnosisReport({
-        student_name: data.studentName || '学生',
         student_grade: data.grade,
         student_region: data.region,
         subject_scores: scoresText,
-        learning_problems: data.problemDesc || '无',
-        target_school: data.targetSchool || undefined,
-        target_score: data.targetScore != null ? String(data.targetScore) : undefined,
-        exam_date: data.examDate || undefined,
-        boarding_type: data.boardingType || undefined,
-        monthly_study_hours: data.monthlyStudyHours != null ? String(data.monthlyStudyHours) : undefined,
+        learning_problems: learningProblems,
       });
 
       let fullContent = '';

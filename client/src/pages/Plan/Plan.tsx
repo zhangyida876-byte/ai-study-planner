@@ -19,6 +19,8 @@ import {
   streamPolicySearch,
   buildScoresText,
   buildPolicyText,
+  buildPlanAdditionalInfo,
+  type PlanFormContext,
 } from '@client/src/api/plugins';
 import PlanTimeline from './PlanTimeline';
 import PlanScoreInput, { type ExamType } from './PlanScoreInput';
@@ -183,16 +185,28 @@ const Plan: React.FC = () => {
     setReportContent('');
     try {
       await plan.createPlanRecord({ region, scores });
-      const scoresText = buildScoresText(scores);
+      const scoreMaxValues: Record<string, number> = {
+        '语文': 150, '数学': 150, '英语': 150,
+        '物理': 100, '化学': 100, '生物': 100,
+        '历史': 100, '地理': 100, '政治': 100, '政治&道法': 100,
+      };
+      const planCtx: PlanFormContext = {
+        examType,
+        grade,
+        region,
+        scores,
+        scoreMaxValues,
+        examMode: examMode || undefined,
+        examYear,
+      };
+      const scoresText = buildScoresText(scores, scoreMaxValues);
       const policyText = buildPolicyContext(policies);
-       let full = '';
-      const additionalParts: string[] = [];
-      if (grade) additionalParts.push(`当前年级: ${grade}`);
-      if (examDate) additionalParts.push(`目标中考时间: ${examDate}`);
+      const additionalInfo = buildPlanAdditionalInfo(planCtx);
+      let full = '';
       for await (const chunk of streamPlanReport({
         student_scores: scoresText,
         region_admission_policy: policyText,
-        student_additional_info: additionalParts.length > 0 ? additionalParts.join('；') : undefined,
+        student_additional_info: additionalInfo,
       })) {
         full += chunk;
         setReportContent(full);
@@ -202,7 +216,7 @@ const Plan: React.FC = () => {
     } finally {
       setReportLoading(false);
     }
-  }, [region, scores, policies, hasScores, grade, examDate]);
+  }, [region, scores, policies, hasScores, grade, examDate, examType, examMode, examYear]);
 
   const handleGenerateTimeline = useCallback(async (): Promise<void> => {
     if (!region) { toast.error('请先选择地区'); return; }

@@ -1,7 +1,9 @@
-import React from 'react';
-import { Copy, Check, AlertTriangle, Star, Target } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { Copy, Check, AlertTriangle, Star, Target, Sparkles, Loader2 } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Button } from '@/components/ui/button';
+import { Streamdown } from '@client/src/components/ui/streamdown';
+import { streamKnowledgeAnalysis, buildKnowledgeGradeSemester } from '@client/src/api/plugins';
 import type { KnowledgePoint } from '@shared/api.interface';
 import KnowledgeGraph from './KnowledgeGraph';
 
@@ -90,6 +92,82 @@ function getExamProb(detail: KnowledgePoint): { label: string; percent: number; 
   if (coreLen > 150) return { label: '中高频', percent: 60, color: 'bg-pen-blue' };
   return { label: '中频', percent: 40, color: 'bg-pen-blue/50' };
 }
+
+const AIAnalysisSection: React.FC<{ detail: KnowledgePoint }> = ({ detail }) => {
+  const [analysisContent, setAnalysisContent] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
+
+  const handleAnalyze = useCallback(async () => {
+    setIsAnalyzing(true);
+    setAnalysisContent('');
+    setAnalysisError('');
+    try {
+      const gradeSemester = buildKnowledgeGradeSemester(detail.chapter);
+      const generator = streamKnowledgeAnalysis({
+        textbook_version: detail.version,
+        subject: detail.subject,
+        grade_semester: gradeSemester || detail.chapter,
+        chapter: detail.chapter,
+        knowledge_point: detail.name,
+      });
+      let full = '';
+      for await (const chunk of generator) {
+        full += chunk;
+        setAnalysisContent(full);
+      }
+    } catch {
+      setAnalysisError('分析生成失败，请稍后重试');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [detail]);
+
+  return (
+    <WobblyCard variant="white" decoration="tape" wobblyIndex={3} hoverable={false} className="p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-4 text-pen-blue" />
+          <h3 className="font-marker text-sm font-bold">AI 深度分析</h3>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="font-hand"
+          disabled={isAnalyzing}
+          onClick={handleAnalyze}
+        >
+          {isAnalyzing ? (
+            <><Loader2 className="mr-1 size-3.5 animate-spin" />分析中...</>
+          ) : analysisContent ? '重新分析' : '生成分析'}
+        </Button>
+      </div>
+
+      {analysisError && (
+        <p className="font-hand mt-2 text-sm text-marker-red">{analysisError}</p>
+      )}
+
+      {isAnalyzing && !analysisContent && (
+        <div className="flex items-center gap-2 py-6 font-hand text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          正在进行四维知识分析...
+        </div>
+      )}
+
+      {analysisContent && (
+        <div className="font-hand mt-3 prose-headings:font-marker border-t-2 border-dashed border-ink/10 pt-3">
+          <Streamdown>{analysisContent}</Streamdown>
+        </div>
+      )}
+
+      {!analysisContent && !isAnalyzing && (
+        <p className="font-hand mt-2 text-xs text-muted-foreground">
+          点击“生成分析”获取知识点定位、知识链关联、跨学科影响和薄弱点分析
+        </p>
+      )}
+    </WobblyCard>
+  );
+};
 
 const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
   detail,
@@ -200,6 +278,8 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
           {detail.content.commonMistakes || '暂无易错点数据'}
         </div>
       </div>
+
+      <AIAnalysisSection detail={detail} />
     </div>
   );
 };
