@@ -1,0 +1,328 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "type": "app_init",
+      "name": "应用初始化任务",
+      "status": "completed",
+      "subtasks": [
+        "初始化布局导航文件Layout",
+        "初始化主题文件",
+        "初始化占位页面和路由"
+      ],
+      "requirements": [],
+      "write_scope": [
+        "client/src/components/Layout.tsx",
+        "client/src/tailwind-theme.css",
+        "client/src/app.tsx"
+      ],
+      "read_scope": [
+        "client/src/app.tsx",
+        "client/src/components/Layout.tsx"
+      ],
+      "acceptance": "全局Layout、主题样式、基础路由配置完成，占位页面可正常访问",
+      "dependencies": [],
+      "beginTime": 1781929928808,
+      "endTime": 1781930283489
+    },
+    {
+      "id": 2,
+      "name": "代码架构设计",
+      "status": "in_progress",
+      "type": "normal",
+      "subtasks": [
+        "读取coding-guide、animation-skill、forms-skill、table-skill相关技能文档",
+        "规划前端页面目录结构：pages/Workbench、pages/Diagnosis、pages/Plan、pages/Knowledge，公共组件components/WobblyCard",
+        "统一设计路由与导航结构：配置4个页面路由，左侧Sidebar导航包含4个菜单项，Layout全局校验",
+        "规划服务端业务模块边界：diagnosis、plan、knowledge、policy四个独立模块",
+        "规划shared目录前后端共享类型定义：按模块划分接口类型",
+        "明确并行开发修改边界，避免共享文件冲突",
+        "检查架构是否覆盖所有页面、路由、服务端模块需求"
+      ],
+      "requirements": [],
+      "write_scope": [
+        "client/src/app.tsx",
+        "client/src/components/Layout.tsx",
+        "shared/api.interface.ts",
+        "server/app.module.ts",
+        "client/src/pages/**",
+        "server/modules/**"
+      ],
+      "read_scope": [
+        ".agent/skills/steering/nestjs-react-fullstack/coding-guide/SKILL.md",
+        ".agent/skills/animation-skill/SKILL.md",
+        ".agent/skills/forms-skill/SKILL.md",
+        ".agent/skills/table-skill/SKILL.md",
+        "client/src/app.tsx",
+        "shared/api.interface.ts",
+        "server/app.module.ts"
+      ],
+      "acceptance": "前后端目录结构、路由配置、共享类型定义完成，并行开发边界清晰无冲突",
+      "dependencies": [
+        1
+      ],
+      "beginTime": 1781930283664
+    },
+    {
+      "id": 3,
+      "name": "数据库服务创建",
+      "status": "pending",
+      "type": "normal",
+      "subtasks": [
+        "读取miaoda-skill技能文档",
+        "创建diagnosis_record学情诊断记录表",
+        "创建plan_record升学规划记录表",
+        "创建knowledge_point知识点表",
+        "创建admission_policy升学政策表",
+        "插入必要的mock测试数据",
+        "编写数据库相关前后端接口类型定义到shared/api.interface.ts"
+      ],
+      "requirements": [],
+      "write_scope": [
+        "server/database/schema.ts",
+        "shared/api.interface.ts"
+      ],
+      "read_scope": [
+        ".agent/skills/miaoda-sql/SKILL.md",
+        "server/database/schema.ts",
+        "shared/api.interface.ts"
+      ],
+      "acceptance": "4张业务表创建成功，mock数据插入完成，类型定义同步到shared",
+      "dependencies": [
+        2
+      ]
+    },
+    {
+      "id": 4,
+      "name": "插件开发",
+      "status": "pending",
+      "type": "normal",
+      "subtasks": [
+        "读取plugin-guide技能文档",
+        "创建学情诊断报告生成插件实例（ai-text-generate）",
+        "创建升学规划报告生成插件实例（ai-text-generate）",
+        "创建时间路线图生成插件实例（ai-text-generate）",
+        "创建多维表格数据查询插件实例（feishu-bitable）",
+        "创建考情信息搜索插件实例（ai-search-summary）",
+        "逐个调用get_plugin_ai_json获取每个插件的运行时投影，输出Schema摘录卡",
+        "生成每个插件的调用代码骨架，分别集成到对应前端service中",
+        "验证插件调用代码入参出参符合Schema要求，错误处理逻辑完善"
+      ],
+      "requirements": [],
+      "write_scope": [
+        "server/capabilities/**",
+        "client/src/api/index.ts"
+      ],
+      "read_scope": [
+        ".agent/skills/steering/nestjs-react-fullstack/plugin-guide/SKILL.md",
+        "client/src/api/index.ts"
+      ],
+      "acceptance": "5个插件实例创建完成，调用代码骨架生成，Schema校验通过",
+      "dependencies": [
+        3
+      ]
+    },
+    {
+      "id": 5,
+      "name": "工作台首页模块开发（含前后端）",
+      "status": "pending",
+      "type": "normal",
+      "subtasks": [
+        "检查shared目录下公告相关类型定义，确保前后端契约一致",
+        "编写服务端announcement模块Service层，实现公告查询逻辑，使用平台内置服务：用户服务",
+        "实现服务端Controller层，提供GET /api/announcements接口",
+        "按架构设计接入页面路由，检查与Layout约束一致性",
+        "生成三张功能入口手绘风格卡片、系统公告区页面组件",
+        "调用真实后端接口获取公告数据，禁止使用mock数据",
+        "实现卡片hover上浮动画效果，符合手绘风格交互要求",
+        "代码级自查：前后端类型一致，接口入参出参符合规范"
+      ],
+      "requirements": [],
+      "write_scope": [
+        "server/modules/announcement/**",
+        "client/src/pages/Workbench/**",
+        "client/src/components/WobblyCard.tsx",
+        "shared/api.interface.ts"
+      ],
+      "read_scope": [
+        "shared/api.interface.ts",
+        "server/modules/hello/**"
+      ],
+      "acceptance": "工作台页面可正常访问，功能入口卡片可跳转对应模块，系统公告正常展示",
+      "dependencies": [
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "id": 6,
+      "name": "学情诊断模块开发（含前后端）",
+      "status": "pending",
+      "type": "normal",
+      "subtasks": [
+        "检查shared目录下诊断记录相关类型定义，确保前后端契约一致",
+        "编写服务端diagnosis模块Service层，实现诊断记录CRUD逻辑，使用平台内置服务：用户服务",
+        "实现服务端Controller层，提供诊断记录相关REST API接口",
+        "按架构设计接入页面路由，检查与Layout约束一致性",
+        "实现左侧学生信息输入表单，添加必填项校验逻辑",
+        "实现右侧诊断报告展示区，使用Streamdown组件渲染流式AI输出",
+        "集成学情诊断报告生成插件调用逻辑，实现流式输出展示",
+        "实现报告复制、导出功能",
+        "代码级自查：前后端类型一致，插件调用符合Schema要求，接口逻辑正常"
+      ],
+      "requirements": [
+        "1.1",
+        "1.2",
+        "1.3",
+        "1.4",
+        "2.1",
+        "2.2",
+        "2.3",
+        "2.4"
+      ],
+      "write_scope": [
+        "server/modules/diagnosis/**",
+        "client/src/pages/Diagnosis/**",
+        "shared/api.interface.ts"
+      ],
+      "read_scope": [
+        "shared/api.interface.ts",
+        "client/src/api/index.ts",
+        "server/modules/hello/**"
+      ],
+      "acceptance": "表单填写提交后可正常调用AI生成诊断报告，报告按结构展示，支持复制导出",
+      "dependencies": [
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "id": 7,
+      "name": "升学规划模块开发（含前后端）",
+      "status": "pending",
+      "type": "normal",
+      "subtasks": [
+        "检查shared目录下规划记录、政策相关类型定义，确保前后端契约一致",
+        "编写服务端plan、policy模块Service层，实现规划记录CRUD、政策查询逻辑，使用平台内置服务：用户服务",
+        "实现服务端Controller层，提供规划记录、政策查询相关REST API接口",
+        "按架构设计接入页面路由，检查与Layout约束一致性",
+        "实现顶部地区与成绩输入区，添加表单校验",
+        "实现左侧政策与分数线展示区，使用Table组件展示分数线表格",
+        "实现右侧规划报告展示区，使用Streamdown组件渲染流式AI输出",
+        "实现底部时间路线图可视化组件",
+        "集成升学规划报告生成、时间路线图生成、多维表格查询、考情搜索插件调用逻辑",
+        "实现报告、路线图的复制导出功能",
+        "代码级自查：前后端类型一致，插件调用符合Schema要求，接口逻辑正常"
+      ],
+      "requirements": [
+        "3.1",
+        "3.2",
+        "3.3",
+        "3.4",
+        "4.1",
+        "4.2",
+        "4.3",
+        "4.4",
+        "5.1",
+        "5.2",
+        "5.3",
+        "5.4"
+      ],
+      "write_scope": [
+        "server/modules/plan/**",
+        "server/modules/policy/**",
+        "client/src/pages/Plan/**",
+        "shared/api.interface.ts"
+      ],
+      "read_scope": [
+        "shared/api.interface.ts",
+        "client/src/api/index.ts",
+        "server/modules/hello/**",
+        ".agent/skills/table-skill/SKILL.md"
+      ],
+      "acceptance": "选择地区后展示对应政策分数线，提交成绩后生成规划报告与时间路线图，支持复制导出",
+      "dependencies": [
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "id": 8,
+      "name": "知识点查询模块开发（含前后端）",
+      "status": "pending",
+      "type": "normal",
+      "subtasks": [
+        "检查shared目录下知识点相关类型定义，确保前后端契约一致",
+        "编写服务端knowledge模块Service层，实现知识点CRUD、搜索逻辑，使用平台内置服务：用户服务",
+        "实现服务端Controller层，提供知识点查询、搜索相关REST API接口",
+        "按架构设计接入页面路由，检查与Layout约束一致性",
+        "实现顶部双模式搜索栏，支持按版本筛选和关键词搜索切换",
+        "实现左侧知识点列表区，支持点击查看详情",
+        "实现右侧知识点详情面板，结构化展示三个板块内容",
+        "集成多维表格数据查询插件调用逻辑，同步知识点数据",
+        "实现知识点内容复制功能",
+        "代码级自查：前后端类型一致，插件调用符合Schema要求，接口逻辑正常"
+      ],
+      "requirements": [
+        "6.1",
+        "6.2",
+        "6.3",
+        "6.4",
+        "7.1",
+        "7.2",
+        "7.3",
+        "7.4",
+        "8.1",
+        "8.2",
+        "8.3",
+        "8.4"
+      ],
+      "write_scope": [
+        "server/modules/knowledge/**",
+        "client/src/pages/Knowledge/**",
+        "shared/api.interface.ts"
+      ],
+      "read_scope": [
+        "shared/api.interface.ts",
+        "client/src/api/index.ts",
+        "server/modules/hello/**"
+      ],
+      "acceptance": "支持按版本筛选和关键词搜索知识点，点击后展示详情面板，内容支持复制",
+      "dependencies": [
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "id": 9,
+      "name": "验收测试",
+      "status": "pending",
+      "type": "normal",
+      "subtasks": [
+        "对照代码架构设计检查所有页面路由、模块边界、shared契约是否符合要求",
+        "读取testing-guide技能文档",
+        "逐个测试所有后端接口，验证返回状态码和数据结构正确性",
+        "检查服务端和前端devserver日志无错误",
+        "使用E2E测试覆盖所有用户故事场景：工作台跳转、学情诊断生成、升学规划生成、知识点查询",
+        "验证所有插件调用正常，AI输出符合预期",
+        "验证手绘风格视觉效果、交互动画符合设计要求"
+      ],
+      "requirements": [],
+      "write_scope": [],
+      "read_scope": [
+        ".agent/skills/testing-guide/SKILL.md"
+      ],
+      "acceptance": "所有功能模块正常运行，用户故事全量覆盖，无报错，视觉交互符合设计规范",
+      "dependencies": [
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ]
+}
