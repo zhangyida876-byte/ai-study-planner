@@ -68,13 +68,13 @@ export interface StudyPlanReportGenerateOneInput {
 /**
  * capabilityClient.load('study_plan_report_generate_1').call<StudyPlanReportGenerateOneOutput>('textGenerate', input)
  * 直接返回此类型，无 .data 包装，直接解构使用：
- * const { content, response } = result;
+ * const { response, content } = result;
  */
 export interface StudyPlanReportGenerateOneOutput {
   /** [object Object] */
-  content: string;
-  /** [object Object] */
   response?: string;
+  /** [object Object] */
+  content: string;
 }
 // ---- end:study_plan_report_generate_1 ----
 

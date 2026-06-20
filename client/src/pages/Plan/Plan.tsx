@@ -186,11 +186,13 @@ const Plan: React.FC = () => {
       const scoresText = buildScoresText(scores);
       const policyText = buildPolicyContext(policies);
        let full = '';
+      const additionalParts: string[] = [];
+      if (grade) additionalParts.push(`当前年级: ${grade}`);
+      if (examDate) additionalParts.push(`目标中考时间: ${examDate}`);
       for await (const chunk of streamPlanReport({
-        student_grade: grade,
         student_scores: scoresText,
         region_admission_policy: policyText,
-        exam_date: examDate || undefined,
+        student_additional_info: additionalParts.length > 0 ? additionalParts.join('；') : undefined,
       })) {
         full += chunk;
         setReportContent(full);

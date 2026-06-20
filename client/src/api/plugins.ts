@@ -22,10 +22,8 @@ export interface DiagnosisReportInput {
 }
 
 export interface PlanReportInput {
-  student_grade: string;
   student_scores: string;
   region_admission_policy: string;
-  exam_date?: string;
   student_additional_info?: string;
 }
 
