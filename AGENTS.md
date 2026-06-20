@@ -97,3 +97,48 @@
 - ❌ 使用常规 rounded-lg/rounded-xl 替代 wobbly 有机圆角（破坏手绘核心签名）
 - ❌ 使用模糊阴影 shadow-md/shadow-lg 替代零 blur 硬阴影（丧失平面插画质感）
 - ❌ 在手写字体体系中混入 Inter/Roboto 等无衬线体（割裂手绘氛围一致性）
+
+## 9. 系统架构
+
+### 页面路由
+
+| 页面 | 路径 | 组件 |
+|------|------|------|
+| 工作台首页 | `/` | `pages/Workbench/Workbench.tsx` |
+| 学情诊断 | `/diagnosis` | `pages/Diagnosis/Diagnosis.tsx` |
+| 升学规划 | `/plan` | `pages/Plan/Plan.tsx` |
+| 知识点查询 | `/knowledge` | `pages/Knowledge/Knowledge.tsx` |
+
+### 服务端模块
+
+| 模块 | Controller | 接口 |
+|------|-----------|------|
+| announcement | `/api/announcements` | GET 公告列表 |
+| diagnosis | `/api/diagnosis-records` | GET/POST/PATCH 诊断记录 CRUD |
+| plan | `/api/plan-records` | GET/POST/PATCH 规划记录 CRUD |
+| knowledge | `/api/knowledge-points` | GET/GET search/GET :id 知识点查询 |
+| policy | `/api/admission-policies` | GET 升学政策查询 |
+
+### 数据库表
+
+| 表名 | 用途 |
+|------|------|
+| diagnosis_record | 学情诊断记录（年级/地区/成绩/报告） |
+| plan_record | 升学规划记录（地区/成绩/报告/时间路线） |
+| knowledge_point | 知识点数据（版本/学科/章节/内容） |
+| admission_policy | 升学政策与分数线（地区/年份/录取线） |
+
+### 插件实例
+
+| 插件 ID | 类型 | 用途 |
+|---------|------|------|
+| academic_diagnosis_report_generator_1 | ai-text-generate | 学情诊断报告（流式） |
+| study_plan_report_generate_1 | ai-text-generate | 升学规划报告（流式） |
+| exam_schedule_timeline_generator_1 | ai-text-generate | 时间路线图（流式） |
+| exam_policy_search_1 | ai-search-summary | 考情政策搜索（流式） |
+
+### 公共组件
+
+| 组件 | 路径 | 用途 |
+|------|------|------|
+| WobblyCard | `components/WobblyCard.tsx` | 手绘风格卡片容器（有机圆角/硬阴影/微旋转） |

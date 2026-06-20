@@ -313,7 +313,7 @@
     {
       "id": 9,
       "name": "验收测试",
-      "status": "in_progress",
+      "status": "completed",
       "type": "normal",
       "subtasks": [
         "对照代码架构设计检查所有页面路由、模块边界、shared契约是否符合要求",
@@ -336,7 +336,8 @@
         7,
         8
       ],
-      "beginTime": 1781931384262
+      "beginTime": 1781931384262,
+      "endTime": 1781931845355
     }
   ]
 }
