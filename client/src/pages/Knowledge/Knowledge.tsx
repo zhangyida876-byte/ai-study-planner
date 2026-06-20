@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { knowledge } from '@client/src/api';
 import type { KnowledgePoint, KnowledgePointListItem, ChapterUnit } from '@shared/api.interface';
 import KnowledgeDetailPanel from './KnowledgeDetailPanel';
-import KnowledgeFilterPanel, { REGION_VERSION_MAP } from './KnowledgeFilterPanel';
+import KnowledgeFilterPanel, { REGION_VERSION_MAP, getVersionForProvinceSubject } from './KnowledgeFilterPanel';
 
 const PAGE_SIZE = 20;
 
@@ -181,10 +181,22 @@ const Knowledge: React.FC = () => {
       setProvince(val);
       setCity('');
       setRegion(val);
-      const autoVersion = REGION_VERSION_MAP[val];
+      const effectiveSubj = subject === '__all__' ? '' : subject;
+      const autoVersion = effectiveSubj
+        ? getVersionForProvinceSubject(val, effectiveSubj)
+        : REGION_VERSION_MAP[val];
       if (autoVersion) setVersion(autoVersion);
     }
-  }, []);
+  }, [subject]);
+
+  const handleSubjectChange = useCallback((val: string): void => {
+    setSubject(val);
+    const effectiveSubj = val === '__all__' ? '' : val;
+    if (province && effectiveSubj) {
+      const autoVersion = getVersionForProvinceSubject(province, effectiveSubj);
+      if (autoVersion) setVersion(autoVersion);
+    }
+  }, [province]);
 
   const handleCityChange = useCallback((val: string): void => {
     setCity(val);
@@ -236,11 +248,12 @@ const Knowledge: React.FC = () => {
             subject={subject}
             version={version}
             searchInput={searchInput}
+            autoVersion={province && subject !== '__all__' ? getVersionForProvinceSubject(province, subject === '__all__' ? '' : subject) : province ? REGION_VERSION_MAP[province] : undefined}
             onProvinceChange={handleProvinceChange}
             onCityChange={handleCityChange}
             onGradeChange={setGrade}
             onSemesterChange={setSemester}
-            onSubjectChange={setSubject}
+            onSubjectChange={handleSubjectChange}
             onVersionChange={setVersion}
             onSearchInputChange={setSearchInput}
             onSearch={handleSearch}
@@ -303,9 +316,30 @@ const Knowledge: React.FC = () => {
                     </WobblyCard>
                   </>
                 ) : (
-                  <div className="flex items-center justify-center py-20">
-                    <p className="text-center font-hand text-lg text-muted-foreground">
-                      未找到匹配的知识点
+                  <div className="flex flex-col items-center justify-center py-16">
+                    <BookOpen className="mb-3 size-10 text-muted-foreground/40" />
+                    <p className="text-center font-marker text-lg font-bold text-ink">
+                      当前筛选条件下暂无知识点
+                    </p>
+                    <div className="mt-3 flex flex-wrap justify-center gap-2">
+                      {effectiveSubject && (
+                        <span className="rounded-sm border-2 border-marker-red/40 bg-marker-red/5 px-2 py-1 font-hand text-xs text-marker-red">
+                          学科：{effectiveSubject}
+                        </span>
+                      )}
+                      {effectiveVersion && (
+                        <span className="rounded-sm border-2 border-pen-blue/40 bg-pen-blue/5 px-2 py-1 font-hand text-xs text-pen-blue">
+                          版本：{effectiveVersion}
+                        </span>
+                      )}
+                      {grade && (
+                        <span className="rounded-sm border-2 border-ink/20 bg-accent/50 px-2 py-1 font-hand text-xs">
+                          年级：{grade}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-4 text-center font-hand text-sm text-muted-foreground">
+                      请尝试切换学科、版本或年级，或直接搜索关键词
                     </p>
                   </div>
                 )}

@@ -136,6 +136,7 @@
 | study_plan_report_generate_1 | ai-text-generate | 升学规划报告（流式） |
 | exam_schedule_timeline_generator_1 | ai-text-generate | 时间路线图（流式） |
 | exam_policy_search_1 | ai-search-summary | 考情政策搜索（流式） |
+| knowledge_point_deep_analysis_1 | ai-text-generate | 知识点深度分析（流式） |
 
 ### 公共组件
 
