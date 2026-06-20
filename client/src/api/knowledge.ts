@@ -44,6 +44,27 @@ export async function searchKnowledgePoints(
   }
 }
 
+export async function searchKnowledgePointsFiltered(params: {
+  keyword: string;
+  version?: string;
+  subject?: string;
+  chapter?: string;
+  page: number;
+  pageSize: number;
+}): Promise<KnowledgePointSearchResponse> {
+  try {
+    const response = await axiosForBackend({
+      url: '/api/knowledge-points/search',
+      method: 'GET',
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    logger.error('搜索知识点失败', String(error));
+    throw error;
+  }
+}
+
 export async function getKnowledgePoint(id: string): Promise<KnowledgePoint> {
   try {
     const response = await axiosForBackend({

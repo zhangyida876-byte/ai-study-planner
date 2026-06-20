@@ -35,18 +35,27 @@ const Knowledge: React.FC = () => {
     ? (province ? REGION_VERSION_MAP[province] || '' : '')
     : version;
   const effectiveSubject = subject === '__all__' ? '' : subject;
+  const effectiveChapter = grade && semester ? `${grade}${semester.replace('学期', '')}` : '';
 
   const fetchList = useCallback(async (fetchPage?: number) => {
     const currentPage = fetchPage ?? page;
     setLoading(true);
     try {
-      const res = await knowledge.getKnowledgePoints({
-        version: effectiveVersion || undefined,
-        subject: effectiveSubject || undefined,
-        chapter: chapters.length > 0 ? chapters[0] : undefined,
+      const params: {
+        version?: string;
+        subject?: string;
+        chapter?: string;
+        page: number;
+        pageSize: number;
+      } = {
         page: currentPage,
         pageSize: PAGE_SIZE,
-      });
+      };
+      if (effectiveVersion) params.version = effectiveVersion;
+      if (effectiveSubject) params.subject = effectiveSubject;
+      if (effectiveChapter) params.chapter = effectiveChapter;
+
+      const res = await knowledge.getKnowledgePoints(params);
       setItems(res.items);
       setTotal(res.total);
       const uniqueChapters = Array.from(
@@ -59,7 +68,7 @@ const Knowledge: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [effectiveVersion, effectiveSubject, chapters, page]);
+  }, [effectiveVersion, effectiveSubject, effectiveChapter, page]);
 
   const fetchSearch = useCallback(async (kw: string, searchPage: number) => {
     if (!kw.trim()) return;
@@ -75,6 +84,37 @@ const Knowledge: React.FC = () => {
       setLoading(false);
     }
   }, []);
+
+  const fetchFilteredSearch = useCallback(async (kw: string, searchPage: number) => {
+    if (!kw.trim()) return;
+    setLoading(true);
+    try {
+      const params: {
+        version?: string;
+        subject?: string;
+        chapter?: string;
+        keyword: string;
+        page: number;
+        pageSize: number;
+      } = {
+        keyword: kw.trim(),
+        page: searchPage,
+        pageSize: PAGE_SIZE,
+      };
+      if (effectiveVersion) params.version = effectiveVersion;
+      if (effectiveSubject) params.subject = effectiveSubject;
+      if (effectiveChapter) params.chapter = effectiveChapter;
+
+      const res = await knowledge.searchKnowledgePointsFiltered(params);
+      setItems(res.items);
+      setTotal(res.total);
+    } catch {
+      setItems([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [effectiveVersion, effectiveSubject, effectiveChapter]);
 
   useEffect(() => {
     if (effectiveVersion || effectiveSubject || grade || semester) {
@@ -92,7 +132,11 @@ const Knowledge: React.FC = () => {
     setHasQueried(true);
     setSelectedId(null);
     setDetail(null);
-    fetchSearch(kw, 1);
+    if (effectiveVersion || effectiveSubject || effectiveChapter) {
+      fetchFilteredSearch(kw, 1);
+    } else {
+      fetchSearch(kw, 1);
+    }
   };
 
   const handleProvinceChange = useCallback((val: string): void => {
@@ -140,7 +184,7 @@ const Knowledge: React.FC = () => {
     <div className="min-h-screen bg-paper-dots p-4 lg:p-6">
       <div className="mx-auto max-w-6xl">
         <h1 className="mb-6 font-marker text-3xl font-bold">
-          知识点查询
+          考点&知识点查询
         </h1>
 
         <WobblyCard
@@ -257,8 +301,15 @@ const Knowledge: React.FC = () => {
                       onClick={() => {
                         const newPage = page - 1;
                         setPage(newPage);
-                        if (keyword) fetchSearch(keyword, newPage);
-                        else fetchList(newPage);
+                        if (keyword) {
+                          if (effectiveVersion || effectiveSubject || effectiveChapter) {
+                            fetchFilteredSearch(keyword, newPage);
+                          } else {
+                            fetchSearch(keyword, newPage);
+                          }
+                        } else {
+                          fetchList(newPage);
+                        }
                       }}
                     >
                       上一页
@@ -274,8 +325,15 @@ const Knowledge: React.FC = () => {
                       onClick={() => {
                         const newPage = page + 1;
                         setPage(newPage);
-                        if (keyword) fetchSearch(keyword, newPage);
-                        else fetchList(newPage);
+                        if (keyword) {
+                          if (effectiveVersion || effectiveSubject || effectiveChapter) {
+                            fetchFilteredSearch(keyword, newPage);
+                          } else {
+                            fetchSearch(keyword, newPage);
+                          }
+                        } else {
+                          fetchList(newPage);
+                        }
                       }}
                     >
                       下一页
