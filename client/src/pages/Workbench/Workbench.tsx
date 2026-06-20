@@ -102,7 +102,7 @@ const Workbench: React.FC = () => {
       <div className="mb-10">
         <h1 className="font-marker text-3xl text-ink">
           <Sparkles className="mr-2 inline-block size-8 text-marker-red" />
-          欢迎使用学情顾问工作台
+          学情&升学工作台
         </h1>
         <p className="font-hand mt-2 text-lg text-ink/60">
           选择下方功能入口，快速开始诊断、规划与知识点查询

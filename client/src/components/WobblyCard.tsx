@@ -53,7 +53,7 @@ const WobblyCard: React.FC<WobblyCardProps> = ({
       {...props}
     >
       {decoration === 'tape' && (
-        <div className="absolute -top-3 left-1/2 z-10 h-6 w-24 -translate-x-1/2 rotate-1 bg-gray-400/30 backdrop-blur-sm" />
+        <div className="absolute -top-3 left-1/2 z-10 h-6 w-24 -translate-x-1/2 rotate-1 bg-white/60 shadow-sm" style={{ opacity: 0.7 }} />
       )}
       {decoration === 'tack' && (
         <div className="absolute -top-2 left-1/2 z-10 size-4 -translate-x-1/2 rounded-full border-2 border-ink bg-marker-red" />
