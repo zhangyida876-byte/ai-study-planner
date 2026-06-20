@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ArrowRight, Search, BookOpen } from 'lucide-react';
+import { ArrowRight, BookOpen, Layers } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Button } from '@/components/ui/button';
 import { knowledge } from '@client/src/api';
-import type { KnowledgePoint, KnowledgePointListItem } from '@shared/api.interface';
+import type { KnowledgePoint, KnowledgePointListItem, ChapterUnit } from '@shared/api.interface';
 import KnowledgeDetailPanel from './KnowledgeDetailPanel';
 import KnowledgeFilterPanel, { REGION_VERSION_MAP } from './KnowledgeFilterPanel';
 
@@ -28,14 +28,14 @@ const Knowledge: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<KnowledgePoint | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [chapters, setChapters] = useState<string[]>([]);
+  const [selectedChapter, setSelectedChapter] = useState('');
+  const [chapterUnits, setChapterUnits] = useState<ChapterUnit[]>([]);
   const [hasQueried, setHasQueried] = useState(false);
 
   const effectiveVersion = version === '__all__'
     ? (province ? REGION_VERSION_MAP[province] || '' : '')
     : version;
   const effectiveSubject = subject === '__all__' ? '' : subject;
-  const effectiveChapter = grade && semester ? `${grade}${semester.replace('学期', '')}` : '';
 
   const fetchList = useCallback(async (fetchPage?: number) => {
     const currentPage = fetchPage ?? page;
@@ -53,22 +53,18 @@ const Knowledge: React.FC = () => {
       };
       if (effectiveVersion) params.version = effectiveVersion;
       if (effectiveSubject) params.subject = effectiveSubject;
-      if (effectiveChapter) params.chapter = effectiveChapter;
+      if (selectedChapter) params.chapter = selectedChapter;
 
       const res = await knowledge.getKnowledgePoints(params);
       setItems(res.items);
       setTotal(res.total);
-      const uniqueChapters = Array.from(
-        new Set(res.items.map((item: KnowledgePointListItem) => item.chapter))
-      );
-      setChapters(uniqueChapters);
     } catch {
       setItems([]);
       setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [effectiveVersion, effectiveSubject, effectiveChapter, page]);
+  }, [effectiveVersion, effectiveSubject, selectedChapter, page]);
 
   const fetchSearch = useCallback(async (kw: string, searchPage: number) => {
     if (!kw.trim()) return;
@@ -103,7 +99,7 @@ const Knowledge: React.FC = () => {
       };
       if (effectiveVersion) params.version = effectiveVersion;
       if (effectiveSubject) params.subject = effectiveSubject;
-      if (effectiveChapter) params.chapter = effectiveChapter;
+      if (selectedChapter) params.chapter = selectedChapter;
 
       const res = await knowledge.searchKnowledgePointsFiltered(params);
       setItems(res.items);
@@ -114,15 +110,35 @@ const Knowledge: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [effectiveVersion, effectiveSubject, effectiveChapter]);
+  }, [effectiveVersion, effectiveSubject, selectedChapter]);
 
   useEffect(() => {
     if (effectiveVersion || effectiveSubject || grade || semester) {
       setHasQueried(true);
       setPage(1);
+      setSelectedChapter('');
       fetchList(1);
     }
   }, [effectiveVersion, effectiveSubject, grade, semester]);
+
+  useEffect(() => {
+    if (selectedChapter) {
+      setPage(1);
+      fetchList(1);
+    }
+  }, [selectedChapter]);
+
+  useEffect(() => {
+    if (items.length === 0 && hasQueried && !loading && (effectiveVersion || effectiveSubject || grade)) {
+      knowledge.getChapters({
+        version: effectiveVersion || undefined,
+        subject: effectiveSubject || undefined,
+        grade: grade || undefined,
+      }).then((res) => setChapterUnits(res.items)).catch(() => setChapterUnits([]));
+    } else {
+      setChapterUnits([]);
+    }
+  }, [items.length, hasQueried, loading, effectiveVersion, effectiveSubject, grade]);
 
   const handleSearch = () => {
     if (!searchInput.trim()) return;
@@ -132,12 +148,22 @@ const Knowledge: React.FC = () => {
     setHasQueried(true);
     setSelectedId(null);
     setDetail(null);
-    if (effectiveVersion || effectiveSubject || effectiveChapter) {
+    setSelectedChapter('');
+    if (effectiveVersion || effectiveSubject) {
       fetchFilteredSearch(kw, 1);
     } else {
       fetchSearch(kw, 1);
     }
   };
+
+  const handleSelectChapter = useCallback((chapter: string): void => {
+    setSelectedChapter(chapter);
+    setPage(1);
+    setKeyword('');
+    setSearchInput('');
+    setSelectedId(null);
+    setDetail(null);
+  }, []);
 
   const handleProvinceChange = useCallback((val: string): void => {
     if (val === '__custom__') {
@@ -227,10 +253,54 @@ const Knowledge: React.FC = () => {
                 </p>
               </div>
             ) : items.length === 0 && hasQueried ? (
-              <div className="flex items-center justify-center py-20">
-                <p className="text-center font-hand text-lg text-muted-foreground">
-                  未找到匹配的知识点
-                </p>
+              <div>
+                {chapterUnits.length > 0 ? (
+                  <>
+                    <div className="mb-3 flex items-center gap-2">
+                      <Layers className="size-4 text-pen-blue" />
+                      <span className="font-marker text-sm font-bold text-ink">
+                        当前筛选下未找到精确匹配，以下是可用的章节单元：
+                      </span>
+                    </div>
+                    <WobblyCard
+                      hoverable={false}
+                      wobblyIndex={1}
+                      className="overflow-hidden"
+                    >
+                      {chapterUnits.map((unit: ChapterUnit, idx: number) => (
+                        <div
+                          key={`${unit.subject}-${unit.chapter}`}
+                          className="group cursor-pointer px-5 py-3 transition-all duration-200 hover:translate-x-1 hover:bg-accent/50"
+                          style={{ borderBottom: idx !== chapterUnits.length - 1 ? '2px dashed rgba(45,45,45,0.2)' : 'none' }}
+                          onClick={() => handleSelectChapter(unit.chapter)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-marker text-sm font-bold group-hover:text-marker-red">
+                                {unit.chapter}
+                              </h3>
+                              <div className="mt-1 flex items-center gap-2">
+                                <span className="inline-block rounded-sm border border-ink/40 bg-pen-blue/10 px-1.5 py-0.5 font-hand text-xs rotate-1">
+                                  {unit.subject}
+                                </span>
+                                <span className="font-hand text-xs text-muted-foreground">
+                                  {unit.count} 个知识点
+                                </span>
+                              </div>
+                            </div>
+                            <ArrowRight className="ml-3 size-4 shrink-0 text-muted-foreground transition-all duration-200 group-hover:translate-x-1 group-hover:text-marker-red" />
+                          </div>
+                        </div>
+                      ))}
+                    </WobblyCard>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center py-20">
+                    <p className="text-center font-hand text-lg text-muted-foreground">
+                      未找到匹配的知识点
+                    </p>
+                  </div>
+                )}
               </div>
             ) : items.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20">
@@ -242,9 +312,23 @@ const Knowledge: React.FC = () => {
             ) : (
               <>
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="font-hand text-sm text-muted-foreground">
-                    共 {total} 条结果
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-hand text-sm text-muted-foreground">
+                      共 {total} 条结果
+                    </span>
+                    {selectedChapter && (
+                      <span className="inline-flex items-center gap-1 rounded-sm border border-ink/40 bg-postit-yellow/60 px-2 py-0.5 font-hand text-xs">
+                        {selectedChapter}
+                        <button
+                          type="button"
+                          onClick={() => { setSelectedChapter(''); setPage(1); fetchList(1); }}
+                          className="ml-1 text-ink/50 hover:text-marker-red"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <WobblyCard
@@ -302,7 +386,7 @@ const Knowledge: React.FC = () => {
                         const newPage = page - 1;
                         setPage(newPage);
                         if (keyword) {
-                          if (effectiveVersion || effectiveSubject || effectiveChapter) {
+                          if (effectiveVersion || effectiveSubject) {
                             fetchFilteredSearch(keyword, newPage);
                           } else {
                             fetchSearch(keyword, newPage);
@@ -326,7 +410,7 @@ const Knowledge: React.FC = () => {
                         const newPage = page + 1;
                         setPage(newPage);
                         if (keyword) {
-                          if (effectiveVersion || effectiveSubject || effectiveChapter) {
+                          if (effectiveVersion || effectiveSubject) {
                             fetchFilteredSearch(keyword, newPage);
                           } else {
                             fetchSearch(keyword, newPage);

@@ -7,6 +7,7 @@ import type {
   KnowledgePointContent,
   KnowledgePointListResponse,
   KnowledgePointSearchResponse,
+  ChapterListResponse,
 } from '@shared/api.interface';
 
 @Injectable()
@@ -92,6 +93,42 @@ export class KnowledgeService {
       items,
       total: countResult[0]?.count ?? 0,
     };
+  }
+
+  async getChapters(params: {
+    version?: string;
+    subject?: string;
+    grade?: string;
+  }): Promise<ChapterListResponse> {
+    const conditions = [];
+    if (params.version) conditions.push(eq(knowledgePoint.version, params.version));
+    if (params.subject) conditions.push(eq(knowledgePoint.subject, params.subject));
+    if (params.grade) {
+      const gradePatterns = [
+        params.grade,
+        params.grade.replace('年级', '年级上'),
+        params.grade.replace('年级', '年级下'),
+        params.grade.replace('年级', '年级全'),
+      ];
+      const orConditions = gradePatterns.map((pattern) =>
+        sql`${knowledgePoint.chapter} LIKE ${'%' + pattern + '%'}`
+      );
+      conditions.push(sql`${sql.join(orConditions, sql` OR `)}`);
+    }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const items = await this.db
+      .select({
+        chapter: knowledgePoint.chapter,
+        subject: knowledgePoint.subject,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(knowledgePoint)
+      .where(whereClause)
+      .groupBy(knowledgePoint.chapter, knowledgePoint.subject)
+      .orderBy(knowledgePoint.subject, knowledgePoint.chapter);
+
+    return { items };
   }
 
   async findOne(id: string): Promise<KnowledgePoint> {

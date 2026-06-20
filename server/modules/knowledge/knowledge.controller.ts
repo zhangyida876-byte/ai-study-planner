@@ -10,6 +10,15 @@ import { KnowledgeService } from './knowledge.service';
 export class KnowledgeController {
   constructor(private readonly knowledgeService: KnowledgeService) {}
 
+  @Get('chapters')
+  async getChapters(
+    @Query('version') version?: string,
+    @Query('subject') subject?: string,
+    @Query('grade') grade?: string
+  ) {
+    return this.knowledgeService.getChapters({ version, subject, grade });
+  }
+
   @Get('search')
   async search(
     @Query('keyword') keyword: string,

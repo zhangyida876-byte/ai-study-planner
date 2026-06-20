@@ -4,6 +4,7 @@ import type {
   KnowledgePoint,
   KnowledgePointListResponse,
   KnowledgePointSearchResponse,
+  ChapterListResponse,
 } from '@shared/api.interface';
 
 export async function getKnowledgePoints(params: {
@@ -74,6 +75,24 @@ export async function getKnowledgePoint(id: string): Promise<KnowledgePoint> {
     return response.data;
   } catch (error) {
     logger.error('获取知识点详情失败', String(error));
+    throw error;
+  }
+}
+
+export async function getChapters(params: {
+  version?: string;
+  subject?: string;
+  grade?: string;
+}): Promise<ChapterListResponse> {
+  try {
+    const response = await axiosForBackend({
+      url: '/api/knowledge-points/chapters',
+      method: 'GET',
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    logger.error('获取章节列表失败', String(error));
     throw error;
   }
 }

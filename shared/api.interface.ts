@@ -157,3 +157,13 @@ export interface KnowledgePointSearchResponse {
   items: KnowledgePointListItem[];
   total: number;
 }
+
+export interface ChapterUnit {
+  chapter: string;
+  subject: string;
+  count: number;
+}
+
+export interface ChapterListResponse {
+  items: ChapterUnit[];
+}

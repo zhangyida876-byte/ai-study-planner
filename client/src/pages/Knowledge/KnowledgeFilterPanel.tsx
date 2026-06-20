@@ -33,7 +33,7 @@ export const ALL_SUBJECTS = [
   '数学', '语文', '英语', '物理', '化学', '生物', '历史', '地理', '政治',
 ];
 
-const GRADES = ['七年级', '八年级', '九年级', '高一', '高二', '高三'];
+const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '七年级', '八年级', '九年级', '高一', '高二', '高三'];
 const SEMESTERS = ['上学期', '下学期'];
 
 interface KnowledgeFilterPanelProps {
