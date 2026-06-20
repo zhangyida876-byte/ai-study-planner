@@ -4,6 +4,19 @@ import { eq, and, or, desc, ilike } from 'drizzle-orm';
 import { admissionPolicy } from '../../database/schema';
 import type { AdmissionPolicy, AdmissionPolicyListResponse, AdmissionLine } from '@shared/api.interface';
 
+const PROVINCE_CAPITALS: Record<string, string> = {
+  '北京': '北京', '天津': '天津', '上海': '上海', '重庆': '重庆主城',
+  '河北': '石家庄', '山西': '太原', '内蒙古': '呼和浩特',
+  '辽宁': '沈阳', '吉林': '长春', '黑龙江': '哈尔滨',
+  '江苏': '南京', '浙江': '杭州', '安徽': '合肥',
+  '福建': '福州', '江西': '南昌', '山东': '济南',
+  '河南': '郑州', '湖北': '武汉', '湖南': '长沙',
+  '广东': '广州', '广西': '南宁', '海南': '海口',
+  '四川': '成都', '贵州': '贵阳', '云南': '昆明',
+  '西藏': '拉萨', '陕西': '西安', '甘肃': '兰州',
+  '青海': '西宁', '宁夏': '银川', '新疆': '乌鲁木齐',
+};
+
 @Injectable()
 export class PolicyService {
   constructor(
@@ -24,6 +37,10 @@ export class PolicyService {
       if (parts.length > 1) {
         regionConditions.push(eq(admissionPolicy.region, parts[parts.length - 1]));
         regionConditions.push(ilike(admissionPolicy.region, `%${region.replace(/ /g, '%')}%`));
+      }
+      const capital = PROVINCE_CAPITALS[parts[0]];
+      if (capital) {
+        regionConditions.push(eq(admissionPolicy.region, capital));
       }
 
       const conditions = [or(...regionConditions)];
