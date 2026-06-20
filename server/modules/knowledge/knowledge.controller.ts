@@ -25,6 +25,8 @@ export class KnowledgeController {
     @Query('version') version?: string,
     @Query('subject') subject?: string,
     @Query('chapter') chapter?: string,
+    @Query('grade') grade?: string,
+    @Query('semester') semester?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string
   ) {
@@ -32,7 +34,7 @@ export class KnowledgeController {
       keyword,
       parseInt(page || '1', 10),
       parseInt(pageSize || '20', 10),
-      { version, subject, chapter }
+      { version, subject, chapter, grade, semester }
     );
   }
 
@@ -41,6 +43,8 @@ export class KnowledgeController {
     @Query('version') version?: string,
     @Query('subject') subject?: string,
     @Query('chapter') chapter?: string,
+    @Query('grade') grade?: string,
+    @Query('semester') semester?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string
   ) {
@@ -48,6 +52,8 @@ export class KnowledgeController {
       version,
       subject,
       chapter,
+      grade,
+      semester,
       page: parseInt(page || '1', 10),
       pageSize: parseInt(pageSize || '20', 10),
     });

@@ -11,6 +11,8 @@ export async function getKnowledgePoints(params: {
   version?: string;
   subject?: string;
   chapter?: string;
+  grade?: string;
+  semester?: string;
   page?: number;
   pageSize?: number;
 }): Promise<KnowledgePointListResponse> {
@@ -50,6 +52,8 @@ export async function searchKnowledgePointsFiltered(params: {
   version?: string;
   subject?: string;
   chapter?: string;
+  grade?: string;
+  semester?: string;
   page: number;
   pageSize: number;
 }): Promise<KnowledgePointSearchResponse> {

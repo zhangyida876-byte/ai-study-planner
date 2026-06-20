@@ -45,6 +45,8 @@ const Knowledge: React.FC = () => {
         version?: string;
         subject?: string;
         chapter?: string;
+        grade?: string;
+        semester?: string;
         page: number;
         pageSize: number;
       } = {
@@ -54,6 +56,8 @@ const Knowledge: React.FC = () => {
       if (effectiveVersion) params.version = effectiveVersion;
       if (effectiveSubject) params.subject = effectiveSubject;
       if (selectedChapter) params.chapter = selectedChapter;
+      if (grade) params.grade = grade;
+      if (semester) params.semester = semester;
 
       const res = await knowledge.getKnowledgePoints(params);
       setItems(res.items);
@@ -64,7 +68,7 @@ const Knowledge: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [effectiveVersion, effectiveSubject, selectedChapter, page]);
+  }, [effectiveVersion, effectiveSubject, selectedChapter, grade, semester, page]);
 
   const fetchSearch = useCallback(async (kw: string, searchPage: number) => {
     if (!kw.trim()) return;
@@ -89,6 +93,8 @@ const Knowledge: React.FC = () => {
         version?: string;
         subject?: string;
         chapter?: string;
+        grade?: string;
+        semester?: string;
         keyword: string;
         page: number;
         pageSize: number;
@@ -100,6 +106,8 @@ const Knowledge: React.FC = () => {
       if (effectiveVersion) params.version = effectiveVersion;
       if (effectiveSubject) params.subject = effectiveSubject;
       if (selectedChapter) params.chapter = selectedChapter;
+      if (grade) params.grade = grade;
+      if (semester) params.semester = semester;
 
       const res = await knowledge.searchKnowledgePointsFiltered(params);
       setItems(res.items);
@@ -110,7 +118,7 @@ const Knowledge: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [effectiveVersion, effectiveSubject, selectedChapter]);
+  }, [effectiveVersion, effectiveSubject, selectedChapter, grade, semester]);
 
   useEffect(() => {
     if (effectiveVersion || effectiveSubject || grade || semester) {
@@ -149,7 +157,7 @@ const Knowledge: React.FC = () => {
     setSelectedId(null);
     setDetail(null);
     setSelectedChapter('');
-    if (effectiveVersion || effectiveSubject) {
+    if (effectiveVersion || effectiveSubject || grade || semester) {
       fetchFilteredSearch(kw, 1);
     } else {
       fetchSearch(kw, 1);
