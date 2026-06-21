@@ -6,6 +6,12 @@
   "description": "根据地区和目标学校名称搜索该校最近一年的中考/高考录取分数线，返回具体分数线数据，供学情诊断表单的目标分数推荐功能使用。",
   "icon": "",
   "paramsSchema": {
+    "required": [
+      "region",
+      "school_name",
+      "exam_type"
+    ],
+    "type": "object",
     "properties": {
       "region": {
         "type": "string",
@@ -16,22 +22,16 @@
         "description": "目标学校名称"
       },
       "exam_type": {
-        "type": "string",
-        "description": "考试类型（中考/高考）"
+        "description": "考试类型（中考/高考）",
+        "type": "string"
       }
-    },
-    "required": [
-      "region",
-      "school_name",
-      "exam_type"
-    ],
-    "type": "object"
+    }
   },
   "formValue": {
-    "query": "{{input.region}} {{input.school_name}} 2024年 {{input.exam_type}} 录取分数线",
-    "instruction": "提取该校最近一年的具体录取分数线数据，仅返回分数线数值，如无明确数据则返回'未查询到相关数据'，不要多余内容。"
+    "instruction": "请提取该校最近一年（2025年或2026年）的具体录取分数线数据，严格按以下要求输出：\n\n1. 优先检索该校官方发布的录取分数线公告、当地教育局/教育考试院发布的录取结果公示；\n2. 数据需精确到分，区分不同录取批次（统招线、指标生线、择校线等）；\n3. 至少2个来源交叉验证，冲突信息标注差异；\n4. 仅返回分数线数值和来源，格式：学校名称 + 录取年份 + 各批次分数线 + 信息来源；\n5. 如无2025/2026年数据，返回最近可查年份数据并标注\"该年份数据，最新年份待官方发布\"；\n6. 如完全无数据则返回\"未查询到相关数据，建议核实当地教育局官网\"，禁止编造。 ",
+    "query": "{{input.region}} {{input.school_name}} 2025年 2026年 {{input.exam_type}} 录取分数线 统招线 指标生线"
   },
   "createdAt": 1781954870015,
-  "updatedAt": 1781954870015,
+  "updatedAt": 1782009366920,
   "createdBy": 7074919885251330052
 }
