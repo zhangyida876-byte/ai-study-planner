@@ -291,3 +291,178 @@ export interface GaokaoMajorCareerSalaryQueryOneOutput {
   summary: string;
 }
 // ---- end:gaokao_major_career_salary_query_1 ----
+
+// ---- plugin:feishu_bitable_data_reader_1 ----
+// ============================================================
+// 插件 feishu_bitable_data_reader_1 (飞书多维表格数据读取实例) 的类型定义
+// 由 get_plugin_ai_json 自动生成
+// ============================================================
+
+export interface FeishuBitableDataReaderOneAggregatequeryInput {
+  /** [object Object] */
+  filter?: {
+    conjunction: string;
+    conditions: {
+      fieldName: string;
+      operator: string;
+      value: string[];
+    }[];
+  };
+  /** [object Object] */
+  expandArrayDimension?: boolean;
+  /** [object Object] */
+  dimensions?: string[];
+  /** [object Object] */
+  measures?: {
+    fieldName: string;
+    aggregation: string;
+    alias: string;
+  }[];
+  /** [object Object] */
+  pageToken?: string;
+  /** [object Object] */
+  pageSize?: number;
+  /** [object Object] */
+  sort?: {
+    desc: boolean;
+    fieldName: string;
+  }[];
+}
+
+/**
+ * capabilityClient.load('feishu_bitable_data_reader_1').call<FeishuBitableDataReaderOneAggregatequeryOutput>('aggregateQuery', input)
+ * 直接返回此类型，无 .data 包装，直接解构使用：
+ * const { result, hasMore, pageToken } = result;
+ */
+export interface FeishuBitableDataReaderOneAggregatequeryOutput {
+  /** [object Object] */
+  result: {
+
+  }[];
+  /** [object Object] */
+  hasMore: boolean;
+  /** [object Object] */
+  pageToken?: string;
+}
+
+export interface FeishuBitableDataReaderOneBatchaddrecordsInput {
+  /** [object Object] */
+  records: {
+    record: {
+
+    };
+  }[];
+}
+
+/**
+ * capabilityClient.load('feishu_bitable_data_reader_1').call<FeishuBitableDataReaderOneBatchaddrecordsOutput>('batchAddRecords', input)
+ * 直接返回此类型，无 .data 包装，直接解构使用：
+ * const { records } = result;
+ */
+export interface FeishuBitableDataReaderOneBatchaddrecordsOutput {
+  /** [object Object] */
+  records: {
+    id: string;
+  }[];
+}
+
+export interface FeishuBitableDataReaderOneBatchupdaterecordsInput {
+  /** [object Object] */
+  records: {
+    record: {
+
+    };
+    id: string;
+  }[];
+}
+
+/**
+ * capabilityClient.load('feishu_bitable_data_reader_1').call<FeishuBitableDataReaderOneBatchupdaterecordsOutput>('batchUpdateRecords', input)
+ * 直接返回此类型，无 .data 包装，直接解构使用：
+ * const { records } = result;
+ */
+export interface FeishuBitableDataReaderOneBatchupdaterecordsOutput {
+  /** [object Object] */
+  records: {
+    id: string;
+  }[];
+}
+
+export interface FeishuBitableDataReaderOneDeleterecordsInput {
+  /** [object Object] */
+  recordIDs: string[];
+}
+
+/**
+ * capabilityClient.load('feishu_bitable_data_reader_1').call<FeishuBitableDataReaderOneDeleterecordsOutput>('deleteRecords', input)
+ * 直接返回此类型，无 .data 包装，直接解构使用：
+ * const { success } = result;
+ */
+export interface FeishuBitableDataReaderOneDeleterecordsOutput {
+  /** [object Object] */
+  success: boolean;
+}
+
+export interface FeishuBitableDataReaderOneGetrecordInput {
+  /** [object Object] */
+  recordID: string;
+}
+
+/**
+ * capabilityClient.load('feishu_bitable_data_reader_1').call<FeishuBitableDataReaderOneGetrecordOutput>('getRecord', input)
+ * 直接返回此类型，无 .data 包装，直接解构使用：
+ * const { id, record } = result;
+ */
+export interface FeishuBitableDataReaderOneGetrecordOutput {
+  /** [object Object] */
+  id: string;
+  /** [object Object] */
+  record?: {
+
+  };
+}
+
+export interface FeishuBitableDataReaderOneSearchrecordsInput {
+  /** [object Object] */
+  pageToken?: string;
+  /** [object Object] */
+  pageSize?: number;
+  /** [object Object] */
+  fieldNames?: string[];
+  /** [object Object] */
+  sort?: {
+    fieldName: string;
+    desc: boolean;
+  }[];
+  /** [object Object] */
+  filter?: {
+    conjunction: string;
+    conditions: {
+      fieldName: string;
+      operator: string;
+      value: string[];
+    }[];
+  };
+}
+
+/**
+ * capabilityClient.load('feishu_bitable_data_reader_1').call<FeishuBitableDataReaderOneSearchrecordsOutput>('searchRecords', input)
+ * 直接返回此类型，无 .data 包装，直接解构使用：
+ * const { records, hasMore, pageToken, ... } = result;
+ */
+export interface FeishuBitableDataReaderOneSearchrecordsOutput {
+  /** [object Object] */
+  records: {
+    id: string;
+    record: {
+
+    };
+  }[];
+  /** [object Object] */
+  hasMore: boolean;
+  /** [object Object] */
+  pageToken?: string;
+  /** [object Object] */
+  total?: number;
+}
+// ---- end:feishu_bitable_data_reader_1 ----

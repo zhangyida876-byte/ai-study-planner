@@ -204,6 +204,7 @@
   "actionPlugins": {
     "@official-plugins/ai-search-summary": "1.0.11",
     "@official-plugins/ai-text-generate": "1.0.17",
-    "@official-plugins/apaas-data": "1.0.0"
+    "@official-plugins/apaas-data": "1.0.0",
+    "@official-plugins/feishu-bitable": "1.0.22"
   }
 }

@@ -1,0 +1,17 @@
+{
+  "id": "feishu_bitable_data_reader_1",
+  "pluginKey": "@official-plugins/feishu-bitable",
+  "pluginVersion": "1.0.22",
+  "name": "飞书多维表格数据读取实例",
+  "description": "读取飞书多维表格（链接：https://guanghe.feishu.cn/base/C3zzbyDkla4IwKspObIcZfU1nHa）中表ID为tbly6ozc1GPo2Hfk的所有字段和记录数据",
+  "icon": "",
+  "paramsSchema": {},
+  "formValue": {
+    "appToken": "C3zzbyDkla4IwKspObIcZfU1nHa",
+    "tableID": "tbly6ozc1GPo2Hfk",
+    "fields": []
+  },
+  "createdAt": 1782042925093,
+  "updatedAt": 1782042925093,
+  "createdBy": 7074919885251330052
+}

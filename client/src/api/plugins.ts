@@ -12,6 +12,7 @@ export const PLUGIN_IDS = {
   COLLEGE_POLICY_SEARCH: 'college_entrance_policy_search_1',
   COLLEGE_MAJOR_QUERY: 'college_major_admission_query_1',
   MAJOR_CAREER_QUERY: 'gaokao_major_career_salary_query_1',
+  FEISHU_BITABLE_READER: 'feishu_bitable_data_reader_1',
 } as const;
 
 export type EducationStage = 'elementary' | 'middle' | 'high';
@@ -187,6 +188,13 @@ export async function* streamMajorCareerQuery(input: MajorCareerQueryInput) {
     const summary = (chunk as { summary?: string }).summary || '';
     if (summary) yield summary;
   }
+}
+
+export async function fetchBitableData() {
+  const result = await capabilityClient
+    .load(PLUGIN_IDS.FEISHU_BITABLE_READER)
+    .call('searchRecords', { pageSize: 500 } as Record<string, unknown>);
+  return result as { records: Array<{ id: string; record: Record<string, any> }>; hasMore: boolean; total: number };
 }
 
 export async function* streamKnowledgeAnalysis(input: KnowledgeAnalysisInput) {
