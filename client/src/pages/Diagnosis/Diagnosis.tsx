@@ -212,7 +212,7 @@ const Diagnosis: React.FC = () => {
                       )}
                       {studentInfo?.targetScore != null && (
                         <div className="flex items-center gap-1.5">
-                          <span className="font-hand text-ink/60">目标分数：</span>
+                          <span className="font-hand text-ink/60">最新分数线：</span>
                           <span className="font-marker font-bold text-pen-blue">
                             {studentInfo.targetScore}分
                           </span>

@@ -281,17 +281,17 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
   const watchedSchool = form.watch('targetSchool');
 
   useEffect(() => {
-    if (!watchedRegion || !watchedSchool || scoreSuggested) return;
-    const isHS = ['高一', '高二', '高三'].includes(watchedGrade);
-    const isMS = ['初一', '初二', '初三'].includes(watchedGrade);
-    if (!isHS && !isMS) return;
+    if (!watchedRegion || !watchedSchool) return;
     let cancelled = false;
     const fetchScore = async () => {
       setScoreSuggesting(true);
+      setScoreSuggested(false);
       try {
         const result = await policyApi.searchSchools(watchedRegion);
         if (cancelled) return;
-        const match = result.schools.find((s) => s.name === watchedSchool);
+        const match = result.schools.find(
+          (s) => s.name === watchedSchool || s.name.includes(watchedSchool) || watchedSchool.includes(s.name)
+        );
         if (match && match.score > 0) {
           form.setValue('targetScore', match.score);
           setScoreSuggested(true);
@@ -301,6 +301,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
         // database lookup failed, try AI plugin
       }
       try {
+        const isHS = ['高一', '高二', '高三'].includes(watchedGrade);
         const examType = isHS ? '高考' : '中考';
         const streamResult = capabilityClient
           .load('high_school_admission_score_query_1')
@@ -332,7 +333,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
     };
     fetchScore();
     return () => { cancelled = true; };
-  }, [watchedRegion, watchedSchool, scoreSuggested, watchedGrade, form]);
+  }, [watchedRegion, watchedSchool, watchedGrade, form]);
 
   const cities = PROVINCE_CITIES[selectedProvince] || [];
 
@@ -724,11 +725,11 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  目标分数
+                  最新分数线
                   {scoreSuggesting && (
                     <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-pen-blue">
                       <Loader2 className="size-3 animate-spin" />
-                      查询分数线
+                      查询中
                     </span>
                   )}
                   {scoreSuggested && field.value != null && (
@@ -741,7 +742,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
                 <FormControl>
                   <Input
                     type="number"
-                    placeholder="选择院校后自动匹配"
+                    placeholder="选择院校后自动匹配分数线"
                     value={
                       field.value !== undefined && field.value !== null
                         ? String(field.value)

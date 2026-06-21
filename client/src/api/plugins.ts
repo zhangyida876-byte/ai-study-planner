@@ -145,7 +145,7 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext): string {
   if (ctx.examMode) parts.push(`高考选科模式：${ctx.examMode}`);
   if (ctx.examDate) parts.push(`考试时间：${ctx.examDate}`);
   if (ctx.targetSchool) parts.push(`目标院校：${ctx.targetSchool}`);
-  if (ctx.targetScore != null) parts.push(`目标总分：${ctx.targetScore}分`);
+  if (ctx.targetScore != null) parts.push(`该校2025年录取线：${ctx.targetScore}分`);
   if (ctx.problemDesc && ctx.problemDesc.trim()) {
     parts.push(`学生/家长自述痛点：${ctx.problemDesc.trim()}`);
   }
@@ -162,7 +162,7 @@ export function buildPlanAdditionalInfo(ctx: PlanFormContext): string {
   if (boardingLabel) parts.push(`学习模式：${boardingLabel}${ctx.monthlyStudyHours ? `，每月自主学习约${ctx.monthlyStudyHours}小时` : ''}`);
   if (ctx.examMode) parts.push(`高考选科模式：${ctx.examMode}`);
   if (ctx.targetSchool) parts.push(`目标院校：${ctx.targetSchool}`);
-  if (ctx.targetScore != null) parts.push(`目标总分：${ctx.targetScore}分`);
+  if (ctx.targetScore != null) parts.push(`该校2025年录取线：${ctx.targetScore}分`);
   const scoresText = buildScoresText(ctx.scores, ctx.scoreMaxValues);
   parts.push(`各科成绩（含满分与得分率）：${scoresText}`);
   return parts.join('；');
