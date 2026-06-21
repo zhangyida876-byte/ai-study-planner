@@ -162,41 +162,29 @@ const Workbench: React.FC = () => {
         })}
        </div>
 
-      {/* 飞书多维表格读取区域 */}
+      {/* 飞书多维表格读取区域 - 紧凑样式 */}
       <div className="mb-12">
         <WobblyCard variant="yellow" decoration="tape" wobblyIndex={3} hoverable={false}>
-          <div className="p-6">
-            <h2 className="font-marker mb-4 text-2xl font-bold">飞书多维表格数据读取</h2>
-            <p className="font-hand mb-4 text-sm text-ink/70">读取指定飞书多维表格（https://guanghe.feishu.cn/base/C3zzbyDkla4IwKspObIcZfU1nHa）中的数据</p>
-            <div className="mb-4">
-              <Button onClick={async () => {
-                setLoadingBitable(true);
-                try {
-                  const data = await fetchBitableData();
-                  setBitableData(data);
-                } catch (err) {
-                  logger.error('读取表格失败', String(err));
-                  toast('读取表格失败，请检查权限配置');
-                } finally {
-                  setLoadingBitable(false);
-                }
-              }} disabled={loadingBitable}>
-                {loadingBitable ? <><Loader2 className="mr-2 size-4 animate-spin" />读取中...</> : '点击读取表格数据'}
-              </Button>
+          <div className="flex items-center justify-between gap-4 p-4">
+            <div className="flex-1">
+              <h2 className="font-marker text-lg font-bold">飞书多维表格数据</h2>
+              <p className="font-hand text-xs text-ink/60">读取指定表格数据用于系统配置</p>
             </div>
-            {bitableData && (
-              <div className="mt-4 rounded-md border-2 border-ink/20 bg-white p-4 max-h-96 overflow-auto">
-                <p className="font-hand mb-2 text-xs font-bold text-ink/70">总记录数：{bitableData.total}条</p>
-                <div className="space-y-4">
-                  {bitableData.records.map((item: any, index: number) => (
-                    <div key={item.id} className="border-b border-ink/10 pb-2 last:border-0 last:pb-0">
-                      <p className="font-hand text-xs font-bold text-pen-blue">记录 {index + 1} (ID: {item.id})</p>
-                      <pre className="mt-1 text-xs font-hand whitespace-pre-wrap break-all">{JSON.stringify(item.record, null, 2)}</pre>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <Button size="sm" onClick={async () => {
+              setLoadingBitable(true);
+              try {
+                const data = await fetchBitableData();
+                setBitableData(data);
+                toast(`成功读取 ${data.total} 条记录`);
+              } catch (err) {
+                logger.error('读取表格失败', String(err));
+                toast('读取表格失败，请检查权限配置');
+              } finally {
+                setLoadingBitable(false);
+              }
+            }} disabled={loadingBitable}>
+              {loadingBitable ? <><Loader2 className="mr-1 size-3 animate-spin" />读取中</> : '读取数据'}
+            </Button>
           </div>
         </WobblyCard>
       </div>

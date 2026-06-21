@@ -1,7 +1,7 @@
 /* eslint-disable */
 /** auto generated, do not edit */
 import { sql } from 'drizzle-orm';
-import { index, integer, jsonb, pgTable, text, uuid, varchar, customType } from "drizzle-orm/pg-core"
+import { bigint, index, integer, jsonb, pgTable, text, uniqueIndex, uuid, varchar, customType } from "drizzle-orm/pg-core"
 
 export const customTimestamptz = customType<{
   data: Date;
@@ -117,6 +117,44 @@ export const fileAttachmentArray = customType<{
   },
 });
 
+// Synced table: data is auto-synced from external source. Do not rename or delete this table.
+export const learningSituationData = pgTable("learning_situation_data", {
+  id: uuid("id").primaryKey().unique().defaultRandom(),
+  // Synced field: auto-synced, do not modify or delete
+  baseRecordId: varchar("base_record_id").unique(),
+  // Synced field: auto-synced, do not modify or delete
+  dataType: text("data_type"),
+  // Synced field: auto-synced, do not modify or delete
+  region: text("region"),
+  // Synced field: auto-synced, do not modify or delete
+  gradeLevel: text("grade_level"),
+  // Synced field: auto-synced, do not modify or delete
+  coreContent: text("core_content"),
+  // Synced field: auto-synced, do not modify or delete
+  officialSourceLink: text("official_source_link"),
+  // Synced field: auto-synced, do not modify or delete
+  officialReleaseTime: text("official_release_time"),
+  // Synced field: auto-synced, do not modify or delete
+  collectionUpdateTime: text("collection_update_time"),
+  // Synced field: auto-synced, do not modify or delete
+  dataStatus: text("data_status"),
+  // Synced field: auto-synced, do not modify or delete
+  year: bigint("year", { mode: 'number' }),
+  // Synced field: auto-synced, do not modify or delete
+  duplicateCheckKey: text("duplicate_check_key"),
+  // System field: Creation time (auto-filled, do not modify)
+  createdAt: customTimestamptz("_created_at", { precision: 6 }).notNull().default(sql`now()`),
+  // System field: Creator (auto-filled, do not modify)
+  createdBy: userProfile("_created_by"),
+  // System field: Update time (auto-filled, do not modify)
+  updatedAt: customTimestamptz("_updated_at", { precision: 6 }).notNull().default(sql`now()`),
+  // System field: Updater (auto-filled, do not modify)
+  updatedBy: userProfile("_updated_by"),
+}, (table) => [
+  uniqueIndex("unq_1868248208479271").on(table.id),
+  uniqueIndex("unq_1868248208480407").on(table.baseRecordId),
+]);
+
 export const admissionPolicy = pgTable("admission_policy", {
   id: uuid("id").primaryKey().defaultRandom(),
   region: varchar("region", { length: 100 }).notNull(),
@@ -224,4 +262,5 @@ export const diagnosisRecord = pgTable("diagnosis_record", {
 export const admissionPolicyTable = admissionPolicy;
 export const diagnosisRecordTable = diagnosisRecord;
 export const knowledgePointTable = knowledgePoint;
+export const learningSituationDataTable = learningSituationData;
 export const planRecordTable = planRecord;
