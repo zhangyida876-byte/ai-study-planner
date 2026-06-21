@@ -3,7 +3,7 @@ import { Copy, Check, Loader2, Clock, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import { diagnosis as diagnosisApi } from '@client/src/api';
-import { streamDiagnosisReport, buildScoresText, buildDiagnosisPrompt, type DiagnosisFormContext } from '@client/src/api/plugins';
+import { streamDiagnosisReport, buildScoresText, buildDiagnosisPrompt, getEducationStage, type DiagnosisFormContext } from '@client/src/api/plugins';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { Button } from '@/components/ui/button';
@@ -20,9 +20,10 @@ function getCountdown(examDate: string): number | null {
 }
 
 function getExamLabel(grade: string): string {
-  if (['高一', '高二', '高三'].includes(grade)) return '高考';
-  if (['初一', '初二', '初三'].includes(grade)) return '中考';
-  return '考试';
+  const stage = getEducationStage(grade);
+  if (stage === 'high') return '高考';
+  if (stage === 'middle') return '中考';
+  return '小升初';
 }
 
 /* ===== Component ===== */
@@ -80,18 +81,20 @@ const Diagnosis: React.FC = () => {
         '物理': 100, '化学': 100, '生物': 100,
         '历史': 100, '地理': 100, '政治&道法': 100,
       };
+      const stage = getEducationStage(data.grade);
+      const examType = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '期末统考';
       const formCtx: DiagnosisFormContext = {
         grade: data.grade,
         region: data.region,
         scores,
         scoreMaxValues,
-        examType: data.grade.includes('高') ? '高考模拟' : data.grade.includes('初') ? '中考模拟' : '期末统考',
+        examType,
         boardingType: data.boardingType,
         monthlyStudyHours: data.monthlyStudyHours,
         examMode: data.examMode,
         problemDesc: data.problemDesc,
         targetSchool: data.targetSchool,
-        targetScore: data.targetScore,
+        targetScore: stage === 'elementary' ? undefined : data.targetScore,
         examDate: data.examDate,
       };
       const scoresText = buildScoresText(scores, scoreMaxValues);
@@ -134,11 +137,16 @@ const Diagnosis: React.FC = () => {
 
   const countdown = studentInfo?.examDate ? getCountdown(studentInfo.examDate) : null;
   const examLabel = studentInfo ? getExamLabel(studentInfo.grade) : '';
+  const studentStage = studentInfo ? getEducationStage(studentInfo.grade) : 'middle';
   const totalScore = studentInfo
-    ? ['chinese', 'math', 'english', 'physics', 'chemistry', 'biology', 'history', 'geography', 'politics']
-        .reduce((sum, key) => sum + ((studentInfo[key as keyof DiagnosisFormData] as number) || 0), 0)
+    ? (studentStage === 'high'
+        ? ['chinese', 'math', 'english', 'physics', 'chemistry', 'biology', 'history', 'geography', 'politics']
+        : studentStage === 'elementary'
+          ? ['chinese', 'math', 'english']
+          : ['chinese', 'math', 'english', 'physics', 'chemistry', 'biology', 'history', 'geography', 'politics']
+      ).reduce((sum, key) => sum + ((studentInfo[key as keyof DiagnosisFormData] as number) || 0), 0)
     : 0;
-  const scoreGap = studentInfo?.targetScore != null ? studentInfo.targetScore - totalScore : null;
+  const scoreGap = (studentInfo?.targetScore != null && studentStage !== 'elementary') ? studentInfo.targetScore - totalScore : null;
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
@@ -198,21 +206,25 @@ const Diagnosis: React.FC = () => {
                 )}
 
                 {/* Target school & score */}
-                {(studentInfo?.targetSchool || studentInfo?.targetScore != null) && (
+                {(studentInfo?.targetSchool || (studentInfo?.targetScore != null && studentStage !== 'elementary')) && (
                   <div className="mt-3 rounded-lg border-2 border-dashed border-pen-blue/30 bg-pen-blue/5 p-3">
                     <div className="flex flex-wrap items-center gap-4 text-sm">
                       {studentInfo?.targetSchool && (
                         <div className="flex items-center gap-1.5">
                           <Target className="size-4 text-pen-blue" />
-                          <span className="font-hand text-ink/60">目标院校：</span>
+                          <span className="font-hand text-ink/60">
+                            {studentStage === 'high' ? '目标大学：' : studentStage === 'elementary' ? '目标初中：' : '目标院校：'}
+                          </span>
                           <span className="font-marker font-bold text-pen-blue">
                             {studentInfo.targetSchool}
                           </span>
                         </div>
                       )}
-                      {studentInfo?.targetScore != null && (
+                      {studentInfo?.targetScore != null && studentStage !== 'elementary' && (
                         <div className="flex items-center gap-1.5">
-                          <span className="font-hand text-ink/60">最新分数线：</span>
+                          <span className="font-hand text-ink/60">
+                            {studentStage === 'high' ? '大学投档线：' : '最新分数线：'}
+                          </span>
                           <span className="font-marker font-bold text-pen-blue">
                             {studentInfo.targetScore}分
                           </span>

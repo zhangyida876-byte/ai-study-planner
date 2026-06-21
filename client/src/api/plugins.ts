@@ -7,7 +7,25 @@ export const PLUGIN_IDS = {
   TIMELINE: 'exam_schedule_timeline_generator_1',
   POLICY_SEARCH: 'exam_policy_search_1',
   KNOWLEDGE_ANALYSIS: 'knowledge_point_deep_analysis_1',
+  JUNIOR_HIGH_SEARCH: 'junior_high_school_tier_search_1',
+  COLLEGE_POLICY_SEARCH: 'college_entrance_policy_search_1',
+  COLLEGE_MAJOR_QUERY: 'college_major_admission_query_1',
 } as const;
+
+export type EducationStage = 'elementary' | 'middle' | 'high';
+
+export function getEducationStage(grade: string): EducationStage {
+  if (['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'].includes(grade)) return 'elementary';
+  if (['高一', '高二', '高三'].includes(grade)) return 'high';
+  return 'middle';
+}
+
+export function getExamTypeByGrade(grade: string): string {
+  const stage = getEducationStage(grade);
+  if (stage === 'high') return '高考';
+  if (stage === 'middle') return '中考';
+  return '小升初';
+}
 
 export interface DiagnosisReportInput {
   student_grade: string;
@@ -115,6 +133,42 @@ export async function* streamPolicySearch(input: PolicySearchInput) {
   }
 }
 
+export interface CollegeMajorQueryInput {
+  region: string;
+  university_name: string;
+  selected_subjects?: string;
+}
+
+export async function* streamJuniorHighSearch(input: { region: string; school_name?: string }) {
+  const stream = capabilityClient
+    .load(PLUGIN_IDS.JUNIOR_HIGH_SEARCH)
+    .callStream('searchSummary', { ...input } as Record<string, unknown>);
+  for await (const chunk of stream) {
+    const summary = (chunk as { summary?: string }).summary || '';
+    if (summary) yield summary;
+  }
+}
+
+export async function* streamCollegePolicySearch(input: { region: string; year: string; keyword?: string }) {
+  const stream = capabilityClient
+    .load(PLUGIN_IDS.COLLEGE_POLICY_SEARCH)
+    .callStream('searchSummary', { ...input } as Record<string, unknown>);
+  for await (const chunk of stream) {
+    const summary = (chunk as { summary?: string }).summary || '';
+    if (summary) yield summary;
+  }
+}
+
+export async function* streamCollegeMajorQuery(input: CollegeMajorQueryInput) {
+  const stream = capabilityClient
+    .load(PLUGIN_IDS.COLLEGE_MAJOR_QUERY)
+    .callStream('searchSummary', { ...input } as Record<string, unknown>);
+  for await (const chunk of stream) {
+    const summary = (chunk as { summary?: string }).summary || '';
+    if (summary) yield summary;
+  }
+}
+
 export async function* streamKnowledgeAnalysis(input: KnowledgeAnalysisInput) {
   const stream = capabilityClient
     .load(PLUGIN_IDS.KNOWLEDGE_ANALYSIS)
@@ -139,30 +193,49 @@ export function buildScoresText(
 }
 
 export function buildDiagnosisPrompt(ctx: DiagnosisFormContext): string {
+  const stage = getEducationStage(ctx.grade);
   const parts: string[] = [];
   const boardingLabel = ctx.boardingType === 'day' ? '走读' : ctx.boardingType === 'boarding' ? '住读' : '';
   if (boardingLabel) parts.push(`学习模式：${boardingLabel}${ctx.monthlyStudyHours ? `，每月自主学习约${ctx.monthlyStudyHours}小时` : ''}`);
-  if (ctx.examMode) parts.push(`高考选科模式：${ctx.examMode}`);
-  if (ctx.examDate) parts.push(`考试时间：${ctx.examDate}`);
-  if (ctx.targetSchool) parts.push(`目标院校：${ctx.targetSchool}`);
-  if (ctx.targetScore != null) parts.push(`该校2025年录取线：${ctx.targetScore}分`);
+
+  if (stage === 'high') {
+    if (ctx.examMode) parts.push(`高考选科模式：${ctx.examMode}`);
+    if (ctx.examDate) parts.push(`高考日期：${ctx.examDate}`);
+    if (ctx.targetSchool) parts.push(`目标大学：${ctx.targetSchool}`);
+    if (ctx.targetScore != null) parts.push(`该校近年投档线：${ctx.targetScore}分`);
+  } else if (stage === 'middle') {
+    if (ctx.examDate) parts.push(`中考日期：${ctx.examDate}`);
+    if (ctx.targetSchool) parts.push(`目标高中：${ctx.targetSchool}`);
+    if (ctx.targetScore != null) parts.push(`该校2025年录取线：${ctx.targetScore}分`);
+  } else {
+    if (ctx.targetSchool) parts.push(`目标初中：${ctx.targetSchool}`);
+  }
+
   if (ctx.problemDesc && ctx.problemDesc.trim()) {
     parts.push(`学生/家长自述痛点：${ctx.problemDesc.trim()}`);
   }
   const scoresText = buildScoresText(ctx.scores, ctx.scoreMaxValues);
-  return `考试类型：${ctx.examType || '期末统考'}\n各科成绩（含满分与得分率）：${scoresText}\n${parts.join('\n')}`;
+  const examLabel = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '期末统考';
+  return `考试类型：${examLabel}\n各科成绩（含满分与得分率）：${scoresText}\n${parts.join('\n')}`;
 }
 
 export function buildPlanAdditionalInfo(ctx: PlanFormContext): string {
+  const stage = getEducationStage(ctx.grade);
   const parts: string[] = [];
-  parts.push(`升学类型：${ctx.examType}`);
+  parts.push(`升学类型：${stage === 'high' ? '高考' : stage === 'middle' ? '中考' : '小升初'}`);
   parts.push(`当前年级：${ctx.grade}`);
   if (ctx.examYear) parts.push(`目标考试年份：${ctx.examYear}年`);
   const boardingLabel = ctx.boardingType === 'day' ? '走读' : ctx.boardingType === 'boarding' ? '住读' : '';
   if (boardingLabel) parts.push(`学习模式：${boardingLabel}${ctx.monthlyStudyHours ? `，每月自主学习约${ctx.monthlyStudyHours}小时` : ''}`);
-  if (ctx.examMode) parts.push(`高考选科模式：${ctx.examMode}`);
-  if (ctx.targetSchool) parts.push(`目标院校：${ctx.targetSchool}`);
-  if (ctx.targetScore != null) parts.push(`该校2025年录取线：${ctx.targetScore}分`);
+  if (stage === 'high' && ctx.examMode) parts.push(`高考选科模式：${ctx.examMode}`);
+  if (ctx.targetSchool) {
+    const label = stage === 'high' ? '目标大学' : stage === 'middle' ? '目标高中' : '目标初中';
+    parts.push(`${label}：${ctx.targetSchool}`);
+  }
+  if (ctx.targetScore != null) {
+    const label = stage === 'high' ? '该校近年投档线' : '该校最新录取线';
+    parts.push(`${label}：${ctx.targetScore}分`);
+  }
   const scoresText = buildScoresText(ctx.scores, ctx.scoreMaxValues);
   parts.push(`各科成绩（含满分与得分率）：${scoresText}`);
   return parts.join('；');

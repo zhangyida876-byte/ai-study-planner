@@ -187,3 +187,79 @@ export interface KnowledgePointDeepAnalysisOneOutput {
   response?: string;
 }
 // ---- end:knowledge_point_deep_analysis_1 ----
+
+// ---- plugin:junior_high_school_tier_search_1 ----
+// ============================================================
+// 插件 junior_high_school_tier_search_1 (小升初初中梯队信息搜索) 的类型定义
+// 由 get_plugin_ai_json 自动生成
+// ============================================================
+
+export interface JuniorHighSchoolTierSearchOneInput {
+  /** 地区（如：北京市海淀区、湖北省武汉市） */
+  region: string;
+  /** 目标初中名称（可选，为空则搜索全部） */
+  school_name?: string;
+}
+
+/**
+ * capabilityClient.load('junior_high_school_tier_search_1').call<JuniorHighSchoolTierSearchOneOutput>('searchSummary', input)
+ * 直接返回此类型，无 .data 包装，直接解构使用：
+ * const { summary } = result;
+ */
+export interface JuniorHighSchoolTierSearchOneOutput {
+  /** [object Object] */
+  summary: string;
+}
+// ---- end:junior_high_school_tier_search_1 ----
+
+// ---- plugin:college_entrance_policy_search_1 ----
+// ============================================================
+// 插件 college_entrance_policy_search_1 (高考政策搜索插件) 的类型定义
+// 由 get_plugin_ai_json 自动生成
+// ============================================================
+
+export interface CollegeEntrancePolicySearchOneInput {
+  /** 高考所在省份/地区（如湖北省、广东省等） */
+  region: string;
+  /** 高考年份（如2025年、2026年等） */
+  year: string;
+  /** 补充搜索关键词（如新高考、选科、赋分等，可选） */
+  keyword?: string;
+}
+
+/**
+ * capabilityClient.load('college_entrance_policy_search_1').call<CollegeEntrancePolicySearchOneOutput>('searchSummary', input)
+ * 直接返回此类型，无 .data 包装，直接解构使用：
+ * const { summary } = result;
+ */
+export interface CollegeEntrancePolicySearchOneOutput {
+  /** [object Object] */
+  summary: string;
+}
+// ---- end:college_entrance_policy_search_1 ----
+
+// ---- plugin:college_major_admission_query_1 ----
+// ============================================================
+// 插件 college_major_admission_query_1 (高考院校专业信息查询) 的类型定义
+// 由 get_plugin_ai_json 自动生成
+// ============================================================
+
+export interface CollegeMajorAdmissionQueryOneInput {
+  /** 考生所在省份（如湖北省、广东省等） */
+  region: string;
+  /** 目标大学名称 */
+  university_name: string;
+  /** 考生选科组合（如物理+化学+生物，可选） */
+  selected_subjects?: string;
+}
+
+/**
+ * capabilityClient.load('college_major_admission_query_1').call<CollegeMajorAdmissionQueryOneOutput>('searchSummary', input)
+ * 直接返回此类型，无 .data 包装，直接解构使用：
+ * const { summary } = result;
+ */
+export interface CollegeMajorAdmissionQueryOneOutput {
+  /** [object Object] */
+  summary: string;
+}
+// ---- end:college_major_admission_query_1 ----

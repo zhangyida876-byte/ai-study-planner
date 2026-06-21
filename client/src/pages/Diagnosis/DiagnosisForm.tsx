@@ -8,6 +8,7 @@ import { axiosForBackend } from '@lark-apaas/client-toolkit/utils/getAxiosForBac
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import { capabilityClient } from '@lark-apaas/client-toolkit';
 import { policy as policyApi } from '@client/src/api';
+import { PLUGIN_IDS, getEducationStage } from '@client/src/api/plugins';
 import {
   Form,
   FormControl,
@@ -243,6 +244,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
   const watchedRegion = form.watch('region');
   const isHighSchool = ['高一', '高二', '高三'].includes(watchedGrade);
   const isMiddleSchool = ['初一', '初二', '初三'].includes(watchedGrade);
+  const isElementary = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'].includes(watchedGrade);
 
   const displaySchools = fetchedSchools.length > 0 ? fetchedSchools : [];
   const filteredSchools = schoolSearch
@@ -251,23 +253,53 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
 
   useEffect(() => {
     if (!watchedRegion || isCustomRegion) return;
-    if (schoolCacheRef.current[watchedRegion]) {
-      setFetchedSchools(schoolCacheRef.current[watchedRegion]);
+    const stage = getEducationStage(watchedGrade);
+    const cacheKey = `${watchedRegion}_${stage}`;
+    if (schoolCacheRef.current[cacheKey]) {
+      setFetchedSchools(schoolCacheRef.current[cacheKey]);
       return;
     }
     let cancelled = false;
+    const schoolType = stage === 'elementary' ? '初中' : stage === 'high' ? '大学' : '高中';
     const fetchSchools = async () => {
       setSchoolsLoading(true);
       try {
-        const result = await policyApi.searchSchools(watchedRegion);
-        if (cancelled) return;
-        const names = result.schools.map((s) => s.name);
-        const unique = [...new Set(names)];
-        schoolCacheRef.current[watchedRegion] = unique;
-        setFetchedSchools(unique);
+        if (stage === 'middle') {
+          const result = await policyApi.searchSchools(watchedRegion);
+          if (cancelled) return;
+          const names = result.schools.map((s) => s.name);
+          const unique = [...new Set(names)];
+          schoolCacheRef.current[cacheKey] = unique;
+          setFetchedSchools(unique);
+        } else {
+          const pluginId = stage === 'elementary'
+            ? PLUGIN_IDS.JUNIOR_HIGH_SEARCH
+            : PLUGIN_IDS.COLLEGE_MAJOR_QUERY;
+          const input = stage === 'elementary'
+            ? { region: watchedRegion }
+            : { region: watchedRegion, university_name: '' };
+          const streamResult = capabilityClient
+            .load(pluginId)
+            .callStream('searchSummary', input as Record<string, unknown>);
+          let fullContent = '';
+          for await (const chunk of streamResult as AsyncIterable<Record<string, unknown>>) {
+            if (cancelled) break;
+            const delta = typeof chunk?.summary === 'string' ? chunk.summary : '';
+            if (delta) fullContent += delta;
+          }
+          if (cancelled) return;
+          const lines = fullContent.split('\n').map((l: string) => l.trim()).filter(Boolean);
+          const names = lines
+            .filter((l: string) => !l.startsWith('#') && !l.startsWith('-') && !l.startsWith('*') && !l.startsWith('|') && !l.startsWith('\u6570\u636e') && !l.startsWith('\u4fe1\u606f') && !l.startsWith('\u5907\u6ce8'))
+            .map((l: string) => l.replace(/^[\d.\-\s]+/, '').replace(/\uff08.*\uff09$/, '').trim())
+            .filter((l: string) => l.length >= 2 && l.length <= 30);
+          const unique = [...new Set(names)];
+          schoolCacheRef.current[cacheKey] = unique;
+          setFetchedSchools(unique);
+        }
       } catch (err) {
         if (!cancelled) {
-          logger.error('搜索学校失败', String(err));
+          logger.error(`搜索${schoolType}失败`, String(err));
           setFetchedSchools([]);
         }
       } finally {
@@ -276,26 +308,28 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
     };
     fetchSchools();
     return () => { cancelled = true; };
-  }, [watchedRegion, isCustomRegion]);
+  }, [watchedRegion, isCustomRegion, watchedGrade]);
 
   const watchedSchool = form.watch('targetSchool');
 
   useEffect(() => {
-    if (!watchedRegion || !watchedSchool) return;
+    if (!watchedRegion || !watchedSchool || isElementary) return;
     let cancelled = false;
     const fetchScore = async () => {
       setScoreSuggesting(true);
       setScoreSuggested(false);
       try {
-        const result = await policyApi.searchSchools(watchedRegion);
-        if (cancelled) return;
-        const match = result.schools.find(
-          (s) => s.name === watchedSchool || s.name.includes(watchedSchool) || watchedSchool.includes(s.name)
-        );
-        if (match && match.score > 0) {
-          form.setValue('targetScore', match.score);
-          setScoreSuggested(true);
-          return;
+        if (isMiddleSchool) {
+          const result = await policyApi.searchSchools(watchedRegion);
+          if (cancelled) return;
+          const match = result.schools.find(
+            (s) => s.name === watchedSchool || s.name.includes(watchedSchool) || watchedSchool.includes(s.name)
+          );
+          if (match && match.score > 0) {
+            form.setValue('targetScore', match.score);
+            setScoreSuggested(true);
+            return;
+          }
         }
       } catch {
         // database lookup failed, try AI plugin
@@ -333,7 +367,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
     };
     fetchScore();
     return () => { cancelled = true; };
-  }, [watchedRegion, watchedSchool, watchedGrade, form]);
+  }, [watchedRegion, watchedSchool, watchedGrade, isElementary, isMiddleSchool, form]);
 
   const cities = PROVINCE_CITIES[selectedProvince] || [];
 
@@ -652,14 +686,14 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
         )}
 
         {/* Target School (searchable) & Score */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className={isElementary ? '' : 'grid grid-cols-2 gap-3'}>
           <FormField
             control={form.control}
             name="targetSchool"
             render={({ field }) => (
               <FormItem className="relative">
                 <FormLabel>
-                  目标院校
+                  {isElementary ? '目标初中' : isHighSchool ? '目标大学' : '目标院校'}
                   {schoolsLoading && (
                     <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-pen-blue">
                       <Loader2 className="size-3 animate-spin" />
@@ -671,7 +705,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder="搜索或输入院校名称"
+                      placeholder={isElementary ? '搜索或输入初中名称' : isHighSchool ? '搜索或输入大学名称' : '搜索或输入院校名称'}
                       className="pl-8"
                       {...field}
                       value={field.value ?? ''}
@@ -687,7 +721,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
                         {schoolsLoading ? (
                           <div className="flex items-center gap-2 px-3 py-3 text-xs text-muted-foreground">
                             <Loader2 className="size-3 animate-spin" />
-                            正在查询学校数据...
+                            正在查询{isElementary ? '初中' : isHighSchool ? '大学' : '学校'}数据...
                           </div>
                         ) : filteredSchools.length > 0 ? (
                           filteredSchools.map((school) => (
@@ -719,45 +753,47 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="targetScore"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  最新分数线
-                  {scoreSuggesting && (
-                    <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-pen-blue">
-                      <Loader2 className="size-3 animate-spin" />
-                      查询中
-                    </span>
-                  )}
-                  {scoreSuggested && field.value != null && (
-                    <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-emerald-600">
-                      <Sparkles className="size-3" />
-                      已匹配
-                    </span>
-                  )}
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="选择院校后自动匹配分数线"
-                    value={
-                      field.value !== undefined && field.value !== null
-                        ? String(field.value)
-                        : ''
-                    }
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      field.onChange(raw === '' ? undefined : Number(raw));
-                    }}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {!isElementary && (
+            <FormField
+              control={form.control}
+              name="targetScore"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {isHighSchool ? '大学投档线' : '最新分数线'}
+                    {scoreSuggesting && (
+                      <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-pen-blue">
+                        <Loader2 className="size-3 animate-spin" />
+                        查询中
+                      </span>
+                    )}
+                    {scoreSuggested && field.value != null && (
+                      <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-emerald-600">
+                        <Sparkles className="size-3" />
+                        已匹配
+                      </span>
+                    )}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder={isHighSchool ? '选择大学后自动匹配投档线' : '选择院校后自动匹配分数线'}
+                      value={
+                        field.value !== undefined && field.value !== null
+                          ? String(field.value)
+                          : ''
+                      }
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        field.onChange(raw === '' ? undefined : Number(raw));
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
 
         {/* Subject Scores */}
