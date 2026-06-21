@@ -365,60 +365,68 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating, o
 
   useEffect(() => {
     if (!watchedRegion || !watchedSchool || isElementary) return;
+    if (isHighSchool && watchedMajor) return;
     let cancelled = false;
-    const fetchScore = async () => {
-      setScoreSuggesting(true);
-      setScoreSuggested(false);
-      try {
-        if (isMiddleSchool) {
-          const result = await policyApi.searchSchools(watchedRegion);
-          if (cancelled) return;
-          const match = result.schools.find(
-            (s) => s.name === watchedSchool || s.name.includes(watchedSchool) || watchedSchool.includes(s.name)
-          );
-          if (match && match.score > 0) {
-            form.setValue('targetScore', match.score);
-            setScoreSuggested(true);
-            return;
+    const timer = setTimeout(() => {
+      const fetchScore = async () => {
+        setScoreSuggesting(true);
+        setScoreSuggested(false);
+        try {
+          if (isMiddleSchool) {
+            const result = await policyApi.searchSchools(watchedRegion);
+            if (cancelled) return;
+            const match = result.schools.find(
+              (s) => s.name === watchedSchool || s.name.includes(watchedSchool) || watchedSchool.includes(s.name)
+            );
+            if (match && match.score > 0) {
+              form.setValue('targetScore', match.score);
+              setScoreSuggested(true);
+              return;
+            }
           }
+        } catch {
+          // database lookup failed, try AI plugin
         }
-      } catch {
-        // database lookup failed, try AI plugin
-      }
-      try {
-        const isHS = ['高一', '高二', '高三'].includes(watchedGrade);
-        const examType = isHS ? '高考' : '中考';
-        const streamResult = capabilityClient
-          .load('high_school_admission_score_query_1')
-          .callStream('searchSummary', {
-            region: watchedRegion,
-            school_name: watchedSchool,
-            exam_type: examType,
-          });
-        let fullContent = '';
-        for await (const chunk of streamResult as AsyncIterable<Record<string, unknown>>) {
-          if (cancelled) break;
-          const delta = typeof chunk?.content === 'string' ? chunk.content : '';
-          if (delta) fullContent += delta;
+        try {
+          const isHS = ['高一', '高二', '高三'].includes(watchedGrade);
+          const examType = isHS ? '高考' : '中考';
+          const streamResult = capabilityClient
+            .load('high_school_admission_score_query_1')
+            .callStream('searchSummary', {
+              region: watchedRegion,
+              school_name: watchedSchool,
+              exam_type: examType,
+            });
+          let fullContent = '';
+          for await (const chunk of streamResult as AsyncIterable<Record<string, unknown>>) {
+            if (cancelled) break;
+            const delta = typeof chunk?.content === 'string' ? chunk.content : '';
+            if (delta) fullContent += delta;
+          }
+          if (cancelled) return;
+          const matches = fullContent.match(/(\d{3})\s*分/g);
+          const scores = matches?.map((m: string) => parseInt(m, 10)).filter((n: number) => n >= 200 && n <= 900) ?? [];
+          if (scores.length > 0) {
+            form.setValue('targetScore', Math.max(...scores));
+            setScoreSuggested(true);
+          }
+        } catch (err) {
+          if (!cancelled) {
+            const msg = String(err);
+            if (msg.includes('RateLimit') || msg.includes('频繁')) {
+              logger.info('分数线查询限流，跳过');
+            } else {
+              logger.error('获取分数线失败', msg);
+            }
+          }
+        } finally {
+          if (!cancelled) setScoreSuggesting(false);
         }
-        if (cancelled) return;
-        const matches = fullContent.match(/(\d{3})\s*分/g);
-        const scores = matches?.map((m: string) => parseInt(m, 10)).filter((n: number) => n >= 200 && n <= 900) ?? [];
-        if (scores.length > 0) {
-          form.setValue('targetScore', Math.max(...scores));
-          setScoreSuggested(true);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          logger.error('获取分数线失败', String(err));
-        }
-      } finally {
-        if (!cancelled) setScoreSuggesting(false);
-      }
-    };
-    fetchScore();
-    return () => { cancelled = true; };
-  }, [watchedRegion, watchedSchool, watchedGrade, isElementary, isMiddleSchool, form]);
+      };
+      fetchScore();
+    }, 800);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [watchedRegion, watchedSchool, watchedGrade, watchedMajor, isElementary, isMiddleSchool, isHighSchool, form]);
 
   useEffect(() => {
     if (!isHighSchool || !watchedRegion || !watchedSchool || !watchedMajor) {
@@ -426,53 +434,63 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating, o
       return;
     }
     let cancelled = false;
-    const fetchMajorInfo = async () => {
-      setMajorInfoLoading(true);
-      setMajorInfoContent('');
-      try {
-        const selectedSubjects = watchedMode
-          ? [
-              ...(watchedPhysics != null ? ['物理'] : []),
-              ...(watchedHistory != null ? ['历史'] : []),
-              ...(['chemistry', 'biology', 'geography', 'politics'] as const)
-                .filter((k) => form.getValues(k) != null)
-                .map((k) => ({ chemistry: '化学', biology: '生物', geography: '地理', politics: '政治' } as Record<string, string>)[k]),
-            ].join('+')
-          : '';
-        const streamResult = capabilityClient
-          .load(PLUGIN_IDS.MAJOR_CAREER_QUERY)
-          .callStream('searchSummary', {
-            region: watchedRegion,
-            university_name: watchedSchool,
-            major_name: watchedMajor,
-            selected_subjects: selectedSubjects || undefined,
-          } as Record<string, unknown>);
-        let fullContent = '';
-        for await (const chunk of streamResult as AsyncIterable<Record<string, unknown>>) {
-          if (cancelled) break;
-          const delta = typeof chunk?.summary === 'string' ? chunk.summary : '';
-          if (delta) {
-            fullContent += delta;
-            if (!cancelled) setMajorInfoContent(fullContent);
+    const timer = setTimeout(() => {
+      const fetchMajorInfo = async () => {
+        setMajorInfoLoading(true);
+        setMajorInfoContent('');
+        try {
+          const selectedSubjects = watchedMode
+            ? [
+                ...(watchedPhysics != null ? ['物理'] : []),
+                ...(watchedHistory != null ? ['历史'] : []),
+                ...(['chemistry', 'biology', 'geography', 'politics'] as const)
+                  .filter((k) => form.getValues(k) != null)
+                  .map((k) => ({ chemistry: '化学', biology: '生物', geography: '地理', politics: '政治' } as Record<string, string>)[k]),
+              ].join('+')
+            : '';
+          const streamResult = capabilityClient
+            .load(PLUGIN_IDS.MAJOR_CAREER_QUERY)
+            .callStream('searchSummary', {
+              region: watchedRegion,
+              university_name: watchedSchool,
+              major_name: watchedMajor,
+              selected_subjects: selectedSubjects || undefined,
+            } as Record<string, unknown>);
+          let fullContent = '';
+          for await (const chunk of streamResult as AsyncIterable<Record<string, unknown>>) {
+            if (cancelled) break;
+            const delta = typeof chunk?.summary === 'string' ? chunk.summary : '';
+            if (delta) {
+              fullContent += delta;
+              if (!cancelled) setMajorInfoContent(fullContent);
+            }
           }
-        }
-        if (!cancelled) {
-          const matches = fullContent.match(/(\d{3})\s*分/g);
-          const scores = matches?.map((m: string) => parseInt(m, 10)).filter((n: number) => n >= 200 && n <= 900) ?? [];
-          if (scores.length > 0) {
-            form.setValue('targetScore', Math.max(...scores));
-            setScoreSuggested(true);
+          if (!cancelled) {
+            const matches = fullContent.match(/(\d{3})\s*分/g);
+            const scores = matches?.map((m: string) => parseInt(m, 10)).filter((n: number) => n >= 200 && n <= 900) ?? [];
+            if (scores.length > 0) {
+              form.setValue('targetScore', Math.max(...scores));
+              setScoreSuggested(true);
+            }
+            onMajorInfoChange?.(fullContent);
           }
-          onMajorInfoChange?.(fullContent);
+        } catch (err) {
+          if (!cancelled) {
+            const msg = String(err);
+            if (msg.includes('RateLimit') || msg.includes('频繁')) {
+              logger.info('专业查询限流，请稍后重试');
+              setMajorInfoContent('查询过于频繁，请稍后重新输入专业名称触发查询');
+            } else {
+              logger.error('查询专业信息失败', msg);
+            }
+          }
+        } finally {
+          if (!cancelled) setMajorInfoLoading(false);
         }
-      } catch (err) {
-        if (!cancelled) logger.error('查询专业信息失败', String(err));
-      } finally {
-        if (!cancelled) setMajorInfoLoading(false);
-      }
-    };
-    fetchMajorInfo();
-    return () => { cancelled = true; };
+      };
+      fetchMajorInfo();
+    }, 800);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [isHighSchool, watchedRegion, watchedSchool, watchedMajor, watchedMode, watchedPhysics, watchedHistory, form]);
 
   const cities = PROVINCE_CITIES[selectedProvince] || [];
