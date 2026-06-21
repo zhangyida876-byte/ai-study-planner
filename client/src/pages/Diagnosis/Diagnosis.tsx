@@ -33,6 +33,7 @@ const Diagnosis: React.FC = () => {
   const [reportContent, setReportContent] = useState('');
   const [copied, setCopied] = useState(false);
   const [studentInfo, setStudentInfo] = useState<DiagnosisFormData | null>(null);
+  const [majorInfoContent, setMajorInfoContent] = useState('');
 
   const handleCopy = useCallback(async () => {
     try {
@@ -83,7 +84,7 @@ const Diagnosis: React.FC = () => {
         '物理': 100, '化学': 100, '生物': 100,
         '历史': 100, '地理': 100, '政治&道法': 100,
       };
-      const examType = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '期末统考';
+      const examType = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '小升初期末统考';
       const formCtx: DiagnosisFormContext = {
         grade: data.grade,
         region: data.region,
@@ -95,6 +96,7 @@ const Diagnosis: React.FC = () => {
         examMode: data.examMode,
         problemDesc: data.problemDesc,
         targetSchool: data.targetSchool,
+        targetMajor: data.targetMajor,
         targetScore: stage === 'elementary' ? undefined : data.targetScore,
         examDate: data.examDate,
       };
@@ -156,7 +158,7 @@ const Diagnosis: React.FC = () => {
         <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false}>
           <div className="p-6">
             <h2 className="font-marker mb-6 text-2xl font-bold">学生信息</h2>
-            <DiagnosisForm onSubmit={onSubmit} isGenerating={isGenerating} />
+            <DiagnosisForm onSubmit={onSubmit} isGenerating={isGenerating} onMajorInfoChange={setMajorInfoContent} />
           </div>
         </WobblyCard>
       </div>
@@ -221,6 +223,14 @@ const Diagnosis: React.FC = () => {
                           </span>
                         </div>
                       )}
+                      {studentInfo?.targetMajor && studentStage === 'high' && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-hand text-ink/60">目标专业：</span>
+                          <span className="font-marker font-bold text-marker-red">
+                            {studentInfo.targetMajor}
+                          </span>
+                        </div>
+                      )}
                       {studentInfo?.targetScore != null && studentStage !== 'elementary' && (
                         <div className="flex items-center gap-1.5">
                           <span className="font-hand text-ink/60">
@@ -236,6 +246,16 @@ const Diagnosis: React.FC = () => {
                           )}
                         </div>
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Major career info panel */}
+                {majorInfoContent && studentStage === 'high' && (
+                  <div className="mt-3 rounded-lg border-2 border-marker-red/20 bg-marker-red/5 p-4">
+                    <h3 className="font-marker mb-2 text-lg font-bold text-marker-red">专业与职业信息</h3>
+                    <div className="font-hand prose-sm">
+                      <Streamdown>{majorInfoContent}</Streamdown>
                     </div>
                   </div>
                 )}

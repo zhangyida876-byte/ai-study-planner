@@ -263,3 +263,31 @@ export interface CollegeMajorAdmissionQueryOneOutput {
   summary: string;
 }
 // ---- end:college_major_admission_query_1 ----
+
+// ---- plugin:gaokao_major_career_salary_query_1 ----
+// ============================================================
+// 插件 gaokao_major_career_salary_query_1 (高考专业+职业薪资综合查询) 的类型定义
+// 由 get_plugin_ai_json 自动生成
+// ============================================================
+
+export interface GaokaoMajorCareerSalaryQueryOneInput {
+  /** 考生所在省份（如湖北省、广东省等） */
+  region: string;
+  /** 目标大学名称 */
+  university_name: string;
+  /** 目标专业名称 */
+  major_name: string;
+  /** 考生选科组合（如物理+化学+生物，可选） */
+  selected_subjects?: string;
+}
+
+/**
+ * capabilityClient.load('gaokao_major_career_salary_query_1').call<GaokaoMajorCareerSalaryQueryOneOutput>('searchSummary', input)
+ * 直接返回此类型，无 .data 包装，直接解构使用：
+ * const { summary } = result;
+ */
+export interface GaokaoMajorCareerSalaryQueryOneOutput {
+  /** [object Object] */
+  summary: string;
+}
+// ---- end:gaokao_major_career_salary_query_1 ----

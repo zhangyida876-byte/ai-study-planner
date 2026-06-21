@@ -11,6 +11,7 @@ export const PLUGIN_IDS = {
   HIGH_SCHOOL_REGION_SEARCH: 'high_school_search_by_region_1',
   COLLEGE_POLICY_SEARCH: 'college_entrance_policy_search_1',
   COLLEGE_MAJOR_QUERY: 'college_major_admission_query_1',
+  MAJOR_CAREER_QUERY: 'gaokao_major_career_salary_query_1',
 } as const;
 
 export type EducationStage = 'elementary' | 'middle' | 'high';
@@ -47,6 +48,7 @@ export interface DiagnosisFormContext {
   problemDesc?: string;
   targetSchool?: string;
   targetScore?: number;
+  targetMajor?: string;
   examDate?: string;
 }
 
@@ -170,6 +172,23 @@ export async function* streamCollegeMajorQuery(input: CollegeMajorQueryInput) {
   }
 }
 
+export interface MajorCareerQueryInput {
+  region: string;
+  university_name: string;
+  major_name: string;
+  selected_subjects?: string;
+}
+
+export async function* streamMajorCareerQuery(input: MajorCareerQueryInput) {
+  const stream = capabilityClient
+    .load(PLUGIN_IDS.MAJOR_CAREER_QUERY)
+    .callStream('searchSummary', { ...input } as Record<string, unknown>);
+  for await (const chunk of stream) {
+    const summary = (chunk as { summary?: string }).summary || '';
+    if (summary) yield summary;
+  }
+}
+
 export async function* streamKnowledgeAnalysis(input: KnowledgeAnalysisInput) {
   const stream = capabilityClient
     .load(PLUGIN_IDS.KNOWLEDGE_ANALYSIS)
@@ -203,6 +222,7 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext): string {
     if (ctx.examMode) parts.push(`高考选科模式：${ctx.examMode}`);
     if (ctx.examDate) parts.push(`高考日期：${ctx.examDate}`);
     if (ctx.targetSchool) parts.push(`目标大学：${ctx.targetSchool}`);
+    if (ctx.targetMajor) parts.push(`目标专业：${ctx.targetMajor}`);
     if (ctx.targetScore != null) parts.push(`该校近年投档线：${ctx.targetScore}分`);
   } else if (stage === 'middle') {
     if (ctx.examDate) parts.push(`中考日期：${ctx.examDate}`);
@@ -210,13 +230,14 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext): string {
     if (ctx.targetScore != null) parts.push(`该校2025年录取线：${ctx.targetScore}分`);
   } else {
     if (ctx.targetSchool) parts.push(`目标初中：${ctx.targetSchool}`);
+    parts.push(`升学方向：小升初（免试就近入学、公民同招）`);
   }
 
   if (ctx.problemDesc && ctx.problemDesc.trim()) {
     parts.push(`学生/家长自述痛点：${ctx.problemDesc.trim()}`);
   }
   const scoresText = buildScoresText(ctx.scores, ctx.scoreMaxValues);
-  const examLabel = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '期末统考';
+  const examLabel = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '小升初期末统考';
   return `考试类型：${examLabel}\n各科成绩（含满分与得分率）：${scoresText}\n${parts.join('\n')}`;
 }
 

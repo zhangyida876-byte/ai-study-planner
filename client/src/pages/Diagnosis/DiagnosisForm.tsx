@@ -42,6 +42,7 @@ const diagnosisFormSchema = z.object({
   examMode: z.string().optional(),
   examDate: z.string().optional(),
   targetSchool: z.string().optional(),
+  targetMajor: z.string().optional(),
   targetScore: z.number().optional(),
   chinese: optionalScore(),
   math: optionalScore(),
@@ -194,6 +195,7 @@ const FORM_DEFAULTS: DiagnosisFormData = {
   examMode: undefined,
   examDate: '',
   targetSchool: '',
+  targetMajor: '',
   targetScore: undefined,
   chinese: undefined,
   math: undefined,
@@ -247,9 +249,10 @@ function buildRegionText(province: string, city: string, county: string): string
 interface DiagnosisFormProps {
   onSubmit: (data: DiagnosisFormData) => void;
   isGenerating: boolean;
+  onMajorInfoChange?: (content: string) => void;
 }
 
-const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating }) => {
+const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating, onMajorInfoChange }) => {
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [county, setCounty] = useState('');
@@ -261,6 +264,8 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
   const [scoreSuggested, setScoreSuggested] = useState(false);
   const [fetchedSchools, setFetchedSchools] = useState<string[]>([]);
   const [schoolsLoading, setSchoolsLoading] = useState(false);
+  const [majorInfoContent, setMajorInfoContent] = useState('');
+  const [majorInfoLoading, setMajorInfoLoading] = useState(false);
   const customRegionRef = useRef('');
   const schoolCacheRef = useRef<Record<string, string[]>>({});
 
@@ -274,6 +279,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
   const watchedPhysics = form.watch('physics');
   const watchedHistory = form.watch('history');
   const watchedRegion = form.watch('region');
+  const watchedMajor = form.watch('targetMajor');
   const isHighSchool = ['高一', '高二', '高三'].includes(watchedGrade);
   const isMiddleSchool = ['初一', '初二', '初三'].includes(watchedGrade);
   const isElementary = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'].includes(watchedGrade);
@@ -413,6 +419,61 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
     fetchScore();
     return () => { cancelled = true; };
   }, [watchedRegion, watchedSchool, watchedGrade, isElementary, isMiddleSchool, form]);
+
+  useEffect(() => {
+    if (!isHighSchool || !watchedRegion || !watchedSchool || !watchedMajor) {
+      if (!watchedMajor) setMajorInfoContent('');
+      return;
+    }
+    let cancelled = false;
+    const fetchMajorInfo = async () => {
+      setMajorInfoLoading(true);
+      setMajorInfoContent('');
+      try {
+        const selectedSubjects = watchedMode
+          ? [
+              ...(watchedPhysics != null ? ['物理'] : []),
+              ...(watchedHistory != null ? ['历史'] : []),
+              ...(['chemistry', 'biology', 'geography', 'politics'] as const)
+                .filter((k) => form.getValues(k) != null)
+                .map((k) => ({ chemistry: '化学', biology: '生物', geography: '地理', politics: '政治' } as Record<string, string>)[k]),
+            ].join('+')
+          : '';
+        const streamResult = capabilityClient
+          .load(PLUGIN_IDS.MAJOR_CAREER_QUERY)
+          .callStream('searchSummary', {
+            region: watchedRegion,
+            university_name: watchedSchool,
+            major_name: watchedMajor,
+            selected_subjects: selectedSubjects || undefined,
+          } as Record<string, unknown>);
+        let fullContent = '';
+        for await (const chunk of streamResult as AsyncIterable<Record<string, unknown>>) {
+          if (cancelled) break;
+          const delta = typeof chunk?.summary === 'string' ? chunk.summary : '';
+          if (delta) {
+            fullContent += delta;
+            if (!cancelled) setMajorInfoContent(fullContent);
+          }
+        }
+        if (!cancelled) {
+          const matches = fullContent.match(/(\d{3})\s*分/g);
+          const scores = matches?.map((m: string) => parseInt(m, 10)).filter((n: number) => n >= 200 && n <= 900) ?? [];
+          if (scores.length > 0) {
+            form.setValue('targetScore', Math.max(...scores));
+            setScoreSuggested(true);
+          }
+          onMajorInfoChange?.(fullContent);
+        }
+      } catch (err) {
+        if (!cancelled) logger.error('查询专业信息失败', String(err));
+      } finally {
+        if (!cancelled) setMajorInfoLoading(false);
+      }
+    };
+    fetchMajorInfo();
+    return () => { cancelled = true; };
+  }, [isHighSchool, watchedRegion, watchedSchool, watchedMajor, watchedMode, watchedPhysics, watchedHistory, form]);
 
   const cities = PROVINCE_CITIES[selectedProvince] || [];
 
@@ -843,6 +904,45 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
             />
           )}
         </div>
+
+        {/* Target Major (high school only, after university selected) */}
+        {isHighSchool && watchedSchool && (
+          <FormField
+            control={form.control}
+            name="targetMajor"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  目标专业
+                  {majorInfoLoading && (
+                    <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-pen-blue">
+                      <Loader2 className="size-3 animate-spin" />
+                      查询中
+                    </span>
+                  )}
+                  {majorInfoContent && !majorInfoLoading && (
+                    <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-emerald-600">
+                      <Sparkles className="size-3" />
+                      已获取
+                    </span>
+                  )}
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="输入专业名称，如：计算机科学与技术"
+                    {...field}
+                    value={field.value ?? ''}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      if (!e.target.value) setMajorInfoContent('');
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         {/* Subject Scores */}
         <div>

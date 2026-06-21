@@ -1,0 +1,41 @@
+{
+  "id": "gaokao_major_career_salary_query_1",
+  "pluginKey": "@official-plugins/ai-search-summary",
+  "pluginVersion": "1.0.11",
+  "name": "高考专业+职业薪资综合查询",
+  "description": "查询目标大学专业的录取分数线、选科要求、对口工作方向和平均薪资水平，辅助高中升学规划决策。",
+  "icon": "",
+  "paramsSchema": {
+    "type": "object",
+    "properties": {
+      "region": {
+        "type": "string",
+        "description": "考生所在省份（如湖北省、广东省等）"
+      },
+      "university_name": {
+        "type": "string",
+        "description": "目标大学名称"
+      },
+      "major_name": {
+        "type": "string",
+        "description": "目标专业名称"
+      },
+      "selected_subjects": {
+        "type": "string",
+        "description": "考生选科组合（如物理+化学+生物，可选）"
+      }
+    },
+    "required": [
+      "region",
+      "university_name",
+      "major_name"
+    ]
+  },
+  "formValue": {
+    "query": "{{input.university_name}} {{input.major_name}} {{input.region}} 2024年 2025年 录取分数线 投档线 位次 选科要求 单科要求 就业方向 对口工作 平均薪资 起薪 职业发展",
+    "instruction": "你是高考升学规划与职业咨询资深研究员，所有数据必须来自官方渠道和权威统计。请严格按以下要求输出{{input.university_name}}的{{input.major_name}}专业在{{input.region}}的详细信息：\n\n## 一、录取分数线\n1. 该校{{input.major_name}}专业近年在{{input.region}}的录取分数线及对应位次（近3年）\n2. 总分要求与各科单科分数要求（如有）\n3. 选科要求：精确到首选科目和再选科目要求\n\n## 二、专业实力\n1. 该专业的官方认证：教育部学科评估等级、国家级一流本科专业、双一流建设学科等\n2. 该校该专业在全国的排名或特色定位\n\n## 三、对口工作方向\n1. 该专业毕业生主要就业方向（列出3-5个典型岗位）\n2. 对口行业与代表企业\n3. 职业发展前景\n\n## 四、薪资水平\n1. 该专业应届毕业生平均起薪（标注数据来源年份）\n2. 工作3-5年后平均薪资水平\n3. 行业薪资中位数参考\n4. 数据来源标注（如麦可思、BOSS直聘、智联招聘等权威平台）\n\n## 五、选科适配性（如提供了选科组合{{input.selected_subjects}}）\n1. 该选科组合是否满足专业选科要求\n2. 不满足时的建议\n\n## 六、备注\n- 数据截止时间\n- 数据来源标注\n- 查不到的内容标注\"待核实\"，禁止编造\n- 薪资数据标注统计年份和来源平台"
+  },
+  "createdAt": 1782031550313,
+  "updatedAt": 1782031550313,
+  "createdBy": 7074919885251330052
+}
