@@ -117,7 +117,7 @@
 | diagnosis | `/api/diagnosis-records` | GET/POST/PATCH 诊断记录 CRUD |
 | plan | `/api/plan-records` | GET/POST/PATCH 规划记录 CRUD |
 | knowledge | `/api/knowledge-points` | GET/GET search/GET :id 知识点查询 |
-| policy | `/api/admission-policies` | GET 升学政策查询 |
+| policy | `/api/admission-policies` | GET 升学政策查询, GET /schools 学校搜索 |
 
 ### 数据库表
 

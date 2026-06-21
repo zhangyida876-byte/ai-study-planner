@@ -7,6 +7,7 @@ import { Loader2, FileText, Search, Sparkles } from 'lucide-react';
 import { axiosForBackend } from '@lark-apaas/client-toolkit/utils/getAxiosForBackend';
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import { capabilityClient } from '@lark-apaas/client-toolkit';
+import { policy as policyApi } from '@client/src/api';
 import {
   Form,
   FormControl,
@@ -243,7 +244,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
   const isHighSchool = ['高一', '高二', '高三'].includes(watchedGrade);
   const isMiddleSchool = ['初一', '初二', '初三'].includes(watchedGrade);
 
-  const displaySchools = fetchedSchools.length > 0 ? fetchedSchools : DEFAULT_SCHOOLS;
+  const displaySchools = fetchedSchools.length > 0 ? fetchedSchools : [];
   const filteredSchools = schoolSearch
     ? displaySchools.filter((s) => s.includes(schoolSearch))
     : displaySchools;
@@ -258,31 +259,16 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
     const fetchSchools = async () => {
       setSchoolsLoading(true);
       try {
-        const streamResult = capabilityClient
-          .load('high_school_search_by_region_1')
-          .callStream('searchSummary', { region: watchedRegion });
-        let fullContent = '';
-        for await (const chunk of streamResult as AsyncIterable<Record<string, unknown>>) {
-          if (cancelled) break;
-          const delta = typeof chunk?.content === 'string' ? chunk.content : '';
-          if (delta) fullContent += delta;
-        }
+        const result = await policyApi.searchSchools(watchedRegion);
         if (cancelled) return;
-        const names = fullContent.split(/[\n\r]+/)
-          .map((line: string) => line.replace(/^[\d]+[.、)\uff0e]\s*/, '').replace(/^[-*\u2022]\s*/, '').trim())
-          .filter((name: string) => name.length >= 3 && name.length <= 30 && /[\u4e00-\u9fa5]/.test(name) && !name.includes('名单') && !name.includes('以上'));
+        const names = result.schools.map((s) => s.name);
         const unique = [...new Set(names)];
         schoolCacheRef.current[watchedRegion] = unique;
         setFetchedSchools(unique);
       } catch (err) {
         if (!cancelled) {
-          logger.error('搜索学校失败', JSON.stringify({
-            pluginInstanceId: 'high_school_search_by_region_1',
-            actionKey: 'searchSummary',
-            outputMode: 'stream',
-            inputKeys: ['region'],
-            error: err instanceof Error ? err.message : String(err),
-          }));
+          logger.error('搜索学校失败', String(err));
+          setFetchedSchools([]);
         }
       } finally {
         if (!cancelled) setSchoolsLoading(false);
@@ -299,11 +285,23 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
     const isHS = ['高一', '高二', '高三'].includes(watchedGrade);
     const isMS = ['初一', '初二', '初三'].includes(watchedGrade);
     if (!isHS && !isMS) return;
-    const examType = isHS ? '高考' : '中考';
     let cancelled = false;
     const fetchScore = async () => {
       setScoreSuggesting(true);
       try {
+        const result = await policyApi.searchSchools(watchedRegion);
+        if (cancelled) return;
+        const match = result.schools.find((s) => s.name === watchedSchool);
+        if (match && match.score > 0) {
+          form.setValue('targetScore', match.score);
+          setScoreSuggested(true);
+          return;
+        }
+      } catch {
+        // database lookup failed, try AI plugin
+      }
+      try {
+        const examType = isHS ? '高考' : '中考';
         const streamResult = capabilityClient
           .load('high_school_admission_score_query_1')
           .callStream('searchSummary', {
@@ -326,13 +324,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
         }
       } catch (err) {
         if (!cancelled) {
-          logger.error('获取分数线失败', JSON.stringify({
-            pluginInstanceId: 'high_school_admission_score_query_1',
-            actionKey: 'searchSummary',
-            outputMode: 'stream',
-            inputKeys: ['region', 'school_name', 'exam_type'],
-            error: err instanceof Error ? err.message : String(err),
-          }));
+          logger.error('获取分数线失败', String(err));
         }
       } finally {
         if (!cancelled) setScoreSuggesting(false);
@@ -694,7 +686,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
                         {schoolsLoading ? (
                           <div className="flex items-center gap-2 px-3 py-3 text-xs text-muted-foreground">
                             <Loader2 className="size-3 animate-spin" />
-                            正在从互联网搜索学校...
+                            正在查询学校数据...
                           </div>
                         ) : filteredSchools.length > 0 ? (
                           filteredSchools.map((school) => (

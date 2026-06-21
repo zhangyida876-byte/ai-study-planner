@@ -5,6 +5,11 @@ import { PolicyService } from './policy.service';
 export class PolicyController {
   constructor(private readonly policyService: PolicyService) {}
 
+  @Get('schools')
+  async searchSchools(@Query('region') region?: string) {
+    return this.policyService.searchSchools(region || '');
+  }
+
   @Get()
   async findAll(
     @Query('region') region?: string,

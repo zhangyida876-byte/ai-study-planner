@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { DRIZZLE_DATABASE, type PostgresJsDatabase } from '@lark-apaas/fullstack-nestjs-core';
 import { eq, and, or, desc, ilike } from 'drizzle-orm';
 import { admissionPolicy } from '../../database/schema';
-import type { AdmissionPolicy, AdmissionPolicyListResponse, AdmissionLine } from '@shared/api.interface';
+import type { AdmissionPolicy, AdmissionPolicyListResponse, AdmissionLine, SchoolSearchResponse, SchoolInfo } from '@shared/api.interface';
 
 const PROVINCE_CAPITALS: Record<string, string> = {
   '北京': '北京', '天津': '天津', '上海': '上海', '重庆': '重庆主城',
@@ -70,6 +70,52 @@ export class PolicyService {
       .orderBy(desc(admissionPolicy.year));
 
     return this.mapRows(rows);
+  }
+
+  async searchSchools(region: string): Promise<SchoolSearchResponse> {
+    if (!region) return { schools: [], totalScore: 0, year: 2025 };
+
+    const parts = region.split(' ').filter(Boolean);
+    const city = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+    const province = parts.length > 1 ? parts[0] : '';
+
+    const regionCandidates: string[] = [city];
+    if (province) {
+      const capital = PROVINCE_CAPITALS[province.replace('省', '').replace('市', '')];
+      if (capital && capital !== city) regionCandidates.push(capital);
+    }
+
+    const conditions = regionCandidates.map((r) => eq(admissionPolicy.region, r));
+    conditions.push(ilike(admissionPolicy.region, `%${city}%`));
+
+    const rows = await this.db
+      .select()
+      .from(admissionPolicy)
+      .where(or(...conditions))
+      .orderBy(desc(admissionPolicy.year))
+      .limit(5);
+
+    const schoolMap = new Map<string, SchoolInfo>();
+    let totalScore = 0;
+    let year = 2025;
+
+    for (const row of rows) {
+      if (!totalScore && row.totalScore) totalScore = row.totalScore;
+      if (row.year > year) year = row.year;
+      const lines = (row.admissionLines ?? []) as AdmissionLine[];
+      for (const line of lines) {
+        if (line.school && !schoolMap.has(line.school)) {
+          schoolMap.set(line.school, {
+            name: line.school,
+            score: line.score,
+            batch: line.batch || '统招',
+          });
+        }
+      }
+    }
+
+    const schools = [...schoolMap.values()].sort((a, b) => b.score - a.score);
+    return { schools, totalScore, year };
   }
 
   private mapRows(rows: Array<{

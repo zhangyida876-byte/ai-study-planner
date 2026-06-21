@@ -125,6 +125,18 @@ export interface AdmissionPolicyListResponse {
   items: AdmissionPolicy[];
 }
 
+export interface SchoolInfo {
+  name: string;
+  score: number;
+  batch: string;
+}
+
+export interface SchoolSearchResponse {
+  schools: SchoolInfo[];
+  totalScore: number;
+  year: number;
+}
+
 /* ===== Knowledge 知识点查询模块 ===== */
 export interface KnowledgePointContent {
   coreKnowledge: string;
