@@ -76,12 +76,13 @@ const Diagnosis: React.FC = () => {
       });
       recordId = createRes.id;
 
+      const stage = getEducationStage(data.grade);
+      const coreMax = stage === 'elementary' ? 100 : stage === 'middle' ? 120 : 150;
       const scoreMaxValues: Record<string, number> = {
-        '语文': 150, '数学': 150, '英语': 150,
+        '语文': coreMax, '数学': coreMax, '英语': coreMax,
         '物理': 100, '化学': 100, '生物': 100,
         '历史': 100, '地理': 100, '政治&道法': 100,
       };
-      const stage = getEducationStage(data.grade);
       const examType = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '期末统考';
       const formCtx: DiagnosisFormContext = {
         grade: data.grade,

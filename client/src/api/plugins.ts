@@ -8,6 +8,7 @@ export const PLUGIN_IDS = {
   POLICY_SEARCH: 'exam_policy_search_1',
   KNOWLEDGE_ANALYSIS: 'knowledge_point_deep_analysis_1',
   JUNIOR_HIGH_SEARCH: 'junior_high_school_tier_search_1',
+  HIGH_SCHOOL_REGION_SEARCH: 'high_school_search_by_region_1',
   COLLEGE_POLICY_SEARCH: 'college_entrance_policy_search_1',
   COLLEGE_MAJOR_QUERY: 'college_major_admission_query_1',
 } as const;

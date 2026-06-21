@@ -125,6 +125,24 @@ const CORE_SUBJECTS: Array<{ name: keyof DiagnosisFormData; label: string; max: 
   { name: 'english', label: '英语', max: 150 },
 ];
 
+const ELEMENTARY_SUBJECTS: Array<{ name: keyof DiagnosisFormData; label: string; max: number }> = [
+  { name: 'chinese', label: '语文', max: 100 },
+  { name: 'math', label: '数学', max: 100 },
+  { name: 'english', label: '英语', max: 100 },
+];
+
+const MIDDLE_SUBJECTS: Array<{ name: keyof DiagnosisFormData; label: string; max: number }> = [
+  { name: 'chinese', label: '语文', max: 120 },
+  { name: 'math', label: '数学', max: 120 },
+  { name: 'english', label: '英语', max: 120 },
+  { name: 'physics', label: '物理', max: 100 },
+  { name: 'chemistry', label: '化学', max: 100 },
+  { name: 'biology', label: '生物', max: 100 },
+  { name: 'history', label: '历史', max: 100 },
+  { name: 'geography', label: '地理', max: 100 },
+  { name: 'politics', label: '政治&道法', max: 100 },
+];
+
 const PREFERRED_12: Array<{ name: keyof DiagnosisFormData; label: string; max: number }> = [
   { name: 'physics', label: '物理', max: 100 },
   { name: 'history', label: '历史', max: 100 },
@@ -156,6 +174,17 @@ const NORMAL_SUBJECTS: Array<{ name: keyof DiagnosisFormData; label: string; max
   { name: 'politics', label: '政治&道法', max: 100 },
 ];
 
+const STAGE_SUBJECTS: Record<string, typeof NORMAL_SUBJECTS> = {
+  elementary: ELEMENTARY_SUBJECTS,
+  middle: MIDDLE_SUBJECTS,
+};
+
+function getStageSubjects(grade: string): typeof NORMAL_SUBJECTS {
+  if (['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'].includes(grade)) return ELEMENTARY_SUBJECTS;
+  if (['初一', '初二', '初三'].includes(grade)) return MIDDLE_SUBJECTS;
+  return NORMAL_SUBJECTS;
+}
+
 const FORM_DEFAULTS: DiagnosisFormData = {
   studentName: '',
   grade: '',
@@ -183,8 +212,11 @@ const FORM_DEFAULTS: DiagnosisFormData = {
 function getActiveSubjectFields(data: DiagnosisFormData) {
   const grade = data.grade;
   const isHighSchool = ['高一', '高二', '高三'].includes(grade);
+  const isElementary = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'].includes(grade);
+  const isMiddle = ['初一', '初二', '初三'].includes(grade);
 
-  if (!isHighSchool) return NORMAL_SUBJECTS;
+  if (isElementary) return ELEMENTARY_SUBJECTS;
+  if (!isHighSchool) return isMiddle ? MIDDLE_SUBJECTS : NORMAL_SUBJECTS;
 
   const mode = data.examMode;
   if (mode === '3+1+2') {
@@ -271,16 +303,29 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
           const unique = [...new Set(names)];
           schoolCacheRef.current[cacheKey] = unique;
           setFetchedSchools(unique);
-        } else {
-          const pluginId = stage === 'elementary'
-            ? PLUGIN_IDS.JUNIOR_HIGH_SEARCH
-            : PLUGIN_IDS.COLLEGE_MAJOR_QUERY;
-          const input = stage === 'elementary'
-            ? { region: watchedRegion }
-            : { region: watchedRegion, university_name: '' };
+        } else if (stage === 'high') {
           const streamResult = capabilityClient
-            .load(pluginId)
-            .callStream('searchSummary', input as Record<string, unknown>);
+            .load(PLUGIN_IDS.HIGH_SCHOOL_REGION_SEARCH)
+            .callStream('searchSummary', { region: watchedRegion } as Record<string, unknown>);
+          let fullContent = '';
+          for await (const chunk of streamResult as AsyncIterable<Record<string, unknown>>) {
+            if (cancelled) break;
+            const delta = typeof chunk?.summary === 'string' ? chunk.summary : '';
+            if (delta) fullContent += delta;
+          }
+          if (cancelled) return;
+          const lines = fullContent.split('\n').map((l: string) => l.trim()).filter(Boolean);
+          const names = lines
+            .filter((l: string) => !l.startsWith('#') && !l.startsWith('|') && !l.startsWith('\u6570\u636e') && !l.startsWith('\u4fe1\u606f') && !l.startsWith('\u5907\u6ce8'))
+            .map((l: string) => l.replace(/^[\d.\-\s]+/, '').replace(/^[-*]\s*/, '').replace(/\uff08.*\uff09$/, '').replace(/\(.*\)$/, '').trim())
+            .filter((l: string) => l.length >= 2 && l.length <= 30);
+          const unique = [...new Set(names)];
+          schoolCacheRef.current[cacheKey] = unique;
+          setFetchedSchools(unique);
+        } else {
+          const streamResult = capabilityClient
+            .load(PLUGIN_IDS.JUNIOR_HIGH_SEARCH)
+            .callStream('searchSummary', { region: watchedRegion } as Record<string, unknown>);
           let fullContent = '';
           for await (const chunk of streamResult as AsyncIterable<Record<string, unknown>>) {
             if (cancelled) break;
@@ -420,7 +465,10 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
       name={subject.name}
       render={({ field }) => (
         <FormItem>
-          <FormLabel className="text-sm">{subject.label}</FormLabel>
+          <FormLabel className="text-sm">
+            {subject.label}
+            <span className="ml-1 text-xs font-normal text-ink/50">(满分{subject.max})</span>
+          </FormLabel>
           <FormControl>
             <Input
               type="number"
@@ -805,7 +853,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
               {/* Core: 3 required */}
               <div>
                 <p className="font-hand mb-2 text-xs font-semibold text-pen-blue">
-                  必考（3科）
+                  必考（3科，满分各150）
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {CORE_SUBJECTS.map(renderSubjectInput)}
@@ -850,7 +898,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating })
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {NORMAL_SUBJECTS.map(renderSubjectInput)}
+              {getStageSubjects(watchedGrade).map(renderSubjectInput)}
             </div>
           )}
         </div>
