@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import { Loader2, FileText, Search, Sparkles } from 'lucide-react';
 import { axiosForBackend } from '@lark-apaas/client-toolkit/utils/getAxiosForBackend';
-import { logger } from '@lark-apaas/client-toolkit/logger';
+
 import { capabilityClient } from '@lark-apaas/client-toolkit';
 import { policy as policyApi } from '@client/src/api';
 import { PLUGIN_IDS, getEducationStage } from '@client/src/api/plugins';
@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { logger } from '@lark-apaas/client-toolkit/logger';
 
 /* ===== Schema & Constants ===== */
 
@@ -416,7 +417,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating, o
             if (msg.includes('RateLimit') || msg.includes('频繁')) {
               logger.info('分数线查询限流，跳过');
             } else {
-              logger.error('获取分数线失败', msg);
+              logger.error('获取分数线失败', String(msg));
             }
           }
         } finally {
@@ -481,7 +482,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating, o
               logger.info('专业查询限流，请稍后重试');
               setMajorInfoContent('查询过于频繁，请稍后重新输入专业名称触发查询');
             } else {
-              logger.error('查询专业信息失败', msg);
+              logger.error('查询专业信息失败', String(msg));
             }
           }
         } finally {

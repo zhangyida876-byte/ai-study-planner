@@ -13,8 +13,9 @@ import { fetchBitableData } from '@client/src/api/plugins';
 import type { Announcement } from '@shared/api.interface';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import { logger } from '@lark-apaas/client-toolkit/logger';
+
 import { toast } from 'sonner';
+import { logger } from '@lark-apaas/client-toolkit/logger';
 
 interface FeatureCardConfig {
   title: string;
