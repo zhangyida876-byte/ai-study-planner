@@ -93,17 +93,46 @@ function killProcessGroup(pid, signal) {
 }
 
 function killOrphansByPort(port) {
+  const killed = new Set();
   try {
     const pids = execSync(`lsof -ti :${port}`, { encoding: 'utf8', timeout: 5000 }).trim();
     if (pids) {
-      const pidList = pids.split('\n').filter(Boolean);
-      for (const p of pidList) {
-        try { process.kill(parseInt(p, 10), 'SIGKILL'); } catch {}
+      for (const p of pids.split('\n').filter(Boolean)) {
+        try {
+          process.kill(parseInt(p, 10), 'SIGKILL');
+          killed.add(p);
+        } catch {}
       }
-      return pidList;
     }
   } catch {}
-  return [];
+  // Linux sandbox fallback when lsof misses node grandchildren still holding the port.
+  try {
+    execSync(`fuser -k ${port}/tcp`, { timeout: 5000, stdio: 'ignore' });
+  } catch {}
+  return [...killed];
+}
+
+function isPortInUse(port) {
+  try {
+    execSync(`lsof -ti :${port}`, { encoding: 'utf8', timeout: 3000, stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function ensurePortFree(port, label) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    if (!isPortInUse(port)) return;
+    const orphans = killOrphansByPort(port);
+    if (orphans.length > 0) {
+      logEvent('WARN', label, `Freed port ${port}, killed: ${orphans.join(' ')}`);
+    }
+    await sleep(500 * attempt);
+  }
+  if (isPortInUse(port)) {
+    logEvent('ERROR', label, `Port ${port} still in use after cleanup attempts`);
+  }
 }
 
 // ── Process supervision ───────────────────────────────────────────────────────
@@ -129,6 +158,10 @@ function startProcess({ name, command, args, cleanupPort }) {
     let restartCount = 0;
 
     while (!stopping) {
+      if (cleanupPort) {
+        await ensurePortFree(cleanupPort, name);
+      }
+
       const child = spawn(command, args, {
         detached: true,
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -173,13 +206,9 @@ function startProcess({ name, command, args, cleanupPort }) {
       entry.pid = null;
       entry.child = null;
 
-      // Port cleanup fallback
+      // Port cleanup fallback after crash
       if (cleanupPort) {
-        const orphans = killOrphansByPort(cleanupPort);
-        if (orphans.length > 0) {
-          logEvent('WARN', name, `Killed orphan processes on port ${cleanupPort}: ${orphans.join(' ')}`);
-          await sleep(500);
-        }
+        await ensurePortFree(cleanupPort, name);
       }
 
       if (stopping) break;
@@ -261,11 +290,41 @@ function cleanStaleDist() {
   }
 }
 
+/** Remove stray compiled *.js under client/src that shadow matching TSX sources. */
+function cleanStaleClientJs() {
+  const srcRoot = path.join(PROJECT_ROOT, 'client', 'src');
+  if (!fs.existsSync(srcRoot)) return;
+
+  const removed = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+        continue;
+      }
+      if (!entry.name.endsWith('.js')) continue;
+      const tsxPath = fullPath.slice(0, -3) + '.tsx';
+      const tsPath = fullPath.slice(0, -3) + '.ts';
+      if (fs.existsSync(tsxPath) || fs.existsSync(tsPath)) {
+        fs.rmSync(fullPath, { force: true });
+        removed.push(path.relative(PROJECT_ROOT, fullPath));
+      }
+    }
+  };
+
+  walk(srcRoot);
+  if (removed.length > 0) {
+    logEvent('INFO', 'main', `Removed stale client JS emit: ${removed.join(', ')}`);
+  }
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
   logEvent('INFO', 'main', '========== Dev session started ==========');
 
   cleanStaleDist();
+  cleanStaleClientJs();
 
   // Initialize action plugins
   writeOutput('\n🔌 Initializing action plugins...\n');
@@ -275,6 +334,9 @@ async function main() {
   } catch {
     writeOutput('⚠️  Action plugin initialization failed, continuing anyway...\n\n');
   }
+
+  await ensurePortFree(SERVER_PORT, 'main');
+  await ensurePortFree(CLIENT_DEV_PORT, 'main');
 
   // Start server and client
   const serverPromise = startProcess({
