@@ -2,6 +2,7 @@
   "extends": "@lark-apaas/fullstack-presets/lib/simple/tsconfig/tsconfig.app.json",
   "compilerOptions": {
     "baseUrl": "./",
+    "moduleResolution": "bundler",
     "paths": {
       "@client/*": ["client/*"],
       "@shared/*": ["shared/*"],
