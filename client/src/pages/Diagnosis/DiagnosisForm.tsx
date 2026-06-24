@@ -76,6 +76,42 @@ const HS_MODES: Array<{ value: string; label: string }> = [
   { value: '3+3', label: '3+3（六选三）' },
 ];
 
+// 根据地区、年级、考试模式获取科目满分
+const getSubjectMaxScore = (subject: string, grade: string, region?: string, examMode?: string): number => {
+  const stage = getEducationStage(grade);
+  
+  // 高考所有主科都是150，副科100
+  if (stage === 'high') {
+    if (['chinese', 'math', 'english'].includes(subject)) return 150;
+    return 100;
+  }
+  
+  // 小学都是100分
+  if (stage === 'elementary') {
+    return 100;
+  }
+  
+  // 中考根据地区区分
+  if (region) {
+    // 部分地区中考主科120分
+    const regionsWith120 = ['广东省', '山东省', '四川省', '河南省', '湖北省', '湖南省'];
+    if (regionsWith120.some(r => region.includes(r))) {
+      if (['chinese', 'math', 'english'].includes(subject)) return 120;
+      return 100;
+    }
+    
+    // 上海等地中考150分
+    const regionsWith150 = ['北京市', '上海市', '江苏省', '浙江省'];
+    if (regionsWith150.some(r => region.includes(r))) {
+      return 150;
+    }
+  }
+  
+  // 默认中考主科150，副科100
+  if (['chinese', 'math', 'english'].includes(subject)) return 150;
+  return 100;
+};
+
 const DEFAULT_SCHOOLS: string[] = [
   '华中师范大学第一附属中学', '武汉中学', '武汉二中', '武汉六中',
   '武汉外国语学校', '武汉实验外国语学校', '武汉十一中',
@@ -538,42 +574,46 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating, o
     onSubmit(data);
   }, [onSubmit]);
 
-  const renderSubjectInput = (subject: { name: keyof DiagnosisFormData; label: string; max: number }) => (
-    <FormField
-      key={String(subject.name)}
-      control={form.control}
-      name={subject.name}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel className="text-sm">
-            {subject.label}
-            <span className="ml-1 text-xs font-normal text-ink/50">(满分{subject.max})</span>
-          </FormLabel>
-          <FormControl>
-            <Input
-              type="number"
-              placeholder={`0-${subject.max}`}
-              min={0}
-              max={subject.max}
-              name={field.name}
-              ref={field.ref}
-              disabled={field.disabled}
-              value={
-                field.value !== undefined && field.value !== null
-                  ? String(field.value)
-                  : ''
-              }
-              onChange={(e) => {
-                const raw = e.target.value;
-                field.onChange(raw === '' ? undefined : Number(raw));
-              }}
-            />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  );
+  const renderSubjectInput = (subject: { name: keyof DiagnosisFormData; label: string; max: number }) => {
+    // 动态计算满分，优先根据地区和年级适配
+    const dynamicMax = getSubjectMaxScore(subject.name, watchedGrade, watchedRegion, watchedMode);
+    return (
+      <FormField
+        key={String(subject.name)}
+        control={form.control}
+        name={subject.name}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-sm">
+              {subject.label}
+              <span className="ml-1 text-xs font-normal text-ink/50">(满分{dynamicMax})</span>
+            </FormLabel>
+            <FormControl>
+              <Input
+                type="number"
+                placeholder={`0-${dynamicMax}`}
+                min={0}
+                max={dynamicMax}
+                name={field.name}
+                ref={field.ref}
+                disabled={field.disabled}
+                value={
+                  field.value !== undefined && field.value !== null
+                    ? String(field.value)
+                    : ''
+                }
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  field.onChange(raw === '' ? undefined : Number(raw));
+                }}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    );
+  };
 
   return (
     <Form {...form}>
@@ -833,7 +873,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating, o
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder={isElementary ? '搜索或输入初中名称' : isHighSchool ? '搜索或输入大学名称' : '搜索或输入院校名称'}
+                      placeholder={isElementary ? '搜索或手动输入初中院校名称' : isHighSchool ? '搜索或手动输入大学院校名称' : '搜索或手动输入高中院校名称，支持初中/高中/大学查询'}
                       className="pl-8"
                       {...field}
                       value={field.value ?? ''}
@@ -972,7 +1012,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating, o
               {/* Core: 3 required */}
               <div>
                 <p className="font-hand mb-2 text-xs font-semibold text-pen-blue">
-                  必考（3科，满分各150）
+                  必考（3科，满分各{getSubjectMaxScore('chinese', watchedGrade, watchedRegion, watchedMode)}）
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {CORE_SUBJECTS.map(renderSubjectInput)}
