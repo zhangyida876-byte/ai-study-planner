@@ -1,0 +1,13 @@
+{
+  "id": "apaaS_crud_1",
+  "pluginKey": "@official-plugins/apaas-data",
+  "pluginVersion": "1.0.0",
+  "name": "飞书 aPaaS",
+  "description": "连接飞书 aPaaS，支持数据创建、查询、更新、删除",
+  "icon": "https://lf3-static.bytednsdoc.com/obj/eden-cn/oadvyn_zhhwh/ljhwZthlaukjlkulzlp/logo-250702/apaas-logo-icon.svg",
+  "paramsSchema": {},
+  "formValue": {},
+  "createdAt": 1782006285940,
+  "updatedAt": 1782006285940,
+  "createdBy": 7074919885251330052
+}

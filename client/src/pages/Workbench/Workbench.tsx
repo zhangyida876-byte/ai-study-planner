@@ -75,6 +75,7 @@ const featureCards: FeatureCardConfig[] = [
 ];
 
 const Workbench: React.FC = () => {
+  const isProduction = process.env.NODE_ENV === 'production';
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
   const [bitableData, setBitableData] = useState<any>(null);
@@ -163,32 +164,34 @@ const Workbench: React.FC = () => {
         })}
        </div>
 
-      {/* 飞书多维表格读取区域 - 紧凑样式 */}
-      <div className="mb-12">
-        <WobblyCard variant="yellow" decoration="tape" wobblyIndex={3} hoverable={false}>
-          <div className="flex items-center justify-between gap-4 p-4">
-            <div className="flex-1">
-              <h2 className="font-marker text-lg font-bold">飞书多维表格数据</h2>
-              <p className="font-hand text-xs text-ink/60">读取指定表格数据用于系统配置</p>
+      {/* 飞书多维表格读取区域 - 仅开发/预览环境显示 */}
+      {!isProduction && (
+        <div className="mb-12">
+          <WobblyCard variant="yellow" decoration="tape" wobblyIndex={3} hoverable={false}>
+            <div className="flex items-center justify-between gap-4 p-4">
+              <div className="flex-1">
+                <h2 className="font-marker text-lg font-bold">飞书多维表格数据</h2>
+                <p className="font-hand text-xs text-ink/60">读取指定表格数据用于系统配置</p>
+              </div>
+              <Button size="sm" onClick={async () => {
+                setLoadingBitable(true);
+                try {
+                  const data = await fetchBitableData();
+                  setBitableData(data);
+                  toast(`成功读取 ${data.total} 条记录`);
+                } catch (err) {
+                  logger.error('读取表格失败', String(err));
+                  toast('读取表格失败，请检查权限配置');
+                } finally {
+                  setLoadingBitable(false);
+                }
+              }} disabled={loadingBitable}>
+                {loadingBitable ? <><Loader2 className="mr-1 size-3 animate-spin" />读取中</> : '读取数据'}
+              </Button>
             </div>
-            <Button size="sm" onClick={async () => {
-              setLoadingBitable(true);
-              try {
-                const data = await fetchBitableData();
-                setBitableData(data);
-                toast(`成功读取 ${data.total} 条记录`);
-              } catch (err) {
-                logger.error('读取表格失败', String(err));
-                toast('读取表格失败，请检查权限配置');
-              } finally {
-                setLoadingBitable(false);
-              }
-            }} disabled={loadingBitable}>
-              {loadingBitable ? <><Loader2 className="mr-1 size-3 animate-spin" />读取中</> : '读取数据'}
-            </Button>
-          </div>
-        </WobblyCard>
-      </div>
+          </WobblyCard>
+        </div>
+      )}
 
       {/* 公告栏 */}
       <WobblyCard
