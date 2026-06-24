@@ -6,5 +6,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, 'client/src'),
     },
+    // Prefer TS/TSX over .js so stale transpiled *.js alongside sources won't win resolution.
+    extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
   },
 });

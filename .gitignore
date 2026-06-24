@@ -63,3 +63,6 @@ pnpm-lock.yaml
 # Agent files
 .agent/
 .npm_cache
+
+# Stale JS emit next to TSX sources breaks Vite (JSX in .js files)
+client/src/**/*.js
