@@ -67,3 +67,6 @@ pnpm-lock.yaml
 
 # Stale JS emit next to TSX sources breaks Vite (JSX in .js files)
 client/src/**/*.js
+
+# Compiled DB schema emit (source of truth is schema.ts)
+server/database/schema.js
