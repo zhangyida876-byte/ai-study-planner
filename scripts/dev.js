@@ -181,6 +181,12 @@ async function waitForViteResponding(port, maxMs = 180000) {
 
 function precompileSandboxCss() {
   if (!process.env.SANDBOX_ID) return;
+  const committed = path.join(PROJECT_ROOT, 'client/src/sandbox-styles.css');
+  if (fs.existsSync(committed)) {
+    process.env.SANDBOX_USE_PRECOMPILED_CSS = '1';
+    logEvent('INFO', 'main', 'Using committed client/src/sandbox-styles.css (no Tailwind in Vite)');
+    return;
+  }
   const out = path.join(PROJECT_ROOT, 'client/src/.sandbox-compiled.css');
   if (fs.existsSync(out)) {
     process.env.SANDBOX_USE_PRECOMPILED_CSS = '1';
@@ -198,6 +204,7 @@ function precompileSandboxCss() {
     process.env.SANDBOX_USE_PRECOMPILED_CSS = '1';
   } catch {
     logEvent('WARN', 'main', 'CSS precompile failed; Vite will run Tailwind live (may OOM)');
+    process.env.SANDBOX_USE_PRECOMPILED_CSS = '0';
   }
 }
 
@@ -221,7 +228,7 @@ function startProcess({ name, command, args, cleanupPort }) {
     let restartCount = 0;
 
     while (!stopping) {
-      const skipPortClean = process.env.SANDBOX_ID && name === 'client' && restartCount > 0;
+      const skipPortClean = process.env.SANDBOX_ID && name === 'client';
       if (cleanupPort && !skipPortClean) {
         await ensurePortFree(cleanupPort, name);
       }
@@ -435,8 +442,13 @@ async function main() {
     }
   }
 
-  await ensurePortFree(SERVER_PORT, 'main');
-  await ensurePortFree(CLIENT_DEV_PORT, 'main');
+  if (process.env.SANDBOX_ID) {
+    logEvent('INFO', 'main', 'Sandbox: skip client port cleanup on boot');
+    await ensurePortFree(SERVER_PORT, 'main');
+  } else {
+    await ensurePortFree(SERVER_PORT, 'main');
+    await ensurePortFree(CLIENT_DEV_PORT, 'main');
+  }
 
   precompileSandboxCss();
 

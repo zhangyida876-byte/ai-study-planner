@@ -8,5 +8,6 @@ module.exports = {
     'build/**',
     'coverage/**',
     '*.min.css',
+    'client/src/sandbox-styles.css',
   ],
 };

@@ -1,15 +1,22 @@
 import path from 'path';
 import { defineConfig } from '@lark-apaas/fullstack-vite-preset';
 import { sandboxHealthGatePlugin } from './scripts/vite-sandbox-health-gate.js';
-import { sandboxCssPlugin } from './scripts/vite-sandbox-css-plugin.js';
+import { sandboxCssPlugin, shouldUsePrebuiltCss } from './scripts/vite-sandbox-css-plugin.js';
+import { isSandboxRuntime } from './scripts/sandbox-detect.js';
 
-const isSandbox = Boolean(process.env.SANDBOX_ID);
+const root = process.cwd();
+const isSandbox = isSandboxRuntime(root);
+const usePrebuiltCss = shouldUsePrebuiltCss(root);
 
 export default defineConfig({
   plugins: [sandboxHealthGatePlugin(), sandboxCssPlugin()],
   ...(isSandbox
     ? {
-        css: { devSourcemap: false },
+        css: {
+          devSourcemap: false,
+          // 沙箱用仓库内 sandbox-styles.css，禁止 Vite 再跑 PostCSS/Tailwind（防 OOM）
+          ...(usePrebuiltCss ? { postcss: false } : {}),
+        },
         server: {
           watch: {
             usePolling: false,

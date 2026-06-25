@@ -1,6 +1,7 @@
 'use strict';
 
 const http = require('http');
+const { isSandboxRuntime } = require('./sandbox-detect');
 
 function sanitizeBasePath(value) {
   if (!value) return '/';
@@ -41,7 +42,7 @@ function probeBackend(port, basePath) {
 
 /** 沙箱预览依赖 Nest 渲染 HTML；仅 Vite listening 时 ready 会导致预览空白 */
 function sandboxHealthGatePlugin() {
-  if (!process.env.SANDBOX_ID) {
+  if (!isSandboxRuntime(process.cwd())) {
     return { name: 'sandbox-health-gate-noop' };
   }
 

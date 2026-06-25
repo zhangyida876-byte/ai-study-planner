@@ -1,11 +1,22 @@
 'use strict';
 
 const path = require('path');
-const pathSep = path.sep;
+const fs = require('fs');
+const { isSandboxRuntime } = require('./sandbox-detect');
 
-/** 沙箱用预编译 CSS，避免 Vite dev 内跑 Tailwind/PostCSS 触发 OOM */
+const pathSep = path.sep;
+const SANDBOX_STYLES = 'sandbox-styles.css';
+
+function shouldUsePrebuiltCss(root) {
+  if (!isSandboxRuntime(root)) return false;
+  if (process.env.SANDBOX_USE_PRECOMPILED_CSS === '0') return false;
+  return fs.existsSync(path.join(root, 'client/src', SANDBOX_STYLES));
+}
+
+/** 沙箱用仓库内预编译 CSS，Vite 内不再跑 Tailwind/PostCSS */
 function sandboxCssPlugin() {
-  if (!process.env.SANDBOX_ID || process.env.SANDBOX_USE_PRECOMPILED_CSS !== '1') {
+  const root = process.cwd();
+  if (!shouldUsePrebuiltCss(root)) {
     return { name: 'sandbox-css-noop' };
   }
 
@@ -17,12 +28,12 @@ function sandboxCssPlugin() {
       if (!code.includes("import './index.css'") && !code.includes('import "./index.css"')) return null;
       return {
         code: code
-          .replace("import './index.css'", "import './.sandbox-compiled.css'")
-          .replace('import "./index.css"', "import './.sandbox-compiled.css'"),
+          .replace("import './index.css'", `import './${SANDBOX_STYLES}'`)
+          .replace('import "./index.css"', `import './${SANDBOX_STYLES}'`),
         map: null,
       };
     },
   };
 }
 
-module.exports = { sandboxCssPlugin };
+module.exports = { sandboxCssPlugin, shouldUsePrebuiltCss };

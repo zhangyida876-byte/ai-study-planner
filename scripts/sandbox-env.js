@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 'use strict';
 
+const path = require('path');
+const { ensureSandboxFlags, logSandboxBoot } = require('./sandbox-detect');
+
 function sanitizeEnvValue(key, value) {
   if (!value) return value;
   if (
@@ -17,7 +20,6 @@ function sanitizeEnvValue(key, value) {
 
 function loadEnvFile(root, filename) {
   const fs = require('fs');
-  const path = require('path');
   const envPath = path.join(root, filename);
   if (!fs.existsSync(envPath)) return;
   for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
@@ -31,26 +33,33 @@ function loadEnvFile(root, filename) {
   }
 }
 
-function normalizeSandboxEnv() {
+function normalizeSandboxEnv(root) {
+  ensureSandboxFlags(root);
+  if (!process.env.SANDBOX_ID) return;
+
   const keys = ['CLIENT_BASE_PATH', 'CLIENT_DEV_PORT', 'CLIENT_DEV_HOST', 'SERVER_HOST', 'SERVER_PORT'];
   for (const key of keys) {
     if (process.env[key] != null && process.env[key] !== '') {
       process.env[key] = sanitizeEnvValue(key, String(process.env[key]).trim());
     }
   }
-  if (!process.env.SANDBOX_ID) return;
   process.env.CLIENT_DEV_HOST = '0.0.0.0';
   process.env.SERVER_HOST = '0.0.0.0';
   process.env.DISABLE_INSPECTOR = 'true';
+  process.env.SANDBOX_USE_PRECOMPILED_CSS = '1';
   if (!process.env.CLIENT_DEV_PORT) process.env.CLIENT_DEV_PORT = '8080';
-  // 平台常注入 8001，保留平台值；health 路径始终为 /dev/health
-  console.log('[sandbox-boot] port=%s base=%s health=http://127.0.0.1:%s/dev/health', process.env.CLIENT_DEV_PORT, process.env.CLIENT_BASE_PATH || '/', process.env.CLIENT_DEV_PORT);
+  logSandboxBoot(root);
+  console.log(
+    '[sandbox-boot] base=%s health=http://127.0.0.1:%s/dev/health',
+    process.env.CLIENT_BASE_PATH || '/',
+    process.env.CLIENT_DEV_PORT,
+  );
 }
 
 function bootstrap(root) {
   loadEnvFile(root, '.env.local');
   loadEnvFile(root, '.env');
-  normalizeSandboxEnv();
+  normalizeSandboxEnv(root);
 }
 
 module.exports = { bootstrap };
