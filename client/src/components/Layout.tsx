@@ -8,6 +8,7 @@ import {
   SidebarFooter,
   SidebarTrigger,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuItem,
@@ -17,6 +18,7 @@ import {
   Breadcrumb,
   BreadcrumbList,
   BreadcrumbItem,
+  BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import {
   DropdownMenu,
@@ -32,29 +34,51 @@ import {
   Stethoscope,
   GraduationCap,
   BookOpen,
+  CalendarDays,
   LogOut,
   LogIn,
   Pen,
+  School,
 } from 'lucide-react';
 import { Image } from '@/components/ui/image';
-
-const NAV_ITEMS = [
-  { path: '/', label: '工作台', icon: Home },
-  { path: '/diagnosis', label: '学情诊断', icon: Stethoscope },
-  { path: '/plan', label: '升学规划', icon: GraduationCap },
-  { path: '/knowledge', label: '知识点查询', icon: BookOpen },
-];
+import {
+  STAGE_LIST,
+  STAGE_CONFIGS,
+  parseStageSlug,
+  stagePath,
+  getFeatureLabel,
+  type FeatureSlug,
+  type StageSlug,
+} from '@client/src/config/stages';
 
 const GUEST_AVATAR = 'https://lf3-static.bytednsdoc.com/obj/eden-cn/LMfspH/ljhwZthlaukjlkulzlp/miao/no-person.svg';
+
+const FEATURE_ICONS: Record<FeatureSlug, React.FC<{ className?: string }>> = {
+  diagnosis: Stethoscope,
+  plan: GraduationCap,
+  knowledge: BookOpen,
+  'study-plan': CalendarDays,
+};
+
+function resolveFeatureFromPath(pathname: string, stage: StageSlug | null): FeatureSlug | null {
+  if (!stage) return null;
+  if (pathname.includes('/diagnosis')) return 'diagnosis';
+  if (pathname.includes('/plan') && !pathname.includes('/study-plan')) return 'plan';
+  if (pathname.includes('/knowledge')) return 'knowledge';
+  if (pathname.includes('/study-plan')) return 'study-plan';
+  return null;
+}
 
 const LayoutContent: React.FC = () => {
   const { pathname } = useLocation();
   const { appName } = useAppInfo();
   const userInfo = useCurrentUserProfile();
 
-  const activeTitle = NAV_ITEMS.find(
-    (item) => item.path === pathname
-  )?.label ?? '工作台';
+  const segments = pathname.split('/').filter(Boolean);
+  const stageSlug = parseStageSlug(segments[0]);
+  const stageConfig = stageSlug ? STAGE_CONFIGS[stageSlug] : null;
+  const featureSlug = resolveFeatureFromPath(pathname, stageSlug);
+  const isStageHome = stageSlug != null && segments.length === 1;
 
   const handleLogout = async () => {
     const { getDataloom } = await import('@lark-apaas/client-toolkit/dataloom');
@@ -76,6 +100,12 @@ const LayoutContent: React.FC = () => {
   const isLoggedIn = !!userInfo?.user_id;
   const displayName = userInfo?.name || '游客';
   const avatarUrl = userInfo?.avatar || GUEST_AVATAR;
+
+  const breadcrumbTitle = stageConfig
+    ? featureSlug
+      ? `${stageConfig.label} · ${getFeatureLabel(stageSlug!, featureSlug)}`
+      : `${stageConfig.label}学段`
+    : '选择学段';
 
   return (
     <>
@@ -103,20 +133,32 @@ const LayoutContent: React.FC = () => {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {NAV_ITEMS.map((item) => (
-                  <SidebarMenuItem key={item.path}>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname === '/'} tooltip="首页">
+                    <Link to="/">
+                      <Home className="size-4" />
+                      <span className="font-hand">选择学段</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupLabel className="font-marker text-xs">学段入口</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {STAGE_LIST.map((stage) => (
+                  <SidebarMenuItem key={stage.slug}>
                     <SidebarMenuButton
                       asChild
-                      isActive={
-                        item.path === '/'
-                          ? pathname === '/'
-                          : pathname.startsWith(item.path)
-                      }
-                      tooltip={item.label}
+                      isActive={stageSlug === stage.slug && isStageHome}
+                      tooltip={stage.label}
                     >
-                      <Link to={item.path}>
-                        <item.icon className="size-4" />
-                        <span className="font-hand">{item.label}</span>
+                      <Link to={stagePath(stage.slug)}>
+                        <School className="size-4" />
+                        <span className="font-hand">{stage.label}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -124,6 +166,36 @@ const LayoutContent: React.FC = () => {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+
+          {stageConfig && (
+            <SidebarGroup>
+              <SidebarGroupLabel className="font-marker text-xs">
+                {stageConfig.label} · 功能
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {stageConfig.features.map((feature) => {
+                    const Icon = FEATURE_ICONS[feature.slug];
+                    const href = stagePath(stageSlug!, feature.slug);
+                    return (
+                      <SidebarMenuItem key={feature.slug}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname === href || pathname.startsWith(`${href}/`)}
+                          tooltip={feature.label}
+                        >
+                          <Link to={href}>
+                            <Icon className="size-4" />
+                            <span className="font-hand">{feature.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
         </SidebarContent>
 
         <SidebarFooter className="border-t-2 border-dashed border-ink/20">
@@ -131,10 +203,7 @@ const LayoutContent: React.FC = () => {
             <SidebarMenuItem>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton
-                    size="lg"
-                    className="data-[state=open]:bg-sidebar-accent"
-                  >
+                  <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
                     <Image
                       src={avatarUrl}
                       alt={displayName}
@@ -143,9 +212,7 @@ const LayoutContent: React.FC = () => {
                       height={32}
                     />
                     <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                      <span className="truncate font-hand font-bold">
-                        {displayName}
-                      </span>
+                      <span className="truncate font-hand font-bold">{displayName}</span>
                     </div>
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
@@ -178,8 +245,16 @@ const LayoutContent: React.FC = () => {
           <Breadcrumb className="self-center">
             <BreadcrumbList>
               <BreadcrumbItem className="text-foreground font-marker font-bold text-lg">
-                {activeTitle}
+                {breadcrumbTitle}
               </BreadcrumbItem>
+              {stageConfig && featureSlug && (
+                <>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem className="font-hand text-sm text-muted-foreground">
+                    {stageConfig.subtitle}
+                  </BreadcrumbItem>
+                </>
+              )}
             </BreadcrumbList>
           </Breadcrumb>
         </header>

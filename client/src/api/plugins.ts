@@ -93,6 +93,89 @@ export interface KnowledgeAnalysisInput {
   knowledge_point: string;
 }
 
+export interface PersonalizedLearningPlanInput {
+  stage: string;
+  stageSlug: string;
+  grade: string;
+  region: string;
+  school?: string;
+  targetSchool?: string;
+  examDate?: string;
+  currentScore?: string;
+  targetScore?: string;
+  weakSubjects?: string;
+  strongSubjects?: string;
+  weeklyHours?: string;
+  dailyHours?: string;
+  boardingType?: string;
+  eveningStudy?: string;
+  extracurricular?: string;
+  weeklySchedule?: string;
+  timetableNotes?: string;
+  customNotes?: string;
+}
+
+export function buildPersonalizedLearningPlanPrompt(input: PersonalizedLearningPlanInput): string {
+  const boarding = input.boardingType === 'day' ? '走读' : input.boardingType === 'boarding' ? '住读' : '未说明';
+  const lines = [
+    `【任务】为${input.stage}学段学生生成个性化、可执行、可验收的学习规划报告。`,
+    `年级：${input.grade}`,
+    `地区：${input.region}`,
+    input.school ? `学校：${input.school}` : '',
+    input.targetSchool ? `目标学校/院校：${input.targetSchool}` : '',
+    input.examDate ? `目标考试日期：${input.examDate}` : '',
+    input.currentScore ? `当前成绩：${input.currentScore}` : '',
+    input.targetScore ? `目标成绩：${input.targetScore}` : '',
+    input.weakSubjects ? `薄弱科目：${input.weakSubjects}` : '',
+    input.strongSubjects ? `优势科目：${input.strongSubjects}` : '',
+    `学习模式：${boarding}`,
+    input.weeklyHours ? `每周可支配学习时长：${input.weeklyHours}小时` : '',
+    input.dailyHours ? `每天可学习时长：${input.dailyHours}小时` : '',
+    input.eveningStudy === 'yes' ? '有晚自习' : input.eveningStudy === 'no' ? '无晚自习' : '',
+    input.extracurricular ? `课外班/固定占用：${input.extracurricular}` : '',
+    input.weeklySchedule ? `周可学习时段：\n${input.weeklySchedule}` : '',
+    input.timetableNotes ? `课表与作业量：\n${input.timetableNotes}` : '',
+    input.customNotes ? `个性化说明：\n${input.customNotes}` : '',
+  ].filter(Boolean);
+
+  return `${lines.join('\n')}
+
+【生成规则】
+1. 按${input.stage}学段特点制定，禁止泛泛而谈。
+2. 时间分配按目标差距与薄弱程度加权，禁止平均分配。
+3. 走读需考虑通勤/作业/晚饭；住读需利用晚自习与周末，禁止生成不匹配的模式。
+4. 每项任务必须有：完成标准、检测方式、优先级。
+5. 政策/分数线/院校信息查不到须标注「暂无官方确认信息」，禁止编造。
+
+【输出结构】必须 Markdown，且包含以下章节与表格：
+## 学习目标总览
+## 本周学习计划表（表格：日期|科目|时间段|任务|时长|优先级|知识点|完成标准|检测方式）
+## 每日学习时间安排表
+## 科目任务拆解表
+## 知识点补强路径
+## 阶段检测安排
+## 家长监督建议
+## 风险提醒
+## 下周调整建议（含完成率<70%与正确率<80%的调整机制）`;
+}
+
+export async function* streamPersonalizedLearningPlan(input: PersonalizedLearningPlanInput) {
+  const prompt = buildPersonalizedLearningPlanPrompt(input);
+  const stream = capabilityClient
+    .load(PLUGIN_IDS.DIAGNOSIS_REPORT)
+    .callStream('textGenerate', {
+      student_grade: input.grade,
+      student_region: input.region,
+      subject_scores: input.currentScore || buildScoresText({}),
+      learning_problems: prompt,
+    } as Record<string, unknown>);
+
+  for await (const chunk of stream) {
+    const content = (chunk as { content?: string }).content || '';
+    if (content) yield content;
+  }
+}
+
 export async function* streamDiagnosisReport(input: DiagnosisReportInput) {
   const stream = capabilityClient
     .load(PLUGIN_IDS.DIAGNOSIS_REPORT)
