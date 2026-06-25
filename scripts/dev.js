@@ -11,6 +11,20 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 process.chdir(PROJECT_ROOT);
 
 // ── Load .env ─────────────────────────────────────────────────────────────────
+function sanitizeEnvValue(key, value) {
+  if (!value) return value;
+  if (
+    (value.startsWith('"') && value.endsWith('"'))
+    || (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1);
+  }
+  if (key === 'CLIENT_BASE_PATH' && value && !value.startsWith('/')) {
+    value = `/${value}`;
+  }
+  return value;
+}
+
 function loadEnvFile(filename) {
   const envPath = path.join(PROJECT_ROOT, filename);
   if (!fs.existsSync(envPath)) return;
@@ -21,7 +35,7 @@ function loadEnvFile(filename) {
     const eqIdx = trimmed.indexOf('=');
     if (eqIdx === -1) continue;
     const key = trimmed.slice(0, eqIdx).trim();
-    const value = trimmed.slice(eqIdx + 1).trim();
+    const value = sanitizeEnvValue(key, trimmed.slice(eqIdx + 1).trim());
     if (!(key in process.env)) {
       process.env[key] = value;
     }
@@ -34,6 +48,8 @@ loadEnvFile('.env');
 if (process.env.SANDBOX_ID) {
   if (!process.env.CLIENT_DEV_HOST) process.env.CLIENT_DEV_HOST = '0.0.0.0';
   if (!process.env.SERVER_HOST) process.env.SERVER_HOST = '0.0.0.0';
+  // 妙搭沙箱 nginx 固定反代 client 端口 8001（未显式配置时）
+  if (!process.env.CLIENT_DEV_PORT) process.env.CLIENT_DEV_PORT = '8001';
 }
 
 // ── Configuration ─────────────────────────────────────────────────────────────
