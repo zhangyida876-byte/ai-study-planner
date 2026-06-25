@@ -31,7 +31,7 @@
     "format": "prettier --write \"{server,client,test}/**/*.{js,ts,tsx,json,md}\"",
     "prepare": "chmod +x .githooks/pre-commit 2>/dev/null; git config core.hooksPath .githooks 2>/dev/null || true",
     "precommit": "node scripts/hooks/run-precommit.js",
-    "postinstall": "npx -y fullstack-cli action-plugin init"
+    "postinstall": "node scripts/ensure-action-plugins.js"
   },
   "dependencies": {
     "@lark-apaas/fullstack-nestjs-core": "^1.1.22",

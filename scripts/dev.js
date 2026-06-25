@@ -293,10 +293,33 @@ process.on('SIGHUP', cleanup);
 
 // Stale dist makes nest --watch skip missing files; watcher won't self-heal.
 function cleanStaleDist() {
+  if (process.env.SANDBOX_ID) {
+    logEvent('INFO', 'main', 'Sandbox mode: skip dist cleanup for faster cold start');
+    return;
+  }
   const distPath = path.join(PROJECT_ROOT, 'dist');
   if (fs.existsSync(distPath)) {
     fs.rmSync(distPath, { recursive: true, force: true });
     logEvent('INFO', 'main', 'Cleaned dist/ to force full rebuild');
+  }
+}
+
+function ensureActionPlugins() {
+  if (fs.existsSync(path.join(PROJECT_ROOT, 'server', 'capabilities'))
+    && fs.readdirSync(path.join(PROJECT_ROOT, 'server', 'capabilities')).some((f) => f.endsWith('.json'))) {
+    writeOutput('✅ Action plugins already present, skip init\n\n');
+    return;
+  }
+  writeOutput('\n🔌 Initializing action plugins...\n');
+  try {
+    execSync('node scripts/ensure-action-plugins.js', {
+      cwd: PROJECT_ROOT,
+      stdio: 'inherit',
+      env: { ...process.env, CI: '1' },
+    });
+    writeOutput('✅ Action plugins initialized\n\n');
+  } catch {
+    writeOutput('⚠️  Action plugin initialization failed, continuing anyway...\n\n');
   }
 }
 
@@ -309,28 +332,22 @@ async function main() {
   await ensurePortFree(SERVER_PORT, 'server');
   await ensurePortFree(CLIENT_DEV_PORT, 'client');
 
-  // Initialize action plugins
-  writeOutput('\n🔌 Initializing action plugins...\n');
-  try {
-    execSync('npx -y fullstack-cli action-plugin init', { cwd: PROJECT_ROOT, stdio: 'inherit' });
-    writeOutput('✅ Action plugins initialized\n\n');
-  } catch {
-    writeOutput('⚠️  Action plugin initialization failed, continuing anyway...\n\n');
-  }
+  ensureActionPlugins();
 
-  // Start server and client
-  const serverPromise = startProcess({
-    name: 'server',
-    command: 'npm',
-    args: ['run', 'dev:server'],
-    cleanupPort: SERVER_PORT,
-  });
-
+  // Start server and client immediately (do not block on fullstack-cli download)
+  // Vite 先起：沙箱 nginx 健康检查反代的是 client 端口
   const clientPromise = startProcess({
     name: 'client',
     command: 'npm',
     args: ['run', 'dev:client'],
     cleanupPort: CLIENT_DEV_PORT,
+  });
+
+  const serverPromise = startProcess({
+    name: 'server',
+    command: 'npm',
+    args: ['run', 'dev:server'],
+    cleanupPort: SERVER_PORT,
   });
 
   writeOutput(`📋 Dev processes running. Press Ctrl+C to stop.\n`);
