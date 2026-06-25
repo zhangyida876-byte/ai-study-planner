@@ -11,8 +11,8 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 process.chdir(PROJECT_ROOT);
 
 // ── Load .env ─────────────────────────────────────────────────────────────────
-function loadEnv() {
-  const envPath = path.join(PROJECT_ROOT, '.env');
+function loadEnvFile(filename) {
+  const envPath = path.join(PROJECT_ROOT, filename);
   if (!fs.existsSync(envPath)) return;
   const lines = fs.readFileSync(envPath, 'utf8').split('\n');
   for (const line of lines) {
@@ -27,7 +27,8 @@ function loadEnv() {
     }
   }
 }
-loadEnv();
+loadEnvFile('.env.local');
+loadEnvFile('.env');
 
 // 沙箱 nginx 反代需监听所有网卡，否则易出现 502 Bad Gateway
 if (process.env.SANDBOX_ID) {
@@ -292,6 +293,10 @@ process.on('SIGHUP', cleanup);
 
 // Stale dist makes nest --watch skip missing files; watcher won't self-heal.
 function cleanStaleDist() {
+  if (process.env.SANDBOX_ID) {
+    logEvent('INFO', 'main', 'Sandbox mode: skip dist cleanup for faster cold start');
+    return;
+  }
   const distPath = path.join(PROJECT_ROOT, 'dist');
   if (fs.existsSync(distPath)) {
     fs.rmSync(distPath, { recursive: true, force: true });
@@ -299,37 +304,78 @@ function cleanStaleDist() {
   }
 }
 
+function ensureActionPlugins() {
+  if (fs.existsSync(path.join(PROJECT_ROOT, 'server', 'capabilities'))
+    && fs.readdirSync(path.join(PROJECT_ROOT, 'server', 'capabilities')).some((f) => f.endsWith('.json'))) {
+    writeOutput('✅ Action plugins already present, skip init\n\n');
+    return;
+  }
+  writeOutput('\n🔌 Initializing action plugins...\n');
+  try {
+    execSync('node scripts/ensure-action-plugins.js', {
+      cwd: PROJECT_ROOT,
+      stdio: 'inherit',
+      env: { ...process.env, CI: '1' },
+    });
+    writeOutput('✅ Action plugins initialized\n\n');
+  } catch {
+    writeOutput('⚠️  Action plugin initialization failed, continuing anyway...\n\n');
+  }
+}
+
+function ensureNativeDeps() {
+  try {
+    execSync('node scripts/ensure-native-deps.js', {
+      cwd: PROJECT_ROOT,
+      stdio: 'inherit',
+      env: { ...process.env, CI: '1' },
+      timeout: 320000,
+    });
+  } catch {
+    writeOutput('⚠️  Native deps check failed, continuing anyway...\n\n');
+  }
+}
+
+function logGitRevision() {
+  try {
+    const commit = execSync('git rev-parse --short HEAD', {
+      cwd: PROJECT_ROOT,
+      encoding: 'utf8',
+      timeout: 5000,
+    }).trim();
+    logEvent('INFO', 'main', `Git commit: ${commit}`);
+  } catch {}
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
   logEvent('INFO', 'main', '========== Dev session started ==========');
+  logGitRevision();
 
   cleanStaleDist();
 
   await ensurePortFree(SERVER_PORT, 'server');
   await ensurePortFree(CLIENT_DEV_PORT, 'client');
 
-  // Initialize action plugins
-  writeOutput('\n🔌 Initializing action plugins...\n');
-  try {
-    execSync('fullstack-cli action-plugin init', { cwd: PROJECT_ROOT, stdio: 'inherit' });
-    writeOutput('✅ Action plugins initialized\n\n');
-  } catch {
-    writeOutput('⚠️  Action plugin initialization failed, continuing anyway...\n\n');
+  ensureActionPlugins();
+  if (process.env.SANDBOX_ID) {
+    ensureNativeDeps();
   }
 
-  // Start server and client
-  const serverPromise = startProcess({
-    name: 'server',
-    command: 'npm',
-    args: ['run', 'dev:server'],
-    cleanupPort: SERVER_PORT,
-  });
-
+  // Start server and client immediately (do not block on fullstack-cli download)
+  // Vite 先起：沙箱 nginx 健康检查反代的是 client 端口
   const clientPromise = startProcess({
     name: 'client',
     command: 'npm',
     args: ['run', 'dev:client'],
     cleanupPort: CLIENT_DEV_PORT,
+  });
+
+  const serverPromise = startProcess({
+    name: 'server',
+    command: 'npm',
+    args: ['run', 'dev:server'],
+    cleanupPort: SERVER_PORT,
   });
 
   writeOutput(`📋 Dev processes running. Press Ctrl+C to stop.\n`);
