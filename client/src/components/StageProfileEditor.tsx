@@ -15,6 +15,7 @@ import {
 import type { StageConfig } from '@client/src/config/stages';
 import type { StageProfile } from '@client/src/types/stage-profile';
 import { PROVINCE_CITIES, PROVINCES } from '@client/src/pages/Plan/regionData';
+import { toSelectValue } from '@client/src/lib/utils';
 
 interface StageProfileEditorProps {
   stageConfig: StageConfig;
@@ -80,7 +81,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         </div>
         <div>
           <Label className="font-hand">省份 *</Label>
-          <Select value={draft.province} onValueChange={(v) => patch({ province: v, city: '', county: '' })}>
+          <Select value={toSelectValue(draft.province)} onValueChange={(v) => patch({ province: v, city: '', county: '' })}>
             <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择省份" /></SelectTrigger>
             <SelectContent>
               {PROVINCES.map((p) => (
@@ -91,7 +92,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         </div>
         <div>
           <Label className="font-hand">城市</Label>
-          <Select value={draft.city} onValueChange={(v) => patch({ city: v })} disabled={!draft.province}>
+          <Select value={toSelectValue(draft.city)} onValueChange={(v) => patch({ city: v })} disabled={!draft.province}>
             <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择城市" /></SelectTrigger>
             <SelectContent>
               {cities.map((c) => (
@@ -111,7 +112,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         </div>
         <div>
           <Label className="font-hand">当前年级 *</Label>
-          <Select value={draft.grade} onValueChange={(v) => patch({ grade: v })}>
+          <Select value={toSelectValue(draft.grade)} onValueChange={(v) => patch({ grade: v })}>
             <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择年级" /></SelectTrigger>
             <SelectContent>
               {stageConfig.grades.map((g) => (

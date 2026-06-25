@@ -9,6 +9,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 if [ -n "${SANDBOX_ID:-}" ]; then
+  node "$SCRIPT_DIR/sync-sandbox-code.js" || true
   exec node "$SCRIPT_DIR/dev.js" "$@"
 fi
 

@@ -33,6 +33,7 @@ import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
 import { getPlanAutofillFromProfile } from '@client/src/utils/stage-profile-sync';
 import { stagePath } from '@client/src/config/stages';
+import { toSelectValue } from '@client/src/lib/utils';
 
 const HS_MODES = [
   { value: '3+1+2', label: '3+1+2（物理/历史 二选一）' },
@@ -347,7 +348,7 @@ const Plan: React.FC = () => {
               <div className="flex gap-2">
                 <div className="w-32">
                   <label className="mb-1 block text-sm font-bold text-ink">省份</label>
-                  <Select value={isCustomRegion ? '__custom__' : selectedProvince} onValueChange={handleProvinceChange}>
+                  <Select value={isCustomRegion ? '__custom__' : toSelectValue(selectedProvince)} onValueChange={handleProvinceChange}>
                     <SelectTrigger className="font-hand">
                       <SelectValue placeholder="省/直辖市" />
                     </SelectTrigger>
@@ -365,7 +366,7 @@ const Plan: React.FC = () => {
                 {!isCustomRegion && selectedProvince && (
                   <div className="w-28">
                     <label className="mb-1 block text-sm font-bold text-ink">市/区</label>
-                    <Select value={selectedCity} onValueChange={handleCityChange}>
+                    <Select value={toSelectValue(selectedCity)} onValueChange={handleCityChange}>
                       <SelectTrigger className="font-hand">
                         <SelectValue placeholder="市/区" />
                       </SelectTrigger>
@@ -401,7 +402,7 @@ const Plan: React.FC = () => {
                {/* Grade Selector */}
               <div className="w-28">
                 <label className="mb-1 block text-sm font-bold text-ink">年级</label>
-                <Select value={grade} onValueChange={(v) => { setProfileDirty(true); setGrade(v); }}>
+                <Select value={toSelectValue(grade)} onValueChange={(v) => { setProfileDirty(true); setGrade(v); }}>
                   <SelectTrigger className="font-hand">
                     <SelectValue placeholder="选择年级" />
                   </SelectTrigger>
@@ -434,7 +435,7 @@ const Plan: React.FC = () => {
               {isGaokao && (
                 <div className="w-52">
                   <label className="mb-1 block text-sm font-bold text-ink">选科模式</label>
-                  <Select value={examMode} onValueChange={(v) => { setProfileDirty(true); setExamMode(v); }}>
+                  <Select value={toSelectValue(examMode)} onValueChange={(v) => { setProfileDirty(true); setExamMode(v); }}>
                     <SelectTrigger className="font-hand">
                       <SelectValue placeholder="选择模式" />
                     </SelectTrigger>

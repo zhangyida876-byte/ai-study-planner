@@ -120,6 +120,14 @@ export function parseStageSlug(slug: string | undefined): StageSlug | null {
   return isStageSlug(slug) ? slug : null;
 }
 
+/** 从 pathname 提取学段（兼容含 /app/app_xxx 前缀的路径） */
+export function parseStageSlugFromPathname(pathname: string): StageSlug | null {
+  for (const segment of pathname.split('/').filter(Boolean)) {
+    if (isStageSlug(segment)) return segment;
+  }
+  return null;
+}
+
 export function stagePath(stage: StageSlug, feature?: FeatureSlug): string {
   if (!feature) return `/${stage}`;
   const cfg = STAGE_CONFIGS[stage].features.find((f) => f.slug === feature);

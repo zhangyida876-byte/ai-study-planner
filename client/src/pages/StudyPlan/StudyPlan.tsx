@@ -25,6 +25,7 @@ import {
   buildScoresText,
   type PersonalizedLearningPlanInput,
 } from '@client/src/api/plugins';
+import { toSelectValue } from '@client/src/lib/utils';
 
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
@@ -196,7 +197,7 @@ const StudyPlan: React.FC = () => {
               </div>
               <div>
                 <Label className="font-hand">年级 *</Label>
-                <Select value={grade} onValueChange={(v) => { markDirty(); setGrade(v); }}>
+                <Select value={toSelectValue(grade)} onValueChange={(v) => { markDirty(); setGrade(v); }}>
                   <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择年级" /></SelectTrigger>
                   <SelectContent>
                     {stageConfig.grades.map((g) => (
@@ -253,7 +254,7 @@ const StudyPlan: React.FC = () => {
               </div>
               <div>
                 <Label className="font-hand">走读/住读 *</Label>
-                <Select value={boardingType} onValueChange={(v) => { markDirty(); setBoardingType(v); }}>
+                <Select value={toSelectValue(boardingType)} onValueChange={(v) => { markDirty(); setBoardingType(v); }}>
                   <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="请选择" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="day">走读</SelectItem>
@@ -263,7 +264,7 @@ const StudyPlan: React.FC = () => {
               </div>
               <div>
                 <Label className="font-hand">是否有晚自习</Label>
-                <Select value={eveningStudy} onValueChange={setEveningStudy}>
+                <Select value={toSelectValue(eveningStudy)} onValueChange={setEveningStudy}>
                   <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="请选择" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="yes">有</SelectItem>

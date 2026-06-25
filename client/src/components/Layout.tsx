@@ -44,7 +44,7 @@ import { Image } from '@/components/ui/image';
 import {
   STAGE_LIST,
   STAGE_CONFIGS,
-  parseStageSlug,
+  parseStageSlugFromPathname,
   stagePath,
   getFeatureLabel,
   type FeatureSlug,
@@ -74,11 +74,10 @@ const LayoutContent: React.FC = () => {
   const { appName } = useAppInfo();
   const userInfo = useCurrentUserProfile();
 
-  const segments = pathname.split('/').filter(Boolean);
-  const stageSlug = parseStageSlug(segments[0]);
+  const stageSlug = parseStageSlugFromPathname(pathname);
   const stageConfig = stageSlug ? STAGE_CONFIGS[stageSlug] : null;
   const featureSlug = resolveFeatureFromPath(pathname, stageSlug);
-  const isStageHome = stageSlug != null && segments.length === 1;
+  const isStageHome = stageSlug != null && pathname.replace(/\/+$/, '').endsWith(`/${stageSlug}`);
 
   const handleLogout = async () => {
     const { getDataloom } = await import('@lark-apaas/client-toolkit/dataloom');

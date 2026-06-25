@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { PROVINCES, PROVINCE_CITIES } from '@client/src/pages/Plan/regionData';
+import { toSelectValue } from '@client/src/lib/utils';
 
 const SUBJECT_VERSION_MAP: Record<string, Record<string, string>> = {
   '北京市': { '数学': '人教版', '语文': '部编版', '英语': '人教版', '物理': '人教版', '化学': '人教版', '生物': '人教版', '历史': '部编版', '地理': '人教版', '政治': '部编版' },
@@ -151,7 +152,7 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
           </div>
         ) : (
           <div className="flex flex-wrap gap-3">
-            <Select value={province} onValueChange={onProvinceChange}>
+            <Select value={toSelectValue(province)} onValueChange={onProvinceChange}>
               <SelectTrigger className="font-hand h-10 w-36">
                 <SelectValue placeholder="选择省/市" />
               </SelectTrigger>
@@ -163,7 +164,7 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
               </SelectContent>
             </Select>
             {province && cities.length > 0 && (
-              <Select value={city} onValueChange={onCityChange}>
+              <Select value={toSelectValue(city)} onValueChange={onCityChange}>
                 <SelectTrigger className="font-hand h-10 w-36">
                   <SelectValue placeholder="选择市/区" />
                 </SelectTrigger>
@@ -182,7 +183,7 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div>
           <label className="mb-2 block text-sm font-bold text-ink">年级</label>
-          <Select value={grade} onValueChange={onGradeChange}>
+          <Select value={toSelectValue(grade)} onValueChange={onGradeChange}>
             <SelectTrigger className="font-hand h-10">
               <SelectValue placeholder="选择年级" />
             </SelectTrigger>
@@ -196,7 +197,7 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
 
         <div>
           <label className="mb-2 block text-sm font-bold text-ink">学期</label>
-          <Select value={semester} onValueChange={onSemesterChange}>
+          <Select value={toSelectValue(semester)} onValueChange={onSemesterChange}>
             <SelectTrigger className="font-hand h-10">
               <SelectValue placeholder="选择学期" />
             </SelectTrigger>
@@ -210,7 +211,7 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
 
         <div>
           <label className="mb-2 block text-sm font-bold text-ink">学科</label>
-          <Select value={subject} onValueChange={onSubjectChange}>
+          <Select value={toSelectValue(subject)} onValueChange={onSubjectChange}>
             <SelectTrigger className="font-hand h-10">
               <SelectValue placeholder="全部学科" />
             </SelectTrigger>
@@ -232,7 +233,7 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
               </span>
             )}
           </label>
-          <Select value={version} onValueChange={onVersionChange}>
+          <Select value={toSelectValue(version)} onValueChange={onVersionChange}>
             <SelectTrigger className="font-hand h-10">
               <SelectValue placeholder="全部版本" />
             </SelectTrigger>
