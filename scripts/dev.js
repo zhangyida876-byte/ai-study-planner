@@ -10,23 +10,10 @@ const readline = require('readline');
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 process.chdir(PROJECT_ROOT);
 
-// ── Load .env ─────────────────────────────────────────────────────────────────
-function loadEnv() {
-  const envPath = path.join(PROJECT_ROOT, '.env');
-  if (!fs.existsSync(envPath)) return;
-  const lines = fs.readFileSync(envPath, 'utf8').split('\n');
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const eqIdx = trimmed.indexOf('=');
-    if (eqIdx === -1) continue;
-    const key = trimmed.slice(0, eqIdx).trim();
-    const value = trimmed.slice(eqIdx + 1).trim();
-    if (!(key in process.env)) {
-      process.env[key] = value;
-    }
-  }
-}
+require('./sandbox-env').bootstrap(PROJECT_ROOT);
+
+// ── Load .env (sandbox-env 已加载 .env.local + .env) ─────────────────────────
+function loadEnv() {}
 loadEnv();
 
 // ── Configuration ─────────────────────────────────────────────────────────────
@@ -283,6 +270,10 @@ process.on('SIGHUP', cleanup);
 
 // Stale dist makes nest --watch skip missing files; watcher won't self-heal.
 function cleanStaleDist() {
+  if (process.env.SANDBOX_ID) {
+    logEvent('INFO', 'main', 'Sandbox: skip dist cleanup');
+    return;
+  }
   const distPath = path.join(PROJECT_ROOT, 'dist');
   if (fs.existsSync(distPath)) {
     fs.rmSync(distPath, { recursive: true, force: true });
@@ -319,6 +310,25 @@ function cleanStaleClientJs() {
   }
 }
 
+function ensureActionPlugins() {
+  const capDir = path.join(PROJECT_ROOT, 'server', 'capabilities');
+  if (fs.existsSync(capDir) && fs.readdirSync(capDir).some((f) => f.endsWith('.json'))) {
+    writeOutput('✅ Action plugins present, skip init\n\n');
+    return;
+  }
+  writeOutput('\n🔌 Initializing action plugins...\n');
+  try {
+    execSync('node scripts/ensure-action-plugins.js', {
+      cwd: PROJECT_ROOT,
+      stdio: 'inherit',
+      env: { ...process.env, CI: '1' },
+      timeout: 60000,
+    });
+  } catch {
+    writeOutput('⚠️  Action plugin init failed, continuing\n\n');
+  }
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
   logEvent('INFO', 'main', '========== Dev session started ==========');
@@ -326,31 +336,37 @@ async function main() {
   cleanStaleDist();
   cleanStaleClientJs();
 
-  // Initialize action plugins
-  writeOutput('\n🔌 Initializing action plugins...\n');
-  try {
-    execSync('fullstack-cli action-plugin init', { cwd: PROJECT_ROOT, stdio: 'inherit' });
-    writeOutput('✅ Action plugins initialized\n\n');
-  } catch {
-    writeOutput('⚠️  Action plugin initialization failed, continuing anyway...\n\n');
+  ensureActionPlugins();
+
+  if (process.env.SANDBOX_ID) {
+    try {
+      execSync('node scripts/ensure-native-deps.js', {
+        cwd: PROJECT_ROOT,
+        stdio: 'inherit',
+        env: { ...process.env, CI: '1' },
+        timeout: 90000,
+      });
+    } catch {
+      writeOutput('⚠️  Native deps check failed, continuing\n\n');
+    }
   }
 
   await ensurePortFree(SERVER_PORT, 'main');
   await ensurePortFree(CLIENT_DEV_PORT, 'main');
 
-  // Start server and client
-  const serverPromise = startProcess({
-    name: 'server',
-    command: 'npm',
-    args: ['run', 'dev:server'],
-    cleanupPort: SERVER_PORT,
-  });
-
+  // Client 先启动：沙箱 health check 探测 http://8080/dev/health
   const clientPromise = startProcess({
     name: 'client',
     command: 'npm',
     args: ['run', 'dev:client'],
     cleanupPort: CLIENT_DEV_PORT,
+  });
+
+  const serverPromise = startProcess({
+    name: 'server',
+    command: 'npm',
+    args: ['run', 'dev:server'],
+    cleanupPort: SERVER_PORT,
   });
 
   writeOutput(`📋 Dev processes running. Press Ctrl+C to stop.\n`);
