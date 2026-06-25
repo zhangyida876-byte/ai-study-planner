@@ -7,14 +7,9 @@ import { streamKnowledgeAnalysis, buildKnowledgeGradeSemester } from '@client/sr
 import type { KnowledgePoint } from '@shared/api.interface';
 import KnowledgeGraph from './KnowledgeGraph';
 
-import type { StageProfile } from '@client/src/types/stage-profile';
-import type { StageSlug } from '@client/src/config/stages';
-
 interface KnowledgeDetailPanelProps {
   detail: KnowledgePoint | null;
   loading: boolean;
-  stageSlug?: StageSlug;
-  profile?: StageProfile;
 }
 
 interface SectionBlockProps {
@@ -98,11 +93,7 @@ function getExamProb(detail: KnowledgePoint): { label: string; percent: number; 
   return { label: '中频', percent: 40, color: 'bg-pen-blue/50' };
 }
 
-const AIAnalysisSection: React.FC<{
-  detail: KnowledgePoint;
-  stageSlug?: StageSlug;
-  profile?: StageProfile;
-}> = ({ detail, stageSlug, profile }) => {
+const AIAnalysisSection: React.FC<{ detail: KnowledgePoint }> = ({ detail }) => {
   const [analysisContent, setAnalysisContent] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
@@ -119,7 +110,7 @@ const AIAnalysisSection: React.FC<{
         grade_semester: gradeSemester || detail.chapter,
         chapter: detail.chapter,
         knowledge_point: detail.name,
-      }, stageSlug ? { stageSlug, profile } : undefined);
+      });
       let full = '';
       for await (const chunk of generator) {
         full += chunk;
@@ -130,7 +121,7 @@ const AIAnalysisSection: React.FC<{
     } finally {
       setIsAnalyzing(false);
     }
-  }, [detail, stageSlug, profile]);
+  }, [detail]);
 
   return (
     <WobblyCard variant="white" decoration="tape" wobblyIndex={3} hoverable={false} className="p-4">
@@ -181,8 +172,6 @@ const AIAnalysisSection: React.FC<{
 const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
   detail,
   loading,
-  stageSlug,
-  profile,
 }) => {
   if (loading) {
     return (
@@ -290,7 +279,7 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
         </div>
       </div>
 
-      <AIAnalysisSection detail={detail} stageSlug={stageSlug} profile={profile} />
+      <AIAnalysisSection detail={detail} />
     </div>
   );
 };

@@ -28,7 +28,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { logger } from '@lark-apaas/client-toolkit/logger';
-import type { StageProfile } from '@client/src/types/stage-profile';
 
 /* ===== Schema & Constants ===== */
 
@@ -288,25 +287,9 @@ interface DiagnosisFormProps {
   onSubmit: (data: DiagnosisFormData) => void;
   isGenerating: boolean;
   onMajorInfoChange?: (content: string) => void;
-  allowedGrades?: string[];
-  stageLabel?: string;
-  stageProfile?: StageProfile;
-  onProfileFieldsChange?: () => void;
-  onRegionPartsChange?: (parts: { province: string; city: string; county: string }) => void;
-  onFormSnapshotChange?: (data: DiagnosisFormData) => void;
 }
 
-const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
-  onSubmit,
-  isGenerating,
-  onMajorInfoChange,
-  allowedGrades,
-  stageLabel,
-  stageProfile,
-  onProfileFieldsChange,
-  onRegionPartsChange,
-  onFormSnapshotChange,
-}) => {
+const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating, onMajorInfoChange }) => {
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [county, setCounty] = useState('');
@@ -322,70 +305,11 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   const [majorInfoLoading, setMajorInfoLoading] = useState(false);
   const customRegionRef = useRef('');
   const schoolCacheRef = useRef<Record<string, string[]>>({});
-  const applyingProfileRef = useRef(false);
 
   const form = useForm<DiagnosisFormData>({
     resolver: zodResolver(diagnosisFormSchema) as unknown as Parameters<typeof useForm<DiagnosisFormData>>[0]['resolver'],
     defaultValues: FORM_DEFAULTS,
   });
-
-  const markProfileDirty = useCallback(() => {
-    onProfileFieldsChange?.();
-  }, [onProfileFieldsChange]);
-
-  useEffect(() => {
-    if (!stageProfile?.updatedAt) return;
-    applyingProfileRef.current = true;
-    if (stageProfile.studentName) form.setValue('studentName', stageProfile.studentName);
-    if (stageProfile.grade) form.setValue('grade', stageProfile.grade);
-    if (stageProfile.province) {
-      setSelectedProvince(stageProfile.province);
-      setSelectedCity(stageProfile.city || '');
-      setCounty(stageProfile.county || '');
-      setIsCustomRegion(false);
-      form.setValue('region', buildRegionText(stageProfile.province, stageProfile.city, stageProfile.county));
-      onRegionPartsChange?.({
-        province: stageProfile.province,
-        city: stageProfile.city || '',
-        county: stageProfile.county || '',
-      });
-    }
-    if (stageProfile.targetSchool) form.setValue('targetSchool', stageProfile.targetSchool);
-    if (stageProfile.targetMajor) form.setValue('targetMajor', stageProfile.targetMajor);
-    if (stageProfile.examDate) form.setValue('examDate', stageProfile.examDate);
-    if (stageProfile.boardingType) form.setValue('boardingType', stageProfile.boardingType);
-    if (stageProfile.examMode) form.setValue('examMode', stageProfile.examMode);
-    if (stageProfile.weeklyStudyHours) {
-      const weekly = parseFloat(stageProfile.weeklyStudyHours);
-      if (!Number.isNaN(weekly)) form.setValue('monthlyStudyHours', Math.round(weekly * 4));
-    }
-    if (stageProfile.weakSubjects || stageProfile.scoresOverview) {
-      const hint = [
-        stageProfile.weakSubjects ? `薄弱科目：${stageProfile.weakSubjects}` : '',
-        stageProfile.scoresOverview ? `成绩概览：${stageProfile.scoresOverview}` : '',
-      ].filter(Boolean).join('；');
-      const current = form.getValues('problemDesc');
-      if (!current?.trim()) form.setValue('problemDesc', hint);
-    }
-    queueMicrotask(() => {
-      applyingProfileRef.current = false;
-    });
-  }, [stageProfile?.updatedAt, form, stageProfile]);
-
-  useEffect(() => {
-    if (!onProfileFieldsChange) return;
-    const tracked = new Set([
-      'studentName', 'grade', 'region', 'targetSchool', 'targetMajor',
-      'examDate', 'boardingType', 'examMode', 'problemDesc',
-    ]);
-    const sub = form.watch((_value, info) => {
-      if (info.type === 'change' && info.name && tracked.has(info.name) && !applyingProfileRef.current) {
-        onProfileFieldsChange?.();
-        onFormSnapshotChange?.(form.getValues());
-      }
-    });
-    return () => sub.unsubscribe();
-  }, [form, onProfileFieldsChange, onFormSnapshotChange]);
 
   const watchedGrade = form.watch('grade');
   const watchedMode = form.watch('examMode');
@@ -609,35 +533,28 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   const cities = PROVINCE_CITIES[selectedProvince] || [];
 
   const handleProvinceChange = useCallback((val: string) => {
-    markProfileDirty();
     setSelectedProvince(val);
     setSelectedCity('');
     setCounty('');
     if (val === '__custom__') {
       setIsCustomRegion(true);
       form.setValue('region', customRegionRef.current || '');
-      onRegionPartsChange?.({ province: '', city: '', county: '' });
     } else {
       setIsCustomRegion(false);
       form.setValue('region', val);
-      onRegionPartsChange?.({ province: val, city: '', county: '' });
     }
-  }, [form, markProfileDirty, onRegionPartsChange]);
+  }, [form]);
 
   const handleCityChange = useCallback((val: string) => {
-    markProfileDirty();
     setSelectedCity(val);
     setCounty('');
     form.setValue('region', buildRegionText(selectedProvince, val, ''));
-    onRegionPartsChange?.({ province: selectedProvince, city: val, county: '' });
-  }, [form, selectedProvince, markProfileDirty, onRegionPartsChange]);
+  }, [form, selectedProvince]);
 
   const handleCountyChange = useCallback((val: string) => {
-    markProfileDirty();
     setCounty(val);
     form.setValue('region', buildRegionText(selectedProvince, selectedCity, val));
-    onRegionPartsChange?.({ province: selectedProvince, city: selectedCity, county: val });
-  }, [form, selectedProvince, selectedCity, markProfileDirty, onRegionPartsChange]);
+  }, [form, selectedProvince, selectedCity]);
 
   const handleFormSubmit = useCallback((data: DiagnosisFormData) => {
     const activeFields = getActiveSubjectFields(data);
@@ -736,7 +653,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {GRADE_OPTIONS.filter((g) => !allowedGrades || allowedGrades.includes(g)).map((g: string) => (
+                  {GRADE_OPTIONS.map((g: string) => (
                     <SelectItem key={g} value={g}>{g}</SelectItem>
                   ))}
                 </SelectContent>
