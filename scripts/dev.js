@@ -11,8 +11,8 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 process.chdir(PROJECT_ROOT);
 
 // ── Load .env ─────────────────────────────────────────────────────────────────
-function loadEnv() {
-  const envPath = path.join(PROJECT_ROOT, '.env');
+function loadEnvFile(filename) {
+  const envPath = path.join(PROJECT_ROOT, filename);
   if (!fs.existsSync(envPath)) return;
   const lines = fs.readFileSync(envPath, 'utf8').split('\n');
   for (const line of lines) {
@@ -27,7 +27,8 @@ function loadEnv() {
     }
   }
 }
-loadEnv();
+loadEnvFile('.env.local');
+loadEnvFile('.env');
 
 // 沙箱 nginx 反代需监听所有网卡，否则易出现 502 Bad Gateway
 if (process.env.SANDBOX_ID) {
@@ -311,7 +312,7 @@ async function main() {
   // Initialize action plugins
   writeOutput('\n🔌 Initializing action plugins...\n');
   try {
-    execSync('fullstack-cli action-plugin init', { cwd: PROJECT_ROOT, stdio: 'inherit' });
+    execSync('npx -y fullstack-cli action-plugin init', { cwd: PROJECT_ROOT, stdio: 'inherit' });
     writeOutput('✅ Action plugins initialized\n\n');
   } catch {
     writeOutput('⚠️  Action plugin initialization failed, continuing anyway...\n\n');
