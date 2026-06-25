@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Loader2, Copy, Check, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16,6 +16,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
+import { useStageProfile } from '@client/src/hooks/use-stage-profile';
+import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
+import { getStudyPlanAutofillFromProfile } from '@client/src/utils/stage-profile-sync';
 import { stagePath } from '@client/src/config/stages';
 import {
   streamPersonalizedLearningPlan,
@@ -27,6 +30,7 @@ const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '�
 
 const StudyPlan: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
+  const { profile, regionText, updateProfile } = useStageProfile(stageSlug);
   const [grade, setGrade] = useState('');
   const [region, setRegion] = useState('');
   const [school, setSchool] = useState('');
@@ -47,6 +51,45 @@ const StudyPlan: React.FC = () => {
   const [report, setReport] = useState('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [profileDirty, setProfileDirty] = useState(false);
+  const applyingProfileRef = useRef(false);
+
+  useEffect(() => {
+    if (!profile.updatedAt) return;
+    applyingProfileRef.current = true;
+    const fill = getStudyPlanAutofillFromProfile(profile);
+    if (fill.grade) setGrade(fill.grade);
+    if (fill.region) setRegion(fill.region);
+    if (fill.school) setSchool(fill.school);
+    if (fill.targetSchool) setTargetSchool(fill.targetSchool);
+    if (fill.examDate) setExamDate(fill.examDate);
+    if (fill.currentScore) setCurrentScore(fill.currentScore);
+    if (fill.weakSubjects) setWeakSubjects(fill.weakSubjects);
+    if (fill.strongSubjects) setStrongSubjects(fill.strongSubjects);
+    if (fill.weeklyHours) setWeeklyHours(fill.weeklyHours);
+    if (fill.boardingType) setBoardingType(fill.boardingType);
+    queueMicrotask(() => { applyingProfileRef.current = false; });
+  }, [profile.updatedAt, profile]);
+
+  const markDirty = () => {
+    if (!applyingProfileRef.current) setProfileDirty(true);
+  };
+
+  const handleSyncProfileBack = useCallback(() => {
+    updateProfile({
+      grade,
+      school,
+      targetSchool,
+      examDate,
+      scoresOverview: currentScore,
+      weakSubjects,
+      strongSubjects,
+      weeklyStudyHours: weeklyHours,
+      boardingType: (boardingType as '' | 'day' | 'boarding') || '',
+    });
+    toast.success('已同步回学段主页档案');
+    setProfileDirty(false);
+  }, [updateProfile, grade, school, targetSchool, examDate, currentScore, weakSubjects, strongSubjects, weeklyHours, boardingType]);
 
   const validate = (): string | null => {
     if (!grade) return '请选择年级';
@@ -90,7 +133,7 @@ const StudyPlan: React.FC = () => {
       };
 
       let full = '';
-      for await (const chunk of streamPersonalizedLearningPlan(input)) {
+      for await (const chunk of streamPersonalizedLearningPlan(input, { stageSlug, profile })) {
         full += chunk;
         setReport(full);
       }
@@ -103,7 +146,7 @@ const StudyPlan: React.FC = () => {
     boardingType, currentScore, customNotes, dailyHours, eveningStudy, examDate,
     extracurricular, grade, region, school, stageConfig.label, stageSlug,
     strongSubjects, targetSchool, targetScore, timetableNotes, weakSubjects,
-    weeklyHours, weeklySchedule,
+    weeklyHours, weeklySchedule, profile,
   ]);
 
   const handleCopy = async () => {
@@ -134,6 +177,14 @@ const StudyPlan: React.FC = () => {
         </p>
       </div>
 
+      <ProfileAutofillBanner
+        stageSlug={stageSlug}
+        profile={profile}
+        regionText={regionText}
+        showSyncBack={profileDirty}
+        onSyncBack={handleSyncProfileBack}
+      />
+
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4">
           <WobblyCard variant="white" wobblyIndex={0} hoverable={false} className="p-4 space-y-4">
@@ -145,7 +196,7 @@ const StudyPlan: React.FC = () => {
               </div>
               <div>
                 <Label className="font-hand">年级 *</Label>
-                <Select value={grade} onValueChange={setGrade}>
+                <Select value={grade} onValueChange={(v) => { markDirty(); setGrade(v); }}>
                   <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择年级" /></SelectTrigger>
                   <SelectContent>
                     {stageConfig.grades.map((g) => (
@@ -156,23 +207,23 @@ const StudyPlan: React.FC = () => {
               </div>
               <div className="sm:col-span-2">
                 <Label className="font-hand">所在地区 *</Label>
-                <Input value={region} onChange={(e) => setRegion(e.target.value)} placeholder="省/市/区" className="font-hand mt-1" />
+                <Input value={region} onChange={(e) => { markDirty(); setRegion(e.target.value); }} placeholder="省/市/区" className="font-hand mt-1" />
               </div>
               <div>
                 <Label className="font-hand">学校</Label>
-                <Input value={school} onChange={(e) => setSchool(e.target.value)} className="font-hand mt-1" />
+                <Input value={school} onChange={(e) => { markDirty(); setSchool(e.target.value); }} className="font-hand mt-1" />
               </div>
               <div>
                 <Label className="font-hand">{stageConfig.targetLabel}</Label>
-                <Input value={targetSchool} onChange={(e) => setTargetSchool(e.target.value)} className="font-hand mt-1" />
+                <Input value={targetSchool} onChange={(e) => { markDirty(); setTargetSchool(e.target.value); }} className="font-hand mt-1" />
               </div>
               <div>
                 <Label className="font-hand">目标考试时间</Label>
-                <Input type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} className="font-hand mt-1" />
+                <Input type="date" value={examDate} onChange={(e) => { markDirty(); setExamDate(e.target.value); }} className="font-hand mt-1" />
               </div>
               <div>
                 <Label className="font-hand">当前成绩概览</Label>
-                <Input value={currentScore} onChange={(e) => setCurrentScore(e.target.value)} placeholder="如：语92 数78 英85" className="font-hand mt-1" />
+                <Input value={currentScore} onChange={(e) => { markDirty(); setCurrentScore(e.target.value); }} placeholder="如：语92 数78 英85" className="font-hand mt-1" />
               </div>
               <div>
                 <Label className="font-hand">目标成绩</Label>
@@ -180,11 +231,11 @@ const StudyPlan: React.FC = () => {
               </div>
               <div>
                 <Label className="font-hand">薄弱科目 *</Label>
-                <Input value={weakSubjects} onChange={(e) => setWeakSubjects(e.target.value)} placeholder="如：数学、英语" className="font-hand mt-1" />
+                <Input value={weakSubjects} onChange={(e) => { markDirty(); setWeakSubjects(e.target.value); }} placeholder="如：数学、英语" className="font-hand mt-1" />
               </div>
               <div>
                 <Label className="font-hand">优势科目</Label>
-                <Input value={strongSubjects} onChange={(e) => setStrongSubjects(e.target.value)} className="font-hand mt-1" />
+                <Input value={strongSubjects} onChange={(e) => { markDirty(); setStrongSubjects(e.target.value); }} className="font-hand mt-1" />
               </div>
             </div>
           </WobblyCard>
@@ -194,7 +245,7 @@ const StudyPlan: React.FC = () => {
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label className="font-hand">每周可支配时长(小时) *</Label>
-                <Input value={weeklyHours} onChange={(e) => setWeeklyHours(e.target.value)} className="font-hand mt-1" />
+                <Input value={weeklyHours} onChange={(e) => { markDirty(); setWeeklyHours(e.target.value); }} className="font-hand mt-1" />
               </div>
               <div>
                 <Label className="font-hand">每天可学习时长(小时)</Label>
@@ -202,7 +253,7 @@ const StudyPlan: React.FC = () => {
               </div>
               <div>
                 <Label className="font-hand">走读/住读 *</Label>
-                <Select value={boardingType} onValueChange={setBoardingType}>
+                <Select value={boardingType} onValueChange={(v) => { markDirty(); setBoardingType(v); }}>
                   <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="请选择" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="day">走读</SelectItem>
