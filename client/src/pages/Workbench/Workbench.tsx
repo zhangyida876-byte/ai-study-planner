@@ -1,78 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import {
-  Stethoscope,
-  GraduationCap,
-  BookOpen,
-  Sparkles,
-  Pin,
-} from 'lucide-react';
+import { Sparkles, School } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { announcement } from '@client/src/api';
 import { fetchBitableData } from '@client/src/api/plugins';
 import type { Announcement } from '@shared/api.interface';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-
 import { toast } from 'sonner';
 import { logger } from '@lark-apaas/client-toolkit/logger';
-
-interface FeatureCardConfig {
-  title: string;
-  description: string;
-  icon: React.FC<React.SVGProps<SVGSVGElement>>;
-  iconColor: string;
-  path: string;
-  decoration: 'tape' | 'tack' | 'none';
-  rotate: number;
-  wobblyIndex: number;
-  variant: 'white' | 'yellow' | 'blue';
-  customDecoration?: React.ReactNode;
-}
-
-const featureCards: FeatureCardConfig[] = [
-  {
-    title: '学情诊断',
-    description: '诊断学生学习问题，输出解决方案与危害分析',
-    icon: Stethoscope,
-    iconColor: 'text-marker-red',
-    path: '/diagnosis',
-    decoration: 'tape',
-    rotate: -1,
-    wobblyIndex: 0,
-    variant: 'white',
-  },
-  {
-    title: '升学规划',
-    description: '考情政策、分数线、规划报告与时间路线图',
-    icon: GraduationCap,
-    iconColor: 'text-pen-blue',
-    path: '/plan',
-    decoration: 'tack',
-    rotate: 1,
-    wobblyIndex: 1,
-    variant: 'white',
-  },
-  {
-    title: '知识点查询&解读',
-    description: '各版本各学科知识点双向查询与详情',
-    icon: BookOpen,
-    iconColor: 'text-pen-blue',
-    path: '/knowledge',
-    decoration: 'none',
-    rotate: -1,
-    wobblyIndex: 2,
-    variant: 'white',
-    customDecoration: (
-      <div className="absolute -top-2 -right-2 z-10">
-        <Pin
-          className="size-6 text-marker-red"
-          strokeWidth={2.5}
-        />
-      </div>
-    ),
-  },
-];
+import { STAGE_LIST } from '@client/src/config/stages';
+import { stagePath } from '@client/src/config/stages';
 
 const Workbench: React.FC = () => {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -114,55 +52,46 @@ const Workbench: React.FC = () => {
           洋葱课程顾问学情&升学工作台
         </h1>
         <p className="font-hand mt-2 text-lg text-ink/60">
-          选择下方功能入口，快速开始诊断、规划与知识点查询
+          请先选择学段，再进入学情诊断、升学规划、知识点查询或个性化学习规划
         </p>
       </div>
 
-      {/* 功能入口卡片 */}
-      <div className="mb-12 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {featureCards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <NavLink
-              key={card.path}
-              to={card.path}
-              className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-marker-red"
+      <div className="mb-12 grid grid-cols-1 gap-8 md:grid-cols-3">
+        {STAGE_LIST.map((stage, index) => (
+          <NavLink
+            key={stage.slug}
+            to={stagePath(stage.slug)}
+            className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-marker-red"
+          >
+            <WobblyCard
+              variant={index === 1 ? 'yellow' : 'white'}
+              decoration={index === 0 ? 'tape' : index === 1 ? 'tack' : 'none'}
+              wobblyIndex={index}
+              rotate={index === 0 ? -1 : index === 2 ? 1 : 0}
+              hoverable
+              className="h-full transition-all duration-300 hover:-translate-y-1"
             >
-              <WobblyCard
-                variant={card.variant}
-                decoration={card.decoration}
-                wobblyIndex={card.wobblyIndex}
-                rotate={card.rotate}
-                hoverable={true}
-                className="transition-all duration-300 hover:-translate-y-1"
-              >
-                {card.customDecoration}
-                <div className="flex flex-col items-start gap-4 p-6">
-                  <div
-                    className={`flex size-14 items-center justify-center rounded-full border-2 border-ink ${card.variant === 'yellow' ? 'bg-postit-yellow' : 'bg-accent'}`}
-                  >
-                    <Icon
-                      className={`size-7 ${card.iconColor}`}
-                      strokeWidth={2}
-                    />
-                  </div>
-                  <div>
-                    <h3 className="font-marker text-xl text-ink">
-                      {card.title}
-                    </h3>
-                    <p className="font-hand mt-2 text-base text-ink/60">
-                      {card.description}
-                    </p>
-                  </div>
-                  <span className="font-hand mt-auto text-sm font-semibold text-pen-blue">
-                    点击进入 →
-                  </span>
+              <div className="flex flex-col gap-4 p-6">
+                <div className="flex size-14 items-center justify-center rounded-full border-2 border-ink bg-accent">
+                  <School className="size-7 text-pen-blue" strokeWidth={2} />
                 </div>
-              </WobblyCard>
-            </NavLink>
-          );
-        })}
-       </div>
+                <div>
+                  <h3 className="font-marker text-xl text-ink">{stage.label}</h3>
+                  <p className="font-hand mt-2 text-base text-ink/60">{stage.subtitle}</p>
+                  <ul className="font-hand mt-3 space-y-1 text-sm text-ink/55">
+                    {stage.focusPoints.slice(0, 2).map((p) => (
+                      <li key={p}>· {p}</li>
+                    ))}
+                  </ul>
+                </div>
+                <span className="font-hand mt-auto text-sm font-semibold text-pen-blue">
+                  进入{stage.label} →
+                </span>
+              </div>
+            </WobblyCard>
+          </NavLink>
+        ))}
+      </div>
 
       {/* 飞书多维表格读取区域 - 仅开发/预览环境显示 */}
       {!isProduction && (

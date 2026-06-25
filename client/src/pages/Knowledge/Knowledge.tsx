@@ -1,15 +1,19 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ArrowRight, BookOpen, Layers } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, BookOpen, Layers, ArrowLeft } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Button } from '@/components/ui/button';
 import { knowledge } from '@client/src/api';
 import type { KnowledgePoint, KnowledgePointListItem, ChapterUnit } from '@shared/api.interface';
 import KnowledgeDetailPanel from './KnowledgeDetailPanel';
 import KnowledgeFilterPanel, { REGION_VERSION_MAP, getVersionForProvinceSubject } from './KnowledgeFilterPanel';
+import { useRequiredStage } from '@client/src/hooks/use-stage';
+import { stagePath } from '@client/src/config/stages';
 
 const PAGE_SIZE = 20;
 
 const Knowledge: React.FC = () => {
+  const { stageSlug, stageConfig } = useRequiredStage();
   const [province, setProvince] = useState('');
   const [city, setCity] = useState('');
   const [region, setRegion] = useState('');
@@ -251,9 +255,18 @@ const Knowledge: React.FC = () => {
   return (
     <div className="min-h-screen bg-paper-dots p-4 lg:p-6">
       <div className="mx-auto max-w-6xl">
-        <h1 className="mb-6 font-marker text-3xl font-bold">
-          考点&知识点查询
+        <Button variant="ghost" size="sm" className="font-hand mb-2 -ml-2" asChild>
+          <Link to={stagePath(stageSlug)}>
+            <ArrowLeft className="mr-1 size-4" />
+            返回{stageConfig.label}主页
+          </Link>
+        </Button>
+        <h1 className="mb-2 font-marker text-3xl font-bold">
+          {stageConfig.label} · 知识点查询解读
         </h1>
+        <p className="font-hand mb-6 text-sm text-muted-foreground">
+          按地区/年级/版本查询，或输入知识点反向检索
+        </p>
 
         <WobblyCard
           decoration="tape"
@@ -285,6 +298,7 @@ const Knowledge: React.FC = () => {
             customRegionText={customRegionText}
             onCustomRegionTextChange={setCustomRegionText}
             onCustomRegionSubmit={handleCustomRegionSubmit}
+            allowedGrades={stageConfig.knowledgeGrades}
           />
         </WobblyCard>
 

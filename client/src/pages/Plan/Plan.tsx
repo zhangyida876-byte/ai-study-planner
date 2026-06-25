@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Copy, FileText, Clock, Search, Loader2 } from 'lucide-react';
+import { Copy, FileText, Clock, Search, Loader2, ArrowLeft } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { Button } from '@client/src/components/ui/button';
@@ -27,8 +28,9 @@ import PlanScoreInput, { type ExamType } from './PlanScoreInput';
 import PlanSchoolRecommend from './PlanSchoolRecommend';
 import { PROVINCE_CITIES, PROVINCES, EXAM_TYPE_CONFIG } from './regionData';
 import type { AdmissionPolicy, AdmissionLine } from '@shared/api.interface';
+import { useRequiredStage } from '@client/src/hooks/use-stage';
+import { stagePath } from '@client/src/config/stages';
 
-const EXAM_TYPES: ExamType[] = ['小升初', '中考', '高考'];
 const HS_MODES = [
   { value: '3+1+2', label: '3+1+2（物理/历史 二选一）' },
   { value: '3+3', label: '3+3（六选三）' },
@@ -47,8 +49,14 @@ function buildPolicyContext(policies: AdmissionPolicy[]): string {
 }
 
 const Plan: React.FC = () => {
-  const [examType, setExamType] = useState<ExamType>('中考');
-  const [grade, setGrade] = useState<string>('初三');
+  const { stageSlug, stageConfig } = useRequiredStage();
+  const [examType, setExamType] = useState<ExamType>(stageConfig.examType);
+  const [grade, setGrade] = useState<string>(stageConfig.grades[stageConfig.grades.length - 1]);
+
+  useEffect(() => {
+    setExamType(stageConfig.examType);
+    setGrade(stageConfig.grades[stageConfig.grades.length - 1]);
+  }, [stageConfig]);
   const [examMode, setExamMode] = useState<string>('');
   const currentYear = new Date().getFullYear();
   const [examYear, setExamYear] = useState<number>(currentYear + 1);
@@ -186,7 +194,9 @@ const Plan: React.FC = () => {
     setPolicySearchContent('');
   }, []);
 
-  const gradeOptions = GRADE_OPTIONS[examType] || [];
+  const gradeOptions = (GRADE_OPTIONS[examType] || []).filter((g) =>
+    stageConfig.grades.includes(g),
+  );
 
   const handleGenerateReport = useCallback(async (): Promise<void> => {
     if (!region) { toast.error('请先选择地区'); return; }
@@ -261,24 +271,17 @@ const Plan: React.FC = () => {
     <div className="min-h-screen bg-paper-dots p-6 font-hand">
       <div className="mx-auto max-w-6xl space-y-6">
         {/* Header + Tabs */}
-        <div className="flex items-center gap-3">
-          <h1 className="font-marker text-3xl font-bold text-ink">升学规划</h1>
-          <div className="flex gap-2">
-            {EXAM_TYPES.map((type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => handleExamTypeChange(type)}
-                className={`rounded-full border-2 border-ink px-3 py-0.5 text-sm transition-colors ${
-                  examType === type
-                    ? 'bg-postit-yellow font-bold'
-                    : 'bg-white hover:bg-accent'
-                }`}
-              >
-                {type}导航
-              </button>
-            ))}
-          </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="ghost" size="sm" className="font-hand -ml-2" asChild>
+            <Link to={stagePath(stageSlug)}>
+              <ArrowLeft className="mr-1 size-4" />
+              返回{stageConfig.label}主页
+            </Link>
+          </Button>
+          <h1 className="font-marker text-3xl font-bold text-ink">{stageConfig.label} · 升学规划</h1>
+          <span className="rounded-full border-2 border-ink bg-postit-yellow px-3 py-0.5 text-sm font-bold">
+            {examType}
+          </span>
         </div>
 
         {/* Top Input Bar */}

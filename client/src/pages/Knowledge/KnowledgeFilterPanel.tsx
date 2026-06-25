@@ -94,6 +94,7 @@ interface KnowledgeFilterPanelProps {
   customRegionText: string;
   onCustomRegionTextChange: (val: string) => void;
   onCustomRegionSubmit: () => void;
+  allowedGrades?: string[];
 }
 
 const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
@@ -119,8 +120,12 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
   customRegionText,
   onCustomRegionTextChange,
   onCustomRegionSubmit,
+  allowedGrades,
 }) => {
   const cities = PROVINCE_CITIES[province] || [];
+  const gradeOptions = allowedGrades?.length
+    ? GRADES.filter((g) => allowedGrades.includes(g))
+    : GRADES;
 
   return (
     <div className="space-y-5">
@@ -182,7 +187,7 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
               <SelectValue placeholder="选择年级" />
             </SelectTrigger>
             <SelectContent>
-              {GRADES.map((g) => (
+                {gradeOptions.map((g) => (
                 <SelectItem key={g} value={g}>{g}</SelectItem>
               ))}
             </SelectContent>

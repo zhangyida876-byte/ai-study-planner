@@ -287,9 +287,17 @@ interface DiagnosisFormProps {
   onSubmit: (data: DiagnosisFormData) => void;
   isGenerating: boolean;
   onMajorInfoChange?: (content: string) => void;
+  allowedGrades?: string[];
+  stageLabel?: string;
 }
 
-const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating, onMajorInfoChange }) => {
+const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
+  onSubmit,
+  isGenerating,
+  onMajorInfoChange,
+  allowedGrades,
+  stageLabel,
+}) => {
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [county, setCounty] = useState('');
@@ -653,7 +661,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({ onSubmit, isGenerating, o
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {GRADE_OPTIONS.map((g: string) => (
+                  {GRADE_OPTIONS.filter((g) => !allowedGrades || allowedGrades.includes(g)).map((g: string) => (
                     <SelectItem key={g} value={g}>{g}</SelectItem>
                   ))}
                 </SelectContent>
