@@ -1,7 +1,9 @@
 import path from 'path';
 import { defineConfig } from '@lark-apaas/fullstack-vite-preset';
+import { sandboxHealthGatePlugin } from './scripts/vite-sandbox-health-gate.js';
 
 export default defineConfig({
+  plugins: [sandboxHealthGatePlugin()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'client/src'),
