@@ -4,5 +4,5 @@
 @import "./tailwind-theme.css";
 @import "./typography.css";
 
-@source "../../node_modules/streamdown/dist/*.js";
+@source "../../node_modules/streamdown/dist/index.js";
 @config "../../tailwind.config.ts";

@@ -132,6 +132,75 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function mergeNodeOptions(existing, extra) {
+  if (!existing) return extra;
+  return `${existing} ${extra}`.trim();
+}
+
+function buildChildEnv(name) {
+  const env = { ...process.env };
+  if (!process.env.SANDBOX_ID) return env;
+  env.DISABLE_INSPECTOR = 'true';
+  const heap = name === 'client' ? '768' : '512';
+  env.NODE_OPTIONS = mergeNodeOptions(env.NODE_OPTIONS, `--max-old-space-size=${heap}`);
+  return env;
+}
+
+async function waitForViteResponding(port, maxMs = 180000) {
+  const http = require('http');
+  const deadline = Date.now() + maxMs;
+  while (Date.now() < deadline && !stopping) {
+    try {
+      await new Promise((resolve, reject) => {
+        const req = http.get(`http://127.0.0.1:${port}/dev/health`, (res) => {
+          let body = '';
+          res.on('data', (c) => { body += c; });
+          res.on('end', () => {
+            try {
+              JSON.parse(body);
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
+          });
+        });
+        req.on('error', reject);
+        req.setTimeout(3000, () => {
+          req.destroy();
+          reject(new Error('timeout'));
+        });
+      });
+      logEvent('INFO', 'main', `Vite responding on port ${port}`);
+      return;
+    } catch {
+      await sleep(2000);
+    }
+  }
+  logEvent('WARN', 'main', 'Vite wait timed out, starting Nest anyway');
+}
+
+function precompileSandboxCss() {
+  if (!process.env.SANDBOX_ID) return;
+  const out = path.join(PROJECT_ROOT, 'client/src/.sandbox-compiled.css');
+  if (fs.existsSync(out)) {
+    process.env.SANDBOX_USE_PRECOMPILED_CSS = '1';
+    logEvent('INFO', 'main', 'Using existing pre-compiled sandbox CSS');
+    return;
+  }
+  logEvent('INFO', 'main', 'Pre-compiling CSS before Vite (OOM guard)...');
+  try {
+    execSync('node scripts/precompile-sandbox-css.js', {
+      cwd: PROJECT_ROOT,
+      stdio: 'inherit',
+      env: buildChildEnv('client'),
+      timeout: 180000,
+    });
+    process.env.SANDBOX_USE_PRECOMPILED_CSS = '1';
+  } catch {
+    logEvent('WARN', 'main', 'CSS precompile failed; Vite will run Tailwind live (may OOM)');
+  }
+}
+
 function getMaxRestartCount() {
   if (process.env.SANDBOX_ID) return 30;
   return MAX_RESTART_COUNT;
@@ -162,7 +231,7 @@ function startProcess({ name, command, args, cleanupPort }) {
         stdio: ['ignore', 'pipe', 'pipe'],
         shell: true,
         cwd: PROJECT_ROOT,
-        env: { ...process.env },
+        env: buildChildEnv(name),
       });
 
       entry.pid = child.pid;
@@ -221,7 +290,9 @@ function startProcess({ name, command, args, cleanupPort }) {
         break;
       }
 
-      const delay = Math.min(RESTART_DELAY * (1 << Math.max(0, restartCount - 1)), MAX_DELAY);
+      const delay = process.env.SANDBOX_ID && exitCode === 137
+        ? Math.min(15 * restartCount, 45)
+        : Math.min(RESTART_DELAY * (1 << Math.max(0, restartCount - 1)), MAX_DELAY);
       if (exitCode === 137 && process.env.SANDBOX_ID) {
         logEvent('WARN', name, `Killed (137, likely OOM), restart ${restartCount}/${maxRestarts} in ${delay}s...`);
       } else {
@@ -367,7 +438,9 @@ async function main() {
   await ensurePortFree(SERVER_PORT, 'main');
   await ensurePortFree(CLIENT_DEV_PORT, 'main');
 
-  // Client 先启动；沙箱延迟启 Nest（health gate 等后端 HTML 就绪后才 ready）
+  precompileSandboxCss();
+
+  // Client 先启动；沙箱等 Vite 稳定后再启 Nest，避免双进程峰值内存
   const clientPromise = startProcess({
     name: 'client',
     command: 'npm',
@@ -377,7 +450,8 @@ async function main() {
 
   const serverPromise = process.env.SANDBOX_ID
     ? (async () => {
-        await sleep(5000);
+        await waitForViteResponding(CLIENT_DEV_PORT);
+        await sleep(20000);
         return startProcess({
           name: 'server',
           command: 'npm',

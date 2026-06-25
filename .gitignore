@@ -10,6 +10,7 @@ build/
 
 # Environment files
 .env.local
+client/src/.sandbox-compiled.css
 
 # Logs
 npm-debug.log*

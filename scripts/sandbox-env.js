@@ -41,6 +41,7 @@ function normalizeSandboxEnv() {
   if (!process.env.SANDBOX_ID) return;
   process.env.CLIENT_DEV_HOST = '0.0.0.0';
   process.env.SERVER_HOST = '0.0.0.0';
+  process.env.DISABLE_INSPECTOR = 'true';
   if (!process.env.CLIENT_DEV_PORT) process.env.CLIENT_DEV_PORT = '8080';
   // 平台常注入 8001，保留平台值；health 路径始终为 /dev/health
   console.log('[sandbox-boot] port=%s base=%s health=http://127.0.0.1:%s/dev/health', process.env.CLIENT_DEV_PORT, process.env.CLIENT_BASE_PATH || '/', process.env.CLIENT_DEV_PORT);
