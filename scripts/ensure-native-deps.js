@@ -6,6 +6,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
+const MARKER = path.join(ROOT, 'node_modules', '.sandbox-native-deps-ok');
 
 const PLATFORM_PACKAGES = {
   'darwin-arm64': [
@@ -33,37 +34,54 @@ function getTargetKey() {
 }
 
 function isInstalled(pkg) {
-  const pkgPath = path.join(ROOT, 'node_modules', pkg);
-  return fs.existsSync(pkgPath);
+  return fs.existsSync(path.join(ROOT, 'node_modules', pkg));
 }
 
 function missingPackages() {
   const key = getTargetKey();
   if (!key) return [];
-  const required = PLATFORM_PACKAGES[key] || [];
-  return required.filter((pkg) => !isInstalled(pkg));
+  return (PLATFORM_PACKAGES[key] || []).filter((pkg) => !isInstalled(pkg));
+}
+
+function installPackage(pkg) {
+  console.log(`[native-deps] 安装 ${pkg} ...`);
+  execSync(`npm install --no-save --include=optional --no-audit --no-fund "${pkg}"`, {
+    cwd: ROOT,
+    stdio: 'inherit',
+    env: { ...process.env, CI: '1' },
+    timeout: 180000,
+  });
+}
+
+function markOk() {
+  try {
+    fs.mkdirSync(path.dirname(MARKER), { recursive: true });
+    fs.writeFileSync(MARKER, String(Date.now()));
+  } catch {}
 }
 
 const missing = missingPackages();
 if (missing.length === 0) {
-  console.log('[native-deps] 原生依赖齐全，跳过安装');
+  console.log('[native-deps] 原生依赖齐全');
+  markOk();
   process.exit(0);
 }
 
-console.log(`[native-deps] 缺少 ${missing.join(', ')}，执行 npm install --include=optional ...`);
-try {
-  execSync('npm install --include=optional --no-audit --no-fund', {
-    cwd: ROOT,
-    stdio: 'inherit',
-    env: { ...process.env, CI: '1' },
-    timeout: 300000,
-  });
-  const stillMissing = missingPackages();
-  if (stillMissing.length > 0) {
-    console.warn('[native-deps] 安装后仍缺少:', stillMissing.join(', '));
-  } else {
-    console.log('[native-deps] 原生依赖安装完成');
+// 沙箱冷启动：逐包安装比全量 npm install 快得多
+console.log(`[native-deps] 缺少: ${missing.join(', ')}`);
+for (const pkg of missing) {
+  try {
+    installPackage(pkg);
+  } catch (err) {
+    console.warn(`[native-deps] ${pkg} 安装失败:`, err.message || err);
   }
-} catch (err) {
-  console.warn('[native-deps] 安装失败，不阻断启动:', err.message || err);
 }
+
+const stillMissing = missingPackages();
+if (stillMissing.length > 0) {
+  console.warn('[native-deps] 仍缺少:', stillMissing.join(', '));
+  process.exit(0);
+}
+
+console.log('[native-deps] 原生依赖安装完成');
+markOk();

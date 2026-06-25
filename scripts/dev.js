@@ -44,12 +44,36 @@ function loadEnvFile(filename) {
 loadEnvFile('.env.local');
 loadEnvFile('.env');
 
-// 沙箱 nginx 反代需监听所有网卡，否则易出现 502 Bad Gateway
+/** 平台可能在 dev.js 之前注入带引号的 env，必须强制规范化 */
+function normalizeSandboxEnv() {
+  const keys = [
+    'CLIENT_BASE_PATH',
+    'CLIENT_DEV_PORT',
+    'CLIENT_DEV_HOST',
+    'SERVER_HOST',
+    'SERVER_PORT',
+    'FORCE_DB_BRANCH',
+  ];
+  for (const key of keys) {
+    if (process.env[key] != null && process.env[key] !== '') {
+      process.env[key] = sanitizeEnvValue(key, String(process.env[key]).trim());
+    }
+  }
+  if (process.env.SANDBOX_ID) {
+    process.env.CLIENT_DEV_HOST = '0.0.0.0';
+    process.env.SERVER_HOST = '0.0.0.0';
+    // 妙搭沙箱 nginx 固定反代 8001
+    process.env.CLIENT_DEV_PORT = '8001';
+  }
+}
+
+normalizeSandboxEnv();
+
+// 启动诊断信息（写入 stdout，沙箱 UI 可直接看到）
 if (process.env.SANDBOX_ID) {
-  if (!process.env.CLIENT_DEV_HOST) process.env.CLIENT_DEV_HOST = '0.0.0.0';
-  if (!process.env.SERVER_HOST) process.env.SERVER_HOST = '0.0.0.0';
-  // 妙搭沙箱 nginx 固定反代 client 端口 8001（未显式配置时）
-  if (!process.env.CLIENT_DEV_PORT) process.env.CLIENT_DEV_PORT = '8001';
+  console.log('[sandbox-boot] SANDBOX_ID=%s', process.env.SANDBOX_ID);
+  console.log('[sandbox-boot] CLIENT_DEV_PORT=%s CLIENT_BASE_PATH=%s', process.env.CLIENT_DEV_PORT, process.env.CLIENT_BASE_PATH);
+  console.log('[sandbox-boot] CLIENT_DEV_HOST=%s SERVER_HOST=%s', process.env.CLIENT_DEV_HOST, process.env.SERVER_HOST);
 }
 
 // ── Configuration ─────────────────────────────────────────────────────────────
@@ -340,15 +364,16 @@ function ensureActionPlugins() {
 }
 
 function ensureNativeDeps() {
+  writeOutput('[native-deps] 检查原生依赖...\n');
   try {
     execSync('node scripts/ensure-native-deps.js', {
       cwd: PROJECT_ROOT,
       stdio: 'inherit',
       env: { ...process.env, CI: '1' },
-      timeout: 320000,
+      timeout: 180000,
     });
   } catch {
-    writeOutput('⚠️  Native deps check failed, continuing anyway...\n\n');
+    writeOutput('⚠️  Native deps install failed, continuing anyway...\n\n');
   }
 }
 
@@ -378,8 +403,9 @@ async function main() {
     ensureNativeDeps();
   }
 
-  // Start server and client immediately (do not block on fullstack-cli download)
-  // Vite 先起：沙箱 nginx 健康检查反代的是 client 端口
+  logEvent('INFO', 'main', `Listening client=${CLIENT_DEV_PORT} server=${SERVER_PORT} base=${process.env.CLIENT_BASE_PATH || '/'}`);
+
+  // Vite 先起：沙箱 nginx 健康检查反代 client 端口
   const clientPromise = startProcess({
     name: 'client',
     command: 'npm',
