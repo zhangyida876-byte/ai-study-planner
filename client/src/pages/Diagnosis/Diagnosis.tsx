@@ -154,47 +154,24 @@ const Diagnosis: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
       {/* Left: Form */}
-      <div className="w-full shrink-0 lg:w-96 space-y-6">
-        {/* 基础信息卡片 */}
+      <div className="w-full shrink-0 lg:w-96">
         <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false}>
           <div className="p-6">
-            <h2 className="font-marker mb-6 text-2xl font-bold flex items-center gap-2">
-              <span className="text-marker-red">✏️</span>
-              学生信息
-            </h2>
-            <div className="space-y-4">
-              <DiagnosisForm onSubmit={onSubmit} isGenerating={isGenerating} onMajorInfoChange={setMajorInfoContent} />
-            </div>
+            <h2 className="font-marker mb-6 text-2xl font-bold">学生信息</h2>
+            <DiagnosisForm onSubmit={onSubmit} isGenerating={isGenerating} onMajorInfoChange={setMajorInfoContent} />
           </div>
         </WobblyCard>
-        
-        {/* 专业信息卡片（如果有） */}
-        {majorInfoContent && (
-          <WobblyCard variant="yellow" decoration="tack" wobblyIndex={2} hoverable={false}>
-            <div className="p-6">
-              <h3 className="font-marker mb-3 text-lg font-bold flex items-center gap-2">
-                <span className="text-pen-blue">📚</span>
-                专业信息
-              </h3>
-              <div className="font-hand text-sm whitespace-pre-line text-ink/80">
-                {majorInfoContent}
-              </div>
-            </div>
-          </WobblyCard>
-        )}
       </div>
 
       {/* Right: Report */}
-      <div className="min-w-0 flex-1 space-y-6">
-        {/* 诊断报告卡片 */}
+      <div className="min-w-0 flex-1">
         {isGenerating || reportContent ? (
           <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false}>
             <div className="p-6">
               {/* Report Header with student info */}
-              <div className="border-b-2 border-dashed border-ink/10 pb-4 mb-6">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <h2 className="font-marker text-2xl font-bold flex items-center gap-2">
-                    <span className="text-marker-red">📋</span>
+              <div className="mb-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-marker text-2xl font-bold">
                     {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}诊断报告
                   </h2>
                   {reportContent && (
@@ -210,20 +187,20 @@ const Diagnosis: React.FC = () => {
 
                 {/* Student info strip */}
                 {studentInfo && (
-                  <div className="font-hand mt-4 flex flex-wrap gap-2 text-sm">
+                  <div className="font-hand mt-3 flex flex-wrap gap-3 text-sm text-ink/70">
                     {studentInfo.studentName && (
-                      <span className="inline-flex items-center rounded-full border-2 border-ink/20 bg-card px-3 py-1">
-                        👤 {studentInfo.studentName}
+                      <span className="rounded-full border-2 border-ink/20 bg-card px-3 py-1">
+                        {studentInfo.studentName}
                       </span>
                     )}
-                    <span className="inline-flex items-center rounded-full border-2 border-ink/20 bg-card px-3 py-1">
-                      🎓 {studentInfo.grade}
+                    <span className="rounded-full border-2 border-ink/20 bg-card px-3 py-1">
+                      {studentInfo.grade}
                     </span>
-                    <span className="inline-flex items-center rounded-full border-2 border-ink/20 bg-card px-3 py-1">
-                      📍 {studentInfo.region}
+                    <span className="rounded-full border-2 border-ink/20 bg-card px-3 py-1">
+                      {studentInfo.region}
                     </span>
                     {countdown != null && (
-                      <span className="inline-flex items-center gap-1 rounded-full border-2 border-marker-red/30 bg-marker-red/5 px-3 py-1 font-bold text-marker-red">
+                      <span className="flex items-center gap-1 rounded-full border-2 border-marker-red/30 bg-marker-red/5 px-3 py-1 font-bold text-marker-red">
                         <Clock className="size-3.5" />
                         距{examLabel}还有 {countdown} 天
                       </span>
@@ -233,18 +210,19 @@ const Diagnosis: React.FC = () => {
 
                 {/* Target school & score */}
                 {(studentInfo?.targetSchool || (studentInfo?.targetScore != null && studentStage !== 'elementary')) && (
-                  <div className="mt-4 rounded-lg border-2 border-dashed border-pen-blue/30 bg-pen-blue/5 p-4">
-                    <h4 className="font-marker text-sm font-bold text-pen-blue mb-2">🎯 目标信息</h4>
+                  <div className="mt-3 rounded-lg border-2 border-dashed border-pen-blue/30 bg-pen-blue/5 p-3">
                     <div className="flex flex-wrap items-center gap-4 text-sm">
                       {studentInfo?.targetSchool && (
                         <div className="flex items-center gap-1.5">
                           <Target className="size-4 text-pen-blue" />
-                          <span className="font-hand text-ink/80">
+                          <span className="font-hand text-ink/60">
                             {studentStage === 'high' ? '目标大学：' : studentStage === 'elementary' ? '目标初中：' : '目标院校：'}
-                            <span className="font-semibold">{studentInfo.targetSchool}</span>
                           </span>
-                         </div>
-                       )}
+                          <span className="font-marker font-bold text-pen-blue">
+                            {studentInfo.targetSchool}
+                          </span>
+                        </div>
+                      )}
                       {studentInfo?.targetMajor && studentStage === 'high' && (
                         <div className="flex items-center gap-1.5">
                           <span className="font-hand text-ink/60">目标专业：</span>
