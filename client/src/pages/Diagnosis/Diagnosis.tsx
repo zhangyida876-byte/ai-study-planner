@@ -1,13 +1,18 @@
-import React, { useState, useCallback } from 'react';
-import { Copy, Check, Loader2, Clock, Target } from 'lucide-react';
+import React, { useState, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { Copy, Check, Loader2, Clock, Target, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import { diagnosis as diagnosisApi } from '@client/src/api';
 import { streamDiagnosisReport, buildScoresText, buildDiagnosisPrompt, getEducationStage, type DiagnosisFormContext } from '@client/src/api/plugins';
 import WobblyCard from '@client/src/components/WobblyCard';
+import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { Button } from '@/components/ui/button';
 import DiagnosisForm, { type DiagnosisFormData } from './DiagnosisForm';
+import { useRequiredStage } from '@client/src/hooks/use-stage';
+import { useStageProfile } from '@client/src/hooks/use-stage-profile';
+import { stagePath } from '@client/src/config/stages';
 
 /* ===== Helpers ===== */
 
@@ -29,11 +34,16 @@ function getExamLabel(grade: string): string {
 /* ===== Component ===== */
 
 const Diagnosis: React.FC = () => {
+  const { stageSlug, stageConfig } = useRequiredStage();
+  const { profile, regionText, updateProfile } = useStageProfile(stageSlug);
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportContent, setReportContent] = useState('');
   const [copied, setCopied] = useState(false);
   const [studentInfo, setStudentInfo] = useState<DiagnosisFormData | null>(null);
   const [majorInfoContent, setMajorInfoContent] = useState('');
+  const [profileDirty, setProfileDirty] = useState(false);
+  const regionPartsRef = useRef({ province: '', city: '', county: '' });
+  const formSnapshotRef = useRef<DiagnosisFormData | null>(null);
 
   const handleCopy = useCallback(async () => {
     try {
@@ -101,7 +111,10 @@ const Diagnosis: React.FC = () => {
         examDate: data.examDate,
       };
       const scoresText = buildScoresText(scores, scoreMaxValues);
-      const learningProblems = buildDiagnosisPrompt(formCtx);
+      const learningProblems = buildDiagnosisPrompt(formCtx, {
+        stageSlug,
+        profile,
+      });
       const generator = streamDiagnosisReport({
         student_grade: data.grade,
         student_region: data.region,
@@ -136,7 +149,32 @@ const Diagnosis: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, []);
+  }, [stageSlug, profile]);
+
+  const handleSyncProfileBack = useCallback(() => {
+    const snapshot = formSnapshotRef.current || studentInfo;
+    if (!snapshot) {
+      toast.error('请先填写或修改表单信息后再同步');
+      return;
+    }
+    updateProfile({
+      studentName: snapshot.studentName || '',
+      province: regionPartsRef.current.province || profile.province,
+      city: regionPartsRef.current.city || profile.city,
+      county: regionPartsRef.current.county || profile.county,
+      grade: snapshot.grade,
+      targetSchool: snapshot.targetSchool || '',
+      targetMajor: snapshot.targetMajor || '',
+      examDate: snapshot.examDate || '',
+      boardingType: (snapshot.boardingType as '' | 'day' | 'boarding') || '',
+      examMode: snapshot.examMode || '',
+      weeklyStudyHours: snapshot.monthlyStudyHours
+        ? String(Math.round(snapshot.monthlyStudyHours / 4))
+        : profile.weeklyStudyHours,
+    });
+    toast.success('已同步回学段主页档案');
+    setProfileDirty(false);
+  }, [studentInfo, updateProfile, profile]);
 
   const countdown = studentInfo?.examDate ? getCountdown(studentInfo.examDate) : null;
   const examLabel = studentInfo ? getExamLabel(studentInfo.grade) : '';
@@ -152,6 +190,28 @@ const Diagnosis: React.FC = () => {
   const scoreGap = (studentInfo?.targetScore != null && studentStage !== 'elementary') ? studentInfo.targetScore - totalScore : null;
 
   return (
+    <div className="space-y-4">
+      <div>
+        <Button variant="ghost" size="sm" className="font-hand mb-2 -ml-2" asChild>
+          <Link to={stagePath(stageSlug)}>
+            <ArrowLeft className="mr-1 size-4" />
+            返回{stageConfig.label}主页
+          </Link>
+        </Button>
+        <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 学情诊断</h1>
+        <p className="font-hand mt-1 text-sm text-muted-foreground">
+          按{stageConfig.label}学段标准分析薄弱点、失分原因与升学影响
+        </p>
+      </div>
+
+      <ProfileAutofillBanner
+        stageSlug={stageSlug}
+        profile={profile}
+        regionText={regionText}
+        showSyncBack={profileDirty}
+        onSyncBack={handleSyncProfileBack}
+      />
+
     <div className="flex flex-col gap-6 lg:flex-row">
       {/* Left: Form */}
       <div className="w-full shrink-0 lg:w-96 space-y-6">
@@ -163,7 +223,17 @@ const Diagnosis: React.FC = () => {
               学生信息
             </h2>
             <div className="space-y-4">
-              <DiagnosisForm onSubmit={onSubmit} isGenerating={isGenerating} onMajorInfoChange={setMajorInfoContent} />
+              <DiagnosisForm
+                onSubmit={onSubmit}
+                isGenerating={isGenerating}
+                onMajorInfoChange={setMajorInfoContent}
+                allowedGrades={stageConfig.grades}
+                stageLabel={stageConfig.label}
+                stageProfile={profile}
+                onProfileFieldsChange={() => setProfileDirty(true)}
+                onRegionPartsChange={(parts) => { regionPartsRef.current = parts; }}
+                onFormSnapshotChange={(data) => { formSnapshotRef.current = data; }}
+              />
             </div>
           </div>
         </WobblyCard>
@@ -305,6 +375,7 @@ const Diagnosis: React.FC = () => {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 };

@@ -1,21 +1,31 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ArrowRight, BookOpen, Layers } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, BookOpen, Layers, ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Button } from '@/components/ui/button';
 import { knowledge } from '@client/src/api';
 import type { KnowledgePoint, KnowledgePointListItem, ChapterUnit } from '@shared/api.interface';
 import KnowledgeDetailPanel from './KnowledgeDetailPanel';
 import KnowledgeFilterPanel, { REGION_VERSION_MAP, getVersionForProvinceSubject } from './KnowledgeFilterPanel';
+import { useRequiredStage } from '@client/src/hooks/use-stage';
+import { useStageProfile } from '@client/src/hooks/use-stage-profile';
+import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
+import { getKnowledgeAutofillFromProfile } from '@client/src/utils/stage-profile-sync';
+import { stagePath } from '@client/src/config/stages';
 
 const PAGE_SIZE = 20;
 
 const Knowledge: React.FC = () => {
+  const { stageSlug, stageConfig } = useRequiredStage();
+  const { profile, regionText, updateProfile } = useStageProfile(stageSlug);
   const [province, setProvince] = useState('');
   const [city, setCity] = useState('');
   const [region, setRegion] = useState('');
   const [isCustomRegion, setIsCustomRegion] = useState(false);
   const [customRegionText, setCustomRegionText] = useState('');
   const [grade, setGrade] = useState('');
+  const [profileDirty, setProfileDirty] = useState(false);
   const [semester, setSemester] = useState('');
   const [subject, setSubject] = useState('__all__');
   const [version, setVersion] = useState('__all__');
@@ -148,6 +158,25 @@ const Knowledge: React.FC = () => {
     }
   }, [items.length, hasQueried, loading, effectiveVersion, effectiveSubject, grade]);
 
+  useEffect(() => {
+    if (!profile.updatedAt) return;
+    const fill = getKnowledgeAutofillFromProfile(profile);
+    if (fill.province) setProvince(fill.province);
+    if (fill.city) setCity(fill.city);
+    if (fill.region) setRegion(fill.region);
+    if (fill.grade) setGrade(fill.grade);
+  }, [profile.updatedAt, profile]);
+
+  const handleSyncProfileBack = useCallback(() => {
+    updateProfile({
+      province,
+      city,
+      grade,
+    });
+    toast.success('已同步回学段主页档案');
+    setProfileDirty(false);
+  }, [updateProfile, province, city, grade]);
+
   const handleSearch = () => {
     if (!searchInput.trim()) return;
     const kw = searchInput.trim();
@@ -174,6 +203,7 @@ const Knowledge: React.FC = () => {
   }, []);
 
   const handleProvinceChange = useCallback((val: string): void => {
+    setProfileDirty(true);
     if (val === '__custom__') {
       setIsCustomRegion(true);
     } else {
@@ -199,6 +229,7 @@ const Knowledge: React.FC = () => {
   }, [province]);
 
   const handleCityChange = useCallback((val: string): void => {
+    setProfileDirty(true);
     setCity(val);
     const r = [province, val].filter(Boolean).join(' ');
     setRegion(r);
@@ -251,9 +282,26 @@ const Knowledge: React.FC = () => {
   return (
     <div className="min-h-screen bg-paper-dots p-4 lg:p-6">
       <div className="mx-auto max-w-6xl">
-        <h1 className="mb-6 font-marker text-3xl font-bold">
-          考点&知识点查询
+        <Button variant="ghost" size="sm" className="font-hand mb-2 -ml-2" asChild>
+          <Link to={stagePath(stageSlug)}>
+            <ArrowLeft className="mr-1 size-4" />
+            返回{stageConfig.label}主页
+          </Link>
+        </Button>
+        <h1 className="mb-2 font-marker text-3xl font-bold">
+          {stageConfig.label} · 知识点查询解读
         </h1>
+        <p className="font-hand mb-4 text-sm text-muted-foreground">
+          按地区/年级/版本查询，或输入知识点反向检索
+        </p>
+
+        <ProfileAutofillBanner
+          stageSlug={stageSlug}
+          profile={profile}
+          regionText={regionText}
+          showSyncBack={profileDirty}
+          onSyncBack={handleSyncProfileBack}
+        />
 
         <WobblyCard
           decoration="tape"
@@ -273,7 +321,7 @@ const Knowledge: React.FC = () => {
             autoVersion={province && subject !== '__all__' ? getVersionForProvinceSubject(province, subject === '__all__' ? '' : subject) : province ? REGION_VERSION_MAP[province] : undefined}
             onProvinceChange={handleProvinceChange}
             onCityChange={handleCityChange}
-            onGradeChange={setGrade}
+            onGradeChange={(g) => { setProfileDirty(true); setGrade(g); }}
             onSemesterChange={setSemester}
             onSubjectChange={handleSubjectChange}
             onVersionChange={setVersion}
@@ -285,6 +333,7 @@ const Knowledge: React.FC = () => {
             customRegionText={customRegionText}
             onCustomRegionTextChange={setCustomRegionText}
             onCustomRegionSubmit={handleCustomRegionSubmit}
+            allowedGrades={stageConfig.knowledgeGrades}
           />
         </WobblyCard>
 
@@ -503,6 +552,8 @@ const Knowledge: React.FC = () => {
                 <KnowledgeDetailPanel
                   detail={detail}
                   loading={detailLoading}
+                  stageSlug={stageSlug}
+                  profile={profile}
                 />
               </WobblyCard>
             </div>
@@ -518,6 +569,8 @@ const Knowledge: React.FC = () => {
                 <KnowledgeDetailPanel
                   detail={detail}
                   loading={detailLoading}
+                  stageSlug={stageSlug}
+                  profile={profile}
                 />
               </WobblyCard>
             </div>

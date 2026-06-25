@@ -29,6 +29,12 @@ function loadEnv() {
 }
 loadEnv();
 
+// 沙箱 nginx 反代需监听所有网卡，否则易出现 502 Bad Gateway
+if (process.env.SANDBOX_ID) {
+  if (!process.env.CLIENT_DEV_HOST) process.env.CLIENT_DEV_HOST = '0.0.0.0';
+  if (!process.env.SERVER_HOST) process.env.SERVER_HOST = '0.0.0.0';
+}
+
 // ── Configuration ─────────────────────────────────────────────────────────────
 const LOG_DIR = process.env.LOG_DIR || 'logs';
 const MAX_RESTART_COUNT = process.env.MAX_RESTART_COUNT != null && process.env.MAX_RESTART_COUNT !== ''
@@ -93,17 +99,49 @@ function killProcessGroup(pid, signal) {
 }
 
 function killOrphansByPort(port) {
+  const killed = new Set();
   try {
     const pids = execSync(`lsof -ti :${port}`, { encoding: 'utf8', timeout: 5000 }).trim();
     if (pids) {
-      const pidList = pids.split('\n').filter(Boolean);
-      for (const p of pidList) {
-        try { process.kill(parseInt(p, 10), 'SIGKILL'); } catch {}
+      for (const p of pids.split('\n').filter(Boolean)) {
+        try {
+          process.kill(parseInt(p, 10), 'SIGKILL');
+          killed.add(p);
+        } catch {}
       }
-      return pidList;
     }
   } catch {}
-  return [];
+  // Linux 沙箱 fallback：lsof 可能漏掉仍占用端口的 node 子进程
+  try {
+    execSync(`fuser -k ${port}/tcp`, { timeout: 5000, stdio: 'ignore' });
+  } catch {}
+  return [...killed];
+}
+
+function isPortInUse(port) {
+  try {
+    execSync(`lsof -ti :${port}`, { encoding: 'utf8', timeout: 3000, stdio: 'pipe' });
+    return true;
+  } catch {
+    try {
+      execSync(`fuser -n tcp ${port}`, { encoding: 'utf8', timeout: 3000, stdio: 'pipe' });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+async function ensurePortFree(port, label) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    if (!isPortInUse(port)) return;
+    logEvent('WARN', 'main', `${label} port ${port} in use, cleaning (attempt ${attempt}/5)`);
+    killOrphansByPort(port);
+    await sleep(1000);
+  }
+  if (isPortInUse(port)) {
+    logEvent('ERROR', 'main', `${label} port ${port} still in use after cleanup`);
+  }
 }
 
 // ── Process supervision ───────────────────────────────────────────────────────
@@ -266,6 +304,9 @@ async function main() {
   logEvent('INFO', 'main', '========== Dev session started ==========');
 
   cleanStaleDist();
+
+  await ensurePortFree(SERVER_PORT, 'server');
+  await ensurePortFree(CLIENT_DEV_PORT, 'client');
 
   // Initialize action plugins
   writeOutput('\n🔌 Initializing action plugins...\n');
