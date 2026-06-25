@@ -38,4 +38,43 @@
   --tw-prose-invert-pre-bg: var(--accent);
   --tw-prose-invert-th-borders: var(--border);
   --tw-prose-invert-td-borders: var(--border);
+
+  font-size: 1.0625rem;
+  line-height: 1.65;
+
+  :where(h1) {
+    font-size: 1.75rem;
+    line-height: 1.25;
+    margin-top: 0;
+    margin-bottom: 0.75em;
+  }
+
+  :where(h2) {
+    font-size: 1.375rem;
+    line-height: 1.3;
+    margin-top: 1.25em;
+    margin-bottom: 0.5em;
+  }
+
+  :where(h3) {
+    font-size: 1.125rem;
+    line-height: 1.35;
+    margin-top: 1em;
+    margin-bottom: 0.4em;
+  }
+
+  :where(h4) {
+    font-size: 1rem;
+    line-height: 1.4;
+    margin-top: 0.85em;
+    margin-bottom: 0.35em;
+  }
+
+  :where(p) {
+    line-height: 1.65;
+  }
+
+  :where(small, .text-sm) {
+    line-height: 1.5;
+  }
 }
