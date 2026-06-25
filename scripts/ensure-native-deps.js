@@ -19,17 +19,32 @@ const PLATFORM_PACKAGES = {
     '@tailwindcss/oxide-darwin-x64',
     'lightningcss-darwin-x64',
   ],
-  'linux-x64': [
+  'linux-x64-gnu': [
     '@rollup/rollup-linux-x64-gnu',
     '@tailwindcss/oxide-linux-x64-gnu',
     'lightningcss-linux-x64-gnu',
   ],
+  'linux-x64-musl': [
+    '@rollup/rollup-linux-x64-musl',
+    '@tailwindcss/oxide-linux-x64-musl',
+    'lightningcss-linux-x64-musl',
+  ],
 };
+
+function isMuslLinux() {
+  if (process.platform !== 'linux') return false;
+  return (
+    fs.existsSync('/lib/ld-musl-x86_64.so.1')
+    || fs.existsSync('/lib/libc.musl-x86_64.so.1')
+  );
+}
 
 function getTargetKey() {
   const { platform, arch } = process;
   if (platform === 'darwin') return `darwin-${arch}`;
-  if (platform === 'linux' && arch === 'x64') return 'linux-x64';
+  if (platform === 'linux' && arch === 'x64') {
+    return isMuslLinux() ? 'linux-x64-musl' : 'linux-x64-gnu';
+  }
   return null;
 }
 

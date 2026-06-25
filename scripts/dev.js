@@ -62,8 +62,10 @@ function normalizeSandboxEnv() {
   if (process.env.SANDBOX_ID) {
     process.env.CLIENT_DEV_HOST = '0.0.0.0';
     process.env.SERVER_HOST = '0.0.0.0';
-    // 妙搭沙箱 nginx 固定反代 8001
-    process.env.CLIENT_DEV_PORT = '8001';
+    // 沙箱 health check 探测 http://0.0.0.0:8080/dev/health（preset 默认端口 8080）
+    if (!process.env.CLIENT_DEV_PORT) {
+      process.env.CLIENT_DEV_PORT = '8080';
+    }
   }
 }
 
@@ -74,6 +76,7 @@ if (process.env.SANDBOX_ID) {
   console.log('[sandbox-boot] SANDBOX_ID=%s', process.env.SANDBOX_ID);
   console.log('[sandbox-boot] CLIENT_DEV_PORT=%s CLIENT_BASE_PATH=%s', process.env.CLIENT_DEV_PORT, process.env.CLIENT_BASE_PATH);
   console.log('[sandbox-boot] CLIENT_DEV_HOST=%s SERVER_HOST=%s', process.env.CLIENT_DEV_HOST, process.env.SERVER_HOST);
+  console.log('[sandbox-boot] health=http://127.0.0.1:%s/dev/health', process.env.CLIENT_DEV_PORT || '8080');
 }
 
 // ── Configuration ─────────────────────────────────────────────────────────────
@@ -363,17 +366,16 @@ function ensureActionPlugins() {
   }
 }
 
-function ensureNativeDeps() {
-  writeOutput('[native-deps] 检查原生依赖...\n');
+function ensureNativeDepsIfNeeded() {
   try {
     execSync('node scripts/ensure-native-deps.js', {
       cwd: PROJECT_ROOT,
       stdio: 'inherit',
       env: { ...process.env, CI: '1' },
-      timeout: 180000,
+      timeout: 90000,
     });
   } catch {
-    writeOutput('⚠️  Native deps install failed, continuing anyway...\n\n');
+    writeOutput('⚠️  Native deps install failed, starting vite anyway...\n\n');
   }
 }
 
@@ -400,12 +402,12 @@ async function main() {
 
   ensureActionPlugins();
   if (process.env.SANDBOX_ID) {
-    ensureNativeDeps();
+    ensureNativeDepsIfNeeded();
   }
 
-  logEvent('INFO', 'main', `Listening client=${CLIENT_DEV_PORT} server=${SERVER_PORT} base=${process.env.CLIENT_BASE_PATH || '/'}`);
+  logEvent('INFO', 'main', `Listening client=${CLIENT_DEV_PORT} server=${SERVER_PORT} base=${process.env.CLIENT_BASE_PATH || '/'} health=/dev/health`);
 
-  // Vite 先起：沙箱 nginx 健康检查反代 client 端口
+  // Vite 必须最先启动：沙箱只探测 /dev/health（默认 8080），与 Nest 无关
   const clientPromise = startProcess({
     name: 'client',
     command: 'npm',
