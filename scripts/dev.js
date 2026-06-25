@@ -92,10 +92,12 @@ function killOrphansByPort(port) {
       }
     }
   } catch {}
-  // Linux sandbox fallback when lsof misses node grandchildren still holding the port.
-  try {
-    execSync(`fuser -k ${port}/tcp`, { timeout: 5000, stdio: 'ignore' });
-  } catch {}
+  if (!process.env.SANDBOX_ID) {
+    // fuser -k 在沙箱里过于激进，易误杀刚启动的 Vite（exit 137）
+    try {
+      execSync(`fuser -k ${port}/tcp`, { timeout: 5000, stdio: 'ignore' });
+    } catch {}
+  }
   return [...killed];
 }
 
@@ -130,6 +132,45 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** 沙箱 health check：等 Vite /dev/health ready 后再启 Nest，避免 OOM 杀 Vite(137) */
+async function waitForClientHealth(port) {
+  const http = require('http');
+  const deadline = Date.now() + 120000;
+  while (Date.now() < deadline && !stopping) {
+    try {
+      await new Promise((resolve, reject) => {
+        const req = http.get(`http://127.0.0.1:${port}/dev/health`, (res) => {
+          let body = '';
+          res.on('data', (c) => { body += c; });
+          res.on('end', () => {
+            try {
+              if (JSON.parse(body).ready) resolve();
+              else reject(new Error('not ready'));
+            } catch (e) {
+              reject(e);
+            }
+          });
+        });
+        req.on('error', reject);
+        req.setTimeout(3000, () => {
+          req.destroy();
+          reject(new Error('timeout'));
+        });
+      });
+      logEvent('INFO', 'main', `Client health OK on port ${port}`);
+      return;
+    } catch {
+      await sleep(1000);
+    }
+  }
+  logEvent('WARN', 'main', 'Client health wait timed out, starting server anyway');
+}
+
+function getMaxRestartCount() {
+  if (process.env.SANDBOX_ID) return 30;
+  return MAX_RESTART_COUNT;
+}
+
 /**
  * Start and supervise a process with auto-restart and log piping.
  * Returns a promise that resolves when the process loop ends.
@@ -145,7 +186,8 @@ function startProcess({ name, command, args, cleanupPort }) {
     let restartCount = 0;
 
     while (!stopping) {
-      if (cleanupPort) {
+      const skipPortClean = process.env.SANDBOX_ID && name === 'client' && restartCount > 0;
+      if (cleanupPort && !skipPortClean) {
         await ensurePortFree(cleanupPort, name);
       }
 
@@ -193,8 +235,8 @@ function startProcess({ name, command, args, cleanupPort }) {
       entry.pid = null;
       entry.child = null;
 
-      // Port cleanup fallback after crash
-      if (cleanupPort) {
+      // Port cleanup fallback after crash (137=OOM/SIGKILL，沙箱跳过以免误杀)
+      if (cleanupPort && !(process.env.SANDBOX_ID && exitCode === 137)) {
         await ensurePortFree(cleanupPort, name);
       }
 
@@ -207,13 +249,18 @@ function startProcess({ name, command, args, cleanupPort }) {
       } else {
         restartCount++;
       }
-      if (restartCount >= MAX_RESTART_COUNT) {
-        logEvent('ERROR', name, `Max restart count (${MAX_RESTART_COUNT}) reached, giving up`);
+      const maxRestarts = getMaxRestartCount();
+      if (restartCount >= maxRestarts) {
+        logEvent('ERROR', name, `Max restart count (${maxRestarts}) reached, giving up`);
         break;
       }
 
       const delay = Math.min(RESTART_DELAY * (1 << Math.max(0, restartCount - 1)), MAX_DELAY);
-      logEvent('WARN', name, `Process exited with code ${exitCode}, restarting (${restartCount}/${MAX_RESTART_COUNT}) in ${delay}s...`);
+      if (exitCode === 137 && process.env.SANDBOX_ID) {
+        logEvent('WARN', name, `Killed (137, likely OOM), restart ${restartCount}/${maxRestarts} in ${delay}s...`);
+      } else {
+        logEvent('WARN', name, `Process exited with code ${exitCode}, restarting (${restartCount}/${maxRestarts}) in ${delay}s...`);
+      }
       await sleep(delay * 1000);
     }
 
@@ -354,7 +401,7 @@ async function main() {
   await ensurePortFree(SERVER_PORT, 'main');
   await ensurePortFree(CLIENT_DEV_PORT, 'main');
 
-  // Client 先启动：沙箱 health check 探测 http://8080/dev/health
+  // Client 先启动；沙箱等 /dev/health ready 后再启 Nest（防 OOM 杀 Vite）
   const clientPromise = startProcess({
     name: 'client',
     command: 'npm',
@@ -362,12 +409,23 @@ async function main() {
     cleanupPort: CLIENT_DEV_PORT,
   });
 
-  const serverPromise = startProcess({
-    name: 'server',
-    command: 'npm',
-    args: ['run', 'dev:server'],
-    cleanupPort: SERVER_PORT,
-  });
+  const serverPromise = process.env.SANDBOX_ID
+    ? (async () => {
+        await waitForClientHealth(CLIENT_DEV_PORT);
+        await sleep(3000);
+        return startProcess({
+          name: 'server',
+          command: 'npm',
+          args: ['run', 'dev:server'],
+          cleanupPort: SERVER_PORT,
+        })();
+      })()
+    : startProcess({
+        name: 'server',
+        command: 'npm',
+        args: ['run', 'dev:server'],
+        cleanupPort: SERVER_PORT,
+      });
 
   writeOutput(`📋 Dev processes running. Press Ctrl+C to stop.\n`);
   writeOutput(`📄 Logs: ${devStdLogPath}\n\n`);
