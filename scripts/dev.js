@@ -323,9 +323,34 @@ function ensureActionPlugins() {
   }
 }
 
+function ensureNativeDeps() {
+  try {
+    execSync('node scripts/ensure-native-deps.js', {
+      cwd: PROJECT_ROOT,
+      stdio: 'inherit',
+      env: { ...process.env, CI: '1' },
+      timeout: 320000,
+    });
+  } catch {
+    writeOutput('⚠️  Native deps check failed, continuing anyway...\n\n');
+  }
+}
+
+function logGitRevision() {
+  try {
+    const commit = execSync('git rev-parse --short HEAD', {
+      cwd: PROJECT_ROOT,
+      encoding: 'utf8',
+      timeout: 5000,
+    }).trim();
+    logEvent('INFO', 'main', `Git commit: ${commit}`);
+  } catch {}
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
   logEvent('INFO', 'main', '========== Dev session started ==========');
+  logGitRevision();
 
   cleanStaleDist();
 
@@ -333,6 +358,9 @@ async function main() {
   await ensurePortFree(CLIENT_DEV_PORT, 'client');
 
   ensureActionPlugins();
+  if (process.env.SANDBOX_ID) {
+    ensureNativeDeps();
+  }
 
   // Start server and client immediately (do not block on fullstack-cli download)
   // Vite 先起：沙箱 nginx 健康检查反代的是 client 端口

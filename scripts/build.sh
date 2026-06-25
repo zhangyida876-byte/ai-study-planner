@@ -21,7 +21,7 @@ print_time() {
 # ==================== 步骤 0 ====================
 echo "🗑️  [0/6] 安装插件"
 STEP_START=$(node -e "console.log(Date.now())")
-npx fullstack-cli action-plugin init
+node scripts/ensure-action-plugins.js
 print_time $STEP_START
 echo ""
 
