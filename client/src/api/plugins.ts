@@ -1,5 +1,8 @@
 import { capabilityClient } from '@lark-apaas/client-toolkit';
 import { logger } from '@lark-apaas/client-toolkit/logger';
+import type { StageSlug } from '@client/src/config/stages';
+import { appendProfileAndStageRules } from '@client/src/config/stage-analysis-rules';
+import type { StageProfile } from '@client/src/types/stage-profile';
 
 export const PLUGIN_IDS = {
   DIAGNOSIS_REPORT: 'academic_diagnosis_report_generator_1',
@@ -93,9 +96,14 @@ export interface KnowledgeAnalysisInput {
   knowledge_point: string;
 }
 
+export interface PromptBuildOptions {
+  stageSlug?: StageSlug;
+  profile?: Partial<StageProfile> | null;
+}
+
 export interface PersonalizedLearningPlanInput {
   stage: string;
-  stageSlug: string;
+  stageSlug: StageSlug;
   grade: string;
   region: string;
   school?: string;
@@ -115,7 +123,10 @@ export interface PersonalizedLearningPlanInput {
   customNotes?: string;
 }
 
-export function buildPersonalizedLearningPlanPrompt(input: PersonalizedLearningPlanInput): string {
+export function buildPersonalizedLearningPlanPrompt(
+  input: PersonalizedLearningPlanInput,
+  options?: PromptBuildOptions,
+): string {
   const boarding = input.boardingType === 'day' ? '走读' : input.boardingType === 'boarding' ? '住读' : '未说明';
   const lines = [
     `【任务】为${input.stage}学段学生生成个性化、可执行、可验收的学习规划报告。`,
@@ -138,7 +149,7 @@ export function buildPersonalizedLearningPlanPrompt(input: PersonalizedLearningP
     input.customNotes ? `个性化说明：\n${input.customNotes}` : '',
   ].filter(Boolean);
 
-  return `${lines.join('\n')}
+  const base = `${lines.join('\n')}
 
 【生成规则】
 1. 按${input.stage}学段特点制定，禁止泛泛而谈。
@@ -157,10 +168,16 @@ export function buildPersonalizedLearningPlanPrompt(input: PersonalizedLearningP
 ## 家长监督建议
 ## 风险提醒
 ## 下周调整建议（含完成率<70%与正确率<80%的调整机制）`;
+
+  const slug = options?.stageSlug ?? input.stageSlug;
+  return appendProfileAndStageRules(base, slug, options?.profile ?? null);
 }
 
-export async function* streamPersonalizedLearningPlan(input: PersonalizedLearningPlanInput) {
-  const prompt = buildPersonalizedLearningPlanPrompt(input);
+export async function* streamPersonalizedLearningPlan(
+  input: PersonalizedLearningPlanInput,
+  options?: PromptBuildOptions,
+) {
+  const prompt = buildPersonalizedLearningPlanPrompt(input, options);
   const stream = capabilityClient
     .load(PLUGIN_IDS.DIAGNOSIS_REPORT)
     .callStream('textGenerate', {
@@ -280,10 +297,22 @@ export async function fetchBitableData() {
   return result as { records: Array<{ id: string; record: Record<string, any> }>; hasMore: boolean; total: number };
 }
 
-export async function* streamKnowledgeAnalysis(input: KnowledgeAnalysisInput) {
+export async function* streamKnowledgeAnalysis(
+  input: KnowledgeAnalysisInput,
+  options?: PromptBuildOptions,
+) {
+  let payload: Record<string, unknown> = { ...input };
+  if (options?.stageSlug) {
+    const appendix = appendProfileAndStageRules(
+      `【知识点】${input.knowledge_point}（${input.chapter}）`,
+      options.stageSlug,
+      options.profile,
+    );
+    payload = { ...input, knowledge_point: appendix };
+  }
   const stream = capabilityClient
     .load(PLUGIN_IDS.KNOWLEDGE_ANALYSIS)
-    .callStream('textGenerate', { ...input } as Record<string, unknown>);
+    .callStream('textGenerate', payload);
 
   for await (const chunk of stream) {
     const content = (chunk as { content?: string }).content || '';
@@ -303,7 +332,7 @@ export function buildScoresText(
     .join('、');
 }
 
-export function buildDiagnosisPrompt(ctx: DiagnosisFormContext): string {
+export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: PromptBuildOptions): string {
   const stage = getEducationStage(ctx.grade);
   const parts: string[] = [];
   const boardingLabel = ctx.boardingType === 'day' ? '走读' : ctx.boardingType === 'boarding' ? '住读' : '';
@@ -329,10 +358,15 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext): string {
   }
   const scoresText = buildScoresText(ctx.scores, ctx.scoreMaxValues);
   const examLabel = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '小升初期末统考';
-  return `考试类型：${examLabel}\n各科成绩（含满分与得分率）：${scoresText}\n${parts.join('\n')}`;
+  const base = `考试类型：${examLabel}\n各科成绩（含满分与得分率）：${scoresText}\n${parts.join('\n')}`;
+
+  if (options?.stageSlug) {
+    return appendProfileAndStageRules(base, options.stageSlug, options.profile);
+  }
+  return base;
 }
 
-export function buildPlanAdditionalInfo(ctx: PlanFormContext): string {
+export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBuildOptions): string {
   const stage = getEducationStage(ctx.grade);
   const parts: string[] = [];
   parts.push(`升学类型：${stage === 'high' ? '高考' : stage === 'middle' ? '中考' : '小升初'}`);
@@ -351,7 +385,12 @@ export function buildPlanAdditionalInfo(ctx: PlanFormContext): string {
   }
   const scoresText = buildScoresText(ctx.scores, ctx.scoreMaxValues);
   parts.push(`各科成绩（含满分与得分率）：${scoresText}`);
-  return parts.join('；');
+  const base = parts.join('；');
+
+  if (options?.stageSlug) {
+    return appendProfileAndStageRules(base, options.stageSlug, options.profile);
+  }
+  return base;
 }
 
 export function buildKnowledgeGradeSemester(chapter: string): string {

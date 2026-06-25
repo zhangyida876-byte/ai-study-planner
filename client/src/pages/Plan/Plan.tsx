@@ -29,6 +29,9 @@ import PlanSchoolRecommend from './PlanSchoolRecommend';
 import { PROVINCE_CITIES, PROVINCES, EXAM_TYPE_CONFIG } from './regionData';
 import type { AdmissionPolicy, AdmissionLine } from '@shared/api.interface';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
+import { useStageProfile } from '@client/src/hooks/use-stage-profile';
+import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
+import { getPlanAutofillFromProfile } from '@client/src/utils/stage-profile-sync';
 import { stagePath } from '@client/src/config/stages';
 
 const HS_MODES = [
@@ -50,13 +53,16 @@ function buildPolicyContext(policies: AdmissionPolicy[]): string {
 
 const Plan: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
+  const { profile, regionText, updateProfile } = useStageProfile(stageSlug);
   const [examType, setExamType] = useState<ExamType>(stageConfig.examType);
   const [grade, setGrade] = useState<string>(stageConfig.grades[stageConfig.grades.length - 1]);
+  const [profileDirty, setProfileDirty] = useState(false);
 
   useEffect(() => {
     setExamType(stageConfig.examType);
     setGrade(stageConfig.grades[stageConfig.grades.length - 1]);
   }, [stageConfig]);
+
   const [examMode, setExamMode] = useState<string>('');
   const currentYear = new Date().getFullYear();
   const [examYear, setExamYear] = useState<number>(currentYear + 1);
@@ -80,6 +86,8 @@ const Plan: React.FC = () => {
   const [reportLoading, setReportLoading] = useState(false);
   const [timelineContent, setTimelineContent] = useState('');
   const [timelineLoading, setTimelineLoading] = useState(false);
+  const [targetSchool, setTargetSchool] = useState('');
+  const [boardingType, setBoardingType] = useState('');
 
   const cities = PROVINCE_CITIES[selectedProvince] || [];
   const currentPolicy = policies.length > 0 ? policies[0] : null;
@@ -114,6 +122,39 @@ const Plan: React.FC = () => {
     }
   }, []);
 
+  useEffect(() => {
+    if (!profile.updatedAt) return;
+    const fill = getPlanAutofillFromProfile(profile);
+    if (fill.selectedProvince) setSelectedProvince(fill.selectedProvince);
+    if (fill.selectedCity) setSelectedCity(fill.selectedCity);
+    if (fill.county) setCounty(fill.county);
+    if (fill.region) {
+      setRegion(fill.region);
+      fetchPolicies(fill.region);
+    }
+    if (fill.grade) setGrade(fill.grade);
+    if (fill.targetSchool) setTargetSchool(fill.targetSchool);
+    if (fill.boardingType) setBoardingType(fill.boardingType);
+    if (fill.examMode) setExamMode(fill.examMode);
+    if (fill.examYear) setExamYear(fill.examYear);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在档案保存时回填
+  }, [profile.updatedAt]);
+
+  const handleSyncProfileBack = useCallback(() => {
+    updateProfile({
+      province: selectedProvince,
+      city: selectedCity,
+      county,
+      grade,
+      targetSchool,
+      boardingType: (boardingType as '' | 'day' | 'boarding') || '',
+      examMode,
+      examDate: examDate.slice(0, 10),
+    });
+    toast.success('已同步回学段主页档案');
+    setProfileDirty(false);
+  }, [updateProfile, selectedProvince, selectedCity, county, grade, targetSchool, boardingType, examMode, examDate]);
+
   const handlePolicySearch = useCallback(async (r: string): Promise<void> => {
     if (!r) { toast.error('请先选择地区'); return; }
     setPolicySearchLoading(true);
@@ -136,6 +177,7 @@ const Plan: React.FC = () => {
   }, [examType]);
 
   const handleProvinceChange = useCallback((val: string): void => {
+    setProfileDirty(true);
     if (val === '__custom__') {
       setIsCustomRegion(true);
       setRegion(customRegionText);
@@ -153,6 +195,7 @@ const Plan: React.FC = () => {
   }, [customRegionText, fetchPolicies, handlePolicySearch]);
 
   const handleCityChange = useCallback((val: string): void => {
+    setProfileDirty(true);
     setSelectedCity(val);
     setCounty('');
     const r = [selectedProvince, val].filter(Boolean).join(' ');
@@ -164,6 +207,7 @@ const Plan: React.FC = () => {
   }, [selectedProvince, fetchPolicies, handlePolicySearch]);
 
   const handleCountyChange = useCallback((val: string): void => {
+    setProfileDirty(true);
     setCounty(val);
     const r = [selectedProvince, selectedCity, val].filter(Boolean).join(' ');
     setRegion(r);
@@ -218,10 +262,12 @@ const Plan: React.FC = () => {
         scoreMaxValues,
         examMode: examMode || undefined,
         examYear,
+        targetSchool: targetSchool || undefined,
+        boardingType: boardingType || undefined,
       };
       const scoresText = buildScoresText(scores, scoreMaxValues);
       const policyText = buildPolicyContext(policies);
-      const additionalInfo = buildPlanAdditionalInfo(planCtx);
+      const additionalInfo = buildPlanAdditionalInfo(planCtx, { stageSlug, profile });
       let full = '';
       for await (const chunk of streamPlanReport({
         student_scores: scoresText,
@@ -236,7 +282,7 @@ const Plan: React.FC = () => {
     } finally {
       setReportLoading(false);
     }
-  }, [region, scores, policies, hasScores, grade, examDate, examType, examMode, examYear]);
+  }, [region, scores, policies, hasScores, grade, examDate, examType, examMode, examYear, targetSchool, boardingType, stageSlug, profile]);
 
   const handleGenerateTimeline = useCallback(async (): Promise<void> => {
     if (!region) { toast.error('请先选择地区'); return; }
@@ -283,6 +329,14 @@ const Plan: React.FC = () => {
             {examType}
           </span>
         </div>
+
+        <ProfileAutofillBanner
+          stageSlug={stageSlug}
+          profile={profile}
+          regionText={regionText}
+          showSyncBack={profileDirty}
+          onSyncBack={handleSyncProfileBack}
+        />
 
         {/* Top Input Bar */}
         <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false} className="p-5">
@@ -347,7 +401,7 @@ const Plan: React.FC = () => {
                {/* Grade Selector */}
               <div className="w-28">
                 <label className="mb-1 block text-sm font-bold text-ink">年级</label>
-                <Select value={grade} onValueChange={setGrade}>
+                <Select value={grade} onValueChange={(v) => { setProfileDirty(true); setGrade(v); }}>
                   <SelectTrigger className="font-hand">
                     <SelectValue placeholder="选择年级" />
                   </SelectTrigger>
@@ -380,7 +434,7 @@ const Plan: React.FC = () => {
               {isGaokao && (
                 <div className="w-52">
                   <label className="mb-1 block text-sm font-bold text-ink">选科模式</label>
-                  <Select value={examMode} onValueChange={setExamMode}>
+                  <Select value={examMode} onValueChange={(v) => { setProfileDirty(true); setExamMode(v); }}>
                     <SelectTrigger className="font-hand">
                       <SelectValue placeholder="选择模式" />
                     </SelectTrigger>
@@ -390,6 +444,34 @@ const Plan: React.FC = () => {
                   </Select>
                 </div>
               )}
+
+              <div className="min-w-[160px] flex-1">
+                <label className="mb-1 block text-sm font-bold text-ink">{stageConfig.targetLabel}</label>
+                <Input
+                  value={targetSchool}
+                  onChange={(e) => { setProfileDirty(true); setTargetSchool(e.target.value); }}
+                  placeholder={isGaokao ? '目标院校' : '目标学校'}
+                  className="font-hand"
+                />
+              </div>
+
+              <div className="w-28">
+                <label className="mb-1 block text-sm font-bold text-ink">走读/住读</label>
+                <Select
+                  value={boardingType || '__none__'}
+                  onValueChange={(v) => {
+                    setProfileDirty(true);
+                    setBoardingType(v === '__none__' ? '' : v);
+                  }}
+                >
+                  <SelectTrigger className="font-hand"><SelectValue placeholder="请选择" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">未选</SelectItem>
+                    <SelectItem value="day">走读</SelectItem>
+                    <SelectItem value="boarding">住读</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Row 2: Scores + Actions */}

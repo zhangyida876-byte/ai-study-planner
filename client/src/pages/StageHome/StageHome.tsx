@@ -6,13 +6,12 @@ import {
   BookOpen,
   CalendarDays,
   ArrowLeft,
-  Target,
-  MapPin,
-  Clock,
 } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
+import StageProfileEditor from '@client/src/components/StageProfileEditor';
 import { Button } from '@/components/ui/button';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
+import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import { stagePath } from '@client/src/config/stages';
 
 const FEATURE_ICONS = {
@@ -24,6 +23,7 @@ const FEATURE_ICONS = {
 
 const StageHome: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
+  const { profile, saveProfile, regionText, countdownDays } = useStageProfile(stageSlug);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -53,31 +53,19 @@ const StageHome: React.FC = () => {
         </WobblyCard>
       </div>
 
-      <WobblyCard variant="white" decoration="tape" wobblyIndex={1} hoverable={false} className="p-5">
-        <p className="font-marker mb-3 text-sm font-bold">学段概览（填写信息后在各功能中完善）</p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { icon: Target, label: '当前学段', value: stageConfig.label },
-            { icon: MapPin, label: '所在地区', value: '请在功能页选择' },
-            { icon: GraduationCap, label: stageConfig.targetLabel, value: '请在规划页设定' },
-            { icon: Clock, label: `距离${stageConfig.examLabel}`, value: '填写考试日期后显示' },
-          ].map(({ icon: Icon, label, value }) => (
-            <div
-              key={label}
-              className="rounded-lg border-2 border-dashed border-ink/15 bg-accent/20 p-3"
-            >
-              <div className="flex items-center gap-1.5 text-ink/60">
-                <Icon className="size-3.5" />
-                <span className="font-hand text-xs">{label}</span>
-              </div>
-              <p className="font-marker mt-1 text-sm font-bold">{value}</p>
-            </div>
-          ))}
-        </div>
-      </WobblyCard>
+      <StageProfileEditor
+        stageConfig={stageConfig}
+        profile={profile}
+        onSave={saveProfile}
+        countdownDays={countdownDays}
+        regionText={regionText}
+      />
 
       <div>
         <h2 className="font-marker mb-4 text-xl font-bold">选择功能模块</h2>
+        <p className="font-hand mb-4 text-sm text-muted-foreground">
+          上方档案填写后将自动带入以下模块，无需重复填写姓名、地区、年级等基础信息。
+        </p>
         <div className="grid gap-5 md:grid-cols-2">
           {stageConfig.features.map((feature, index) => {
             const Icon = FEATURE_ICONS[feature.slug];
