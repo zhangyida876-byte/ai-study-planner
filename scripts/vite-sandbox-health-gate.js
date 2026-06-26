@@ -85,19 +85,20 @@ function sandboxHealthGatePlugin() {
       }, 800);
 
       if (skipServer) {
-        // 轻量模式下无 Nest，直接由 Vite 返回入口 HTML，避免 /app/... 502。
-        server.middlewares.use((req, res, next) => {
+        // 轻量模式下无 Nest，直接由 Vite 返回“开发态”入口 HTML，避免 /app/... 502。
+        server.middlewares.use(async (req, res, next) => {
           const url = (req.url || '').split('?')[0];
           const normalized = url.replace(/\/+$/, '') || '/';
           const baseNormalized = basePath.replace(/\/+$/, '') || '/';
           const shouldServeHtml = normalized === '/' || normalized === baseNormalized;
           if (!shouldServeHtml) return next();
           try {
-            const htmlPath = path.join(process.cwd(), 'dist', 'client', 'index.html');
+            const htmlPath = path.join(process.cwd(), 'client', 'index.html');
             const html = fs.readFileSync(htmlPath, 'utf8');
+            const transformed = await server.transformIndexHtml(req.url || basePath, html);
             res.statusCode = 200;
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
-            res.end(html);
+            res.end(transformed);
           } catch (err) {
             res.statusCode = 500;
             res.setHeader('Content-Type', 'text/plain; charset=utf-8');
