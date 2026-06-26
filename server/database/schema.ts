@@ -1,7 +1,7 @@
 /* eslint-disable */
 /** auto generated, do not edit */
 import { sql } from 'drizzle-orm';
-import { bigint, index, integer, jsonb, pgTable, text, uniqueIndex, uuid, varchar, customType } from "drizzle-orm/pg-core"
+import { bigint, boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid, varchar, customType } from "drizzle-orm/pg-core"
 
 export const customTimestamptz = customType<{
   data: Date;
@@ -115,6 +115,67 @@ export const fileAttachmentArray = customType<{
       return { bucket_id: bucketId.trim(), file_path: filePath.trim() };
     });
   },
+});
+
+export const learningPlanRecord = pgTable("learning_plan_record", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  stage: varchar("stage", { length: 20 }).notNull(),
+  grade: varchar("grade", { length: 50 }).notNull(),
+  region: varchar("region", { length: 100 }).notNull(),
+  school: varchar("school", { length: 200 }),
+  targetSchool: varchar("target_school", { length: 200 }),
+  examDate: customTimestamptz("exam_date", { precision: 6 }),
+  /**
+   * @type Record<string, number>
+   */
+  currentScores: jsonb("current_scores").notNull().default('{}'),
+  /**
+   * @type Record<string, number>
+   */
+  targetScores: jsonb("target_scores").notNull().default('{}'),
+  weakSubjects: text("weak_subjects").array().notNull().default([]),
+  strongSubjects: text("strong_subjects").array().notNull().default([]),
+  weeklyTotalHours: integer("weekly_total_hours"),
+  /**
+   * @type Record<string, string>
+   */
+  dailyAvailableTime: jsonb("daily_available_time"),
+  isBoarding: boolean("is_boarding").default(false),
+  /**
+   * @type Record<string, Array<{start: string, end: string}>>
+   */
+  availableTimeSlots: jsonb("available_time_slots"),
+  hasEveningStudy: boolean("has_evening_study").default(false),
+  hasExtracurricularClasses: boolean("has_extracurricular_classes").default(false),
+  /**
+   * @type Array<{name: string, time: string, duration: number}>
+   */
+  fixedActivities: jsonb("fixed_activities"),
+  /**
+   * @type Record<string, Array<string>>
+   */
+  dailySchedule: jsonb("daily_schedule"),
+  /**
+   * @type Record<string, "low"|"medium"|"high">
+   */
+  dailyHomeworkLoad: jsonb("daily_homework_load"),
+  /**
+   * @type Record<string, Array<"new_knowledge"|"review"|"practice"|"error_correction">>
+   */
+  suitableLearningTypes: jsonb("suitable_learning_types"),
+  customRequirements: text("custom_requirements"),
+  planContent: text("plan_content"),
+  status: varchar("status", { length: 20 }).notNull().default('pending'),
+  // System field: Creation time (auto-filled, do not modify)
+  createdAt: customTimestamptz("_created_at", { precision: 3 }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  // System field: Creator (auto-filled, do not modify)
+  createdBy: userProfile("_created_by").default(sql`CASE
+    WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
+  // System field: Update time (auto-filled, do not modify)
+  updatedAt: customTimestamptz("_updated_at", { precision: 3 }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  // System field: Updater (auto-filled, do not modify)
+  updatedBy: userProfile("_updated_by").default(sql`CASE
+    WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
 });
 
 // Synced table: data is auto-synced from external source. Do not rename or delete this table.
@@ -262,5 +323,6 @@ export const diagnosisRecord = pgTable("diagnosis_record", {
 export const admissionPolicyTable = admissionPolicy;
 export const diagnosisRecordTable = diagnosisRecord;
 export const knowledgePointTable = knowledgePoint;
+export const learningPlanRecordTable = learningPlanRecord;
 export const learningSituationDataTable = learningSituationData;
 export const planRecordTable = planRecord;
