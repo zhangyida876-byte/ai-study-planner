@@ -25,6 +25,7 @@ export default defineConfig({
         },
         optimizeDeps: {
           noDiscovery: true,
+          hold: true,
           include: [
             'react',
             'react-dom',

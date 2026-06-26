@@ -380,6 +380,21 @@ function removeStaleClientJs() {
   }
 }
 
+function ensureSandboxServerDist() {
+  const main = path.join(PROJECT_ROOT, 'dist/server/main.js');
+  if (fs.existsSync(main)) {
+    logEvent('INFO', 'main', 'Sandbox: using pre-built dist/server/main.js');
+    return;
+  }
+  logEvent('INFO', 'main', 'Sandbox: building Nest (first run may take ~1 min)...');
+  execSync('npm run build:server', {
+    cwd: PROJECT_ROOT,
+    stdio: 'inherit',
+    env: buildChildEnv('server'),
+    timeout: 300000,
+  });
+}
+
 function ensureActionPlugins() {
   const capDir = path.join(PROJECT_ROOT, 'server', 'capabilities');
   if (fs.existsSync(capDir) && fs.readdirSync(capDir).some((f) => f.endsWith('.json'))) {
@@ -434,39 +449,48 @@ async function main() {
 
   precompileSandboxCss();
 
-  // Client 先启动；沙箱等 Vite 稳定后再启 Nest，避免双进程峰值内存
-  const clientPromise = startProcess({
-    name: 'client',
-    command: 'npm',
-    args: ['run', 'dev:client'],
-    cleanupPort: CLIENT_DEV_PORT,
-  });
+  if (process.env.SANDBOX_ID) {
+    ensureSandboxServerDist();
+    // Nest 先起（用预编译 dist，秒级就绪），3s 后再启 Vite，health 更快变 ready
+    const serverPromise = startProcess({
+      name: 'server',
+      command: 'npm',
+      args: ['run', 'dev:server:sandbox:dist'],
+      cleanupPort: SERVER_PORT,
+    });
 
-  const serverPromise = process.env.SANDBOX_ID
-    ? (async () => {
-        // 须在 client 进程启动后再等 health，避免误判旧 Vite 已就绪
-        await sleep(2000);
-        await waitForViteResponding(CLIENT_DEV_PORT);
-        await sleep(5000);
-        return startProcess({
-          name: 'server',
-          command: 'npm',
-          args: ['run', 'dev:server:sandbox'],
-          cleanupPort: SERVER_PORT,
-        })();
-      })()
-    : startProcess({
-        name: 'server',
+    const clientPromise = (async () => {
+      await sleep(3000);
+      return startProcess({
+        name: 'client',
         command: 'npm',
-        args: ['run', 'dev:server'],
-        cleanupPort: SERVER_PORT,
-      });
+        args: ['run', 'dev:client'],
+        cleanupPort: CLIENT_DEV_PORT,
+      })();
+    })();
 
-  writeOutput(`📋 Dev processes running. Press Ctrl+C to stop.\n`);
-  writeOutput(`📄 Logs: ${devStdLogPath}\n\n`);
+    writeOutput(`📋 Dev processes running. Press Ctrl+C to stop.\n`);
+    writeOutput(`📄 Logs: ${devStdLogPath}\n\n`);
+    await Promise.all([serverPromise, clientPromise]);
+  } else {
+    const clientPromise = startProcess({
+      name: 'client',
+      command: 'npm',
+      args: ['run', 'dev:client'],
+      cleanupPort: CLIENT_DEV_PORT,
+    });
 
-  // Wait for both (they loop until stopping or max restarts)
-  await Promise.all([serverPromise, clientPromise]);
+    const serverPromise = startProcess({
+      name: 'server',
+      command: 'npm',
+      args: ['run', 'dev:server'],
+      cleanupPort: SERVER_PORT,
+    });
+
+    writeOutput(`📋 Dev processes running. Press Ctrl+C to stop.\n`);
+    writeOutput(`📄 Logs: ${devStdLogPath}\n\n`);
+    await Promise.all([serverPromise, clientPromise]);
+  }
 
   if (!cleanupDone) {
     await cleanup();
