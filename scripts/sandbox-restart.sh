@@ -36,13 +36,10 @@ if [ ! -d node_modules/vite ]; then
   npm install --include=optional --no-audit --no-fund
 fi
 
-echo "[sandbox-restart] 前台启动轻量模式 vite（请保持此终端不要关闭）..."
-echo "[sandbox-restart] 看到 VITE ready 后再刷新编辑后台预览"
+echo "[sandbox-restart] 前台启动应急预览服务（防 OOM）..."
+echo "[sandbox-restart] 启动后可直接刷新编辑后台右侧预览"
 export SANDBOX_SKIP_SERVER=1
 export DISABLE_INSPECTOR=true
 if [ -z "${CLIENT_DEV_HOST:-}" ]; then export CLIENT_DEV_HOST=0.0.0.0; fi
 if [ -z "${CLIENT_DEV_PORT:-}" ]; then export CLIENT_DEV_PORT=8001; fi
-if [ -z "${NODE_OPTIONS:-}" ]; then
-  export NODE_OPTIONS="--max-old-space-size=224"
-fi
-exec node ./node_modules/vite/bin/vite.js --config vite.config.ts --host "$CLIENT_DEV_HOST" --port "$CLIENT_DEV_PORT"
+exec npm run dev:sandbox:ultra-preview

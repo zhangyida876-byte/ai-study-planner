@@ -15,6 +15,7 @@
     "dev:server:sandbox": "NODE_ENV=development nest start",
     "dev:server:sandbox:dist": "NODE_ENV=production node dist/server/main.js",
     "dev:server:sandbox:stub": "NODE_ENV=production node scripts/sandbox-stub-server.js",
+    "dev:sandbox:ultra-preview": "NODE_ENV=production node scripts/sandbox-ultra-preview-server.js",
     "dev:client": "NODE_ENV=development vite --config vite.config.ts",
     "gen:db-schema": "npx -y @lark-apaas/db-schema-sync@latest --output server/database/schema.ts --export-custom-types",
     "gen:openapi": "echo 'UNSUPPORTED, SKIP'",
