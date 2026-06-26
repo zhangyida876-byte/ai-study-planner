@@ -74,6 +74,103 @@ function compactSearchPolicyText(content: string): string {
   return lines.slice(0, 10).join('\n');
 }
 
+interface SubjectGapItem {
+  subject: string;
+  current: number;
+  max: number;
+  currentRate: number;
+  improveTarget: number;
+}
+
+interface GapActionPlan {
+  gapScore: number;
+  monthsLeft: number;
+  monthlyTarget: number;
+  weeklyTarget: number;
+  weeklyHours: number;
+  focusSubjects: SubjectGapItem[];
+}
+
+function normalizeSubjectKey(subject: string): string {
+  return subject.replace(/\s+/g, '').replace('&', '').replace('政治道法', '道法');
+}
+
+function getScoreByPolicySubject(scores: Record<string, number>, policySubject: string): number {
+  const key = normalizeSubjectKey(policySubject);
+  if (key.includes('道法') || key.includes('政治')) {
+    return scores['道法'] ?? scores['政治'] ?? scores['政治&道法'] ?? 0;
+  }
+  if (key.includes('语文')) return scores['语文'] ?? 0;
+  if (key.includes('数学')) return scores['数学'] ?? 0;
+  if (key.includes('英语')) return scores['英语'] ?? 0;
+  if (key.includes('物理')) return scores['物理'] ?? 0;
+  if (key.includes('化学')) return scores['化学'] ?? 0;
+  if (key.includes('生物')) return scores['生物'] ?? 0;
+  if (key.includes('历史')) return scores['历史'] ?? 0;
+  if (key.includes('地理')) return scores['地理'] ?? 0;
+  if (key.includes('体育')) return scores['体育'] ?? 0;
+  return scores[policySubject] ?? 0;
+}
+
+function computeMonthsLeft(examYear: number): number {
+  const examDate = new Date(`${examYear}-06-15T00:00:00`);
+  const now = new Date();
+  const monthDiff =
+    (examDate.getFullYear() - now.getFullYear()) * 12 +
+    (examDate.getMonth() - now.getMonth());
+  return Math.max(1, monthDiff + 1);
+}
+
+function buildGapActionPlan(input: {
+  targetScore?: number;
+  totalScore: number;
+  scoreStructure?: Record<string, number>;
+  scores: Record<string, number>;
+  weeklyStudyHoursText?: string;
+  examYear: number;
+}): GapActionPlan | null {
+  const { targetScore, totalScore, scoreStructure, scores, weeklyStudyHoursText, examYear } = input;
+  if (!targetScore || targetScore <= 0) return null;
+  const gapScore = Math.max(targetScore - totalScore, 0);
+  if (gapScore <= 0) return null;
+
+  const weeklyHoursParsed = Number.parseFloat((weeklyStudyHoursText || '').trim());
+  const weeklyHours = Number.isFinite(weeklyHoursParsed) && weeklyHoursParsed > 0 ? weeklyHoursParsed : 12;
+  const monthsLeft = computeMonthsLeft(examYear);
+  const monthlyTarget = Math.max(1, Math.ceil(gapScore / monthsLeft));
+  const weeklyTarget = Math.max(1, Math.ceil(monthlyTarget / 4));
+
+  const subjects = Object.entries(scoreStructure || {})
+    .map(([subject, max]) => {
+      const current = Math.min(getScoreByPolicySubject(scores, subject), max);
+      const currentRate = max > 0 ? current / max : 0;
+      const improveTarget = Math.max(2, Math.ceil((1 - currentRate) * 8));
+      return { subject, current, max, currentRate, improveTarget };
+    })
+    .sort((a, b) => a.currentRate - b.currentRate)
+    .slice(0, 3);
+
+  return {
+    gapScore,
+    monthsLeft,
+    monthlyTarget,
+    weeklyTarget,
+    weeklyHours,
+    focusSubjects: subjects,
+  };
+}
+
+function buildGapActionPrompt(plan: GapActionPlan | null): string {
+  if (!plan) return '';
+  const subjects = plan.focusSubjects
+    .map(
+      (item) =>
+        `${item.subject} 当前${item.current}/${item.max}，建议每周提升${item.improveTarget}分对应训练量`,
+    )
+    .join('；');
+  return `补分行动计划：距目标还差${plan.gapScore}分，剩余${plan.monthsLeft}个月；建议每月提升${plan.monthlyTarget}分、每周提升${plan.weeklyTarget}分；每周可投入${plan.weeklyHours}小时；重点科目：${subjects}。请把建议落到“每周做什么、做多少题、怎么验收”。`;
+}
+
 const Plan: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
   const { profile, regionText, updateProfile } = useStageProfile(stageSlug);
@@ -127,6 +224,18 @@ const Plan: React.FC = () => {
     }
     return Array.from(groups.entries());
   }, [currentPolicy]);
+  const gapActionPlan = useMemo(
+    () =>
+      buildGapActionPlan({
+        targetScore,
+        totalScore,
+        scoreStructure: currentPolicy?.scoreStructure,
+        scores,
+        weeklyStudyHoursText: profile.weeklyStudyHours,
+        examYear,
+      }),
+    [targetScore, totalScore, currentPolicy?.scoreStructure, scores, profile.weeklyStudyHours, examYear],
+  );
   const dataYearMismatch = currentPolicy ? currentPolicy.year !== examYear : false;
 
   const handleScoreChange = useCallback((key: string, val: string): void => {
@@ -334,11 +443,13 @@ const Plan: React.FC = () => {
       const scoresText = buildScoresText(scores, scoreMaxValues);
       const policyText = buildPolicyContext(policies);
       const additionalInfo = buildPlanAdditionalInfo(planCtx, { stageSlug, profile });
+      const actionPrompt = buildGapActionPrompt(gapActionPlan);
+      const mergedInfo = [additionalInfo, actionPrompt].filter(Boolean).join('；');
       let full = '';
       for await (const chunk of streamPlanReport({
         student_scores: scoresText,
         region_admission_policy: policyText,
-        student_additional_info: additionalInfo,
+        student_additional_info: mergedInfo,
       })) {
         full += chunk;
         setReportContent(full);
@@ -348,7 +459,7 @@ const Plan: React.FC = () => {
     } finally {
       setReportLoading(false);
     }
-  }, [region, scores, policies, hasScores, grade, examDate, examType, examMode, examYear, targetSchool, targetScore, boardingType, stageSlug, profile]);
+  }, [region, scores, policies, hasScores, grade, examDate, examType, examMode, examYear, targetSchool, targetScore, boardingType, stageSlug, profile, gapActionPlan]);
 
   const handleGenerateTimeline = useCallback(async (): Promise<void> => {
     if (!region) { toast.error('请先选择地区'); return; }
@@ -715,6 +826,45 @@ const Plan: React.FC = () => {
                       {Math.max(targetScore - totalScore, 0)}
                     </p>
                   </div>
+                </div>
+              </WobblyCard>
+            )}
+
+            {gapActionPlan && (
+              <WobblyCard variant="yellow" decoration="tack" wobblyIndex={9} hoverable={false} className="p-5">
+                <h2 className="mb-3 font-marker text-lg font-bold text-ink">补分行动计划（自动生成）</h2>
+                <div className="grid gap-3 md:grid-cols-4">
+                  <div className="rounded-lg border-2 border-ink/20 bg-white/70 p-3">
+                    <p className="text-xs text-ink/60">总差距</p>
+                    <p className="font-marker text-2xl text-marker-red">{gapActionPlan.gapScore} 分</p>
+                  </div>
+                  <div className="rounded-lg border-2 border-ink/20 bg-white/70 p-3">
+                    <p className="text-xs text-ink/60">每月目标</p>
+                    <p className="font-marker text-2xl text-ink">+{gapActionPlan.monthlyTarget}</p>
+                  </div>
+                  <div className="rounded-lg border-2 border-ink/20 bg-white/70 p-3">
+                    <p className="text-xs text-ink/60">每周目标</p>
+                    <p className="font-marker text-2xl text-ink">+{gapActionPlan.weeklyTarget}</p>
+                  </div>
+                  <div className="rounded-lg border-2 border-ink/20 bg-white/70 p-3">
+                    <p className="text-xs text-ink/60">建议投入</p>
+                    <p className="font-marker text-2xl text-ink">{gapActionPlan.weeklyHours}h/周</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <h3 className="mb-2 font-marker text-base font-bold">重点提分科目（先补短板）</h3>
+                  <div className="space-y-2">
+                    {gapActionPlan.focusSubjects.map((item) => (
+                      <div key={item.subject} className="rounded-md border-2 border-dashed border-ink/20 bg-white/70 px-3 py-2 text-sm">
+                        <span className="font-marker mr-2">{item.subject}</span>
+                        当前 {item.current}/{item.max}（得分率 {Math.round(item.currentRate * 100)}%）
+                        ，建议每周先提升约 {item.improveTarget} 分对应训练量
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-xs text-ink/60">
+                    执行建议：每周固定 2 次错题回炉 + 1 次限时套卷；每周日复盘“本周提分 / 下周目标”。
+                  </p>
                 </div>
               </WobblyCard>
             )}
