@@ -470,7 +470,13 @@ async function main() {
         cleanupPort: SERVER_PORT,
       });
     } else {
-      logEvent('WARN', 'main', 'Sandbox light mode: skip Nest server to avoid OOM; API routes may be unavailable');
+      logEvent('WARN', 'main', 'Sandbox light mode: use stub server to avoid OOM; API routes limited');
+      serverPromise = startProcess({
+        name: 'server',
+        command: 'npm',
+        args: ['run', 'dev:server:sandbox:stub'],
+        cleanupPort: SERVER_PORT,
+      });
     }
 
     const clientPromise = startProcess({
