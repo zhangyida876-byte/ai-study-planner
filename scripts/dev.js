@@ -451,24 +451,27 @@ async function main() {
   precompileSandboxCss();
 
   if (process.env.SANDBOX_ID) {
-    ensureSandboxServerDist();
-    // Nest 先起（用预编译 dist，秒级就绪），3s 后再启 Vite，health 更快变 ready
-    const serverPromise = startProcess({
-      name: 'server',
-      command: 'npm',
-      args: ['run', 'dev:server:sandbox:dist'],
-      cleanupPort: SERVER_PORT,
-    });
-
-    const clientPromise = (async () => {
-      await sleep(3000);
-      return startProcess({
-        name: 'client',
+    const skipServer = process.env.SANDBOX_SKIP_SERVER !== '0';
+    let serverPromise = Promise.resolve();
+    if (!skipServer) {
+      ensureSandboxServerDist();
+      // Nest 先起（用预编译 dist，秒级就绪），3s 后再启 Vite，health 更快变 ready
+      serverPromise = startProcess({
+        name: 'server',
         command: 'npm',
-        args: ['run', 'dev:client'],
-        cleanupPort: CLIENT_DEV_PORT,
+        args: ['run', 'dev:server:sandbox:dist'],
+        cleanupPort: SERVER_PORT,
       });
-    })();
+    } else {
+      logEvent('WARN', 'main', 'Sandbox light mode: skip Nest server to avoid OOM; API routes may be unavailable');
+    }
+
+    const clientPromise = startProcess({
+      name: 'client',
+      command: 'npm',
+      args: ['run', 'dev:client'],
+      cleanupPort: CLIENT_DEV_PORT,
+    });
 
     writeOutput(`📋 Dev processes running. Press Ctrl+C to stop.\n`);
     writeOutput(`📄 Logs: ${devStdLogPath}\n\n`);
