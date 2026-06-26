@@ -73,3 +73,12 @@ const server = http.createServer((req, res) => {
 server.listen(port, host, () => {
   console.log(`[sandbox-ultra] listening on ${host}:${port} base=${basePath}`);
 });
+
+// Some sandbox terminals send hangup/terminate on page refresh.
+// Ignore them and rely on the supervisor for lifecycle control.
+process.on('SIGHUP', () => {
+  console.warn('[sandbox-ultra] ignore SIGHUP');
+});
+process.on('SIGTERM', () => {
+  console.warn('[sandbox-ultra] ignore SIGTERM');
+});
