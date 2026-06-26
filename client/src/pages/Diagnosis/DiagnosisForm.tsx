@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -287,6 +287,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   const customRegionRef = useRef('');
   const schoolCacheRef = useRef<Record<string, string[]>>({});
   const applyingProfileRef = useRef(false);
+  const lastAppliedProfileKeyRef = useRef('');
 
   const form = useForm<DiagnosisFormData>({
     resolver: zodResolver(diagnosisFormSchema) as unknown as Parameters<typeof useForm<DiagnosisFormData>>[0]['resolver'],
@@ -297,8 +298,29 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     onProfileFieldsChange?.();
   }, [onProfileFieldsChange]);
 
+  const profileSnapshotKey = useMemo(() => {
+    if (!stageProfile) return '';
+    return JSON.stringify({
+      studentName: stageProfile.studentName,
+      province: stageProfile.province,
+      city: stageProfile.city,
+      county: stageProfile.county,
+      grade: stageProfile.grade,
+      targetSchool: stageProfile.targetSchool,
+      targetMajor: stageProfile.targetMajor,
+      examDate: stageProfile.examDate,
+      boardingType: stageProfile.boardingType,
+      examMode: stageProfile.examMode,
+      weeklyStudyHours: stageProfile.weeklyStudyHours,
+      weakSubjects: stageProfile.weakSubjects,
+      scoresOverview: stageProfile.scoresOverview,
+      updatedAt: stageProfile.updatedAt,
+    });
+  }, [stageProfile]);
+
   useEffect(() => {
-    if (!stageProfile?.updatedAt) return;
+    if (!stageProfile) return;
+    if (profileSnapshotKey && profileSnapshotKey === lastAppliedProfileKeyRef.current) return;
     applyingProfileRef.current = true;
     if (stageProfile.studentName) form.setValue('studentName', stageProfile.studentName);
     if (stageProfile.grade) form.setValue('grade', stageProfile.grade);
@@ -333,8 +355,11 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     }
     queueMicrotask(() => {
       applyingProfileRef.current = false;
+      if (profileSnapshotKey) {
+        lastAppliedProfileKeyRef.current = profileSnapshotKey;
+      }
     });
-  }, [stageProfile?.updatedAt, form, stageProfile]);
+  }, [form, profileSnapshotKey, stageProfile, onRegionPartsChange]);
 
   useEffect(() => {
     if (!onProfileFieldsChange) return;

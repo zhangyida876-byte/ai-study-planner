@@ -1,22 +1,35 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Sparkles, School } from 'lucide-react';
+import { MessageCircleMore, Sparkles, School } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { STAGE_LIST } from '@client/src/config/stages';
 import { stagePath } from '@client/src/config/stages';
+import { Button } from '@/components/ui/button';
 
 const Workbench: React.FC = () => {
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       {/* 欢迎语 */}
-      <div className="mb-10">
-        <h1 className="font-marker text-3xl text-ink">
-          <Sparkles className="mr-2 inline-block size-8 text-marker-red" />
-          洋葱课程顾问学情&升学工作台
-        </h1>
-        <p className="font-hand mt-2 text-lg text-ink/60">
-          请先选择学段，再进入学情诊断、升学规划、知识点查询或个性化学习规划
-        </p>
+      <div className="mb-10 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-marker text-3xl text-ink">
+            <Sparkles className="mr-2 inline-block size-8 text-marker-red" />
+            洋葱课程顾问学情&升学工作台
+          </h1>
+          <p className="font-hand mt-2 text-lg text-ink/60">
+            请先选择学段，再进入学情诊断、升学规划、知识点查询或个性化学习规划
+          </p>
+        </div>
+        <Button className="font-hand" variant="outline" asChild>
+          <a
+            href="https://guanghe.feishu.cn/share/base/form/shrcnfls7RZiUEZRDlfxW35XDTg"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <MessageCircleMore className="mr-1 size-4" />
+            反馈建议
+          </a>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
