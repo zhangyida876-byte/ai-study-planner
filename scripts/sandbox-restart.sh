@@ -36,6 +36,13 @@ if [ ! -f dist/server/main.js ]; then
   npm run build:server
 fi
 
-echo "[sandbox-restart] 前台启动 dev（请保持此终端不要关闭）..."
+echo "[sandbox-restart] 前台启动轻量模式 dev:client（请保持此终端不要关闭）..."
 echo "[sandbox-restart] 看到 VITE ready 后再刷新编辑后台预览"
-exec npm run dev
+export SANDBOX_SKIP_SERVER=1
+export DISABLE_INSPECTOR=true
+if [ -z "${CLIENT_DEV_HOST:-}" ]; then export CLIENT_DEV_HOST=0.0.0.0; fi
+if [ -z "${CLIENT_DEV_PORT:-}" ]; then export CLIENT_DEV_PORT=8001; fi
+if [ -z "${NODE_OPTIONS:-}" ]; then
+  export NODE_OPTIONS="--max-old-space-size=384"
+fi
+exec npm run dev:client
