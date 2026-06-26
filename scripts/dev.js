@@ -422,8 +422,11 @@ async function main() {
   }
 
   if (process.env.SANDBOX_ID) {
-    logEvent('INFO', 'main', 'Sandbox: skip client port cleanup on boot');
+    // 仅启动前清理一次：释放上次崩溃残留的 Vite（8001），重启循环内仍 skip client 端口清理
+    logEvent('INFO', 'main', 'Sandbox: freeing stale ports before start');
+    await ensurePortFree(CLIENT_DEV_PORT, 'main');
     await ensurePortFree(SERVER_PORT, 'main');
+    await sleep(500);
   } else {
     await ensurePortFree(SERVER_PORT, 'main');
     await ensurePortFree(CLIENT_DEV_PORT, 'main');
@@ -441,6 +444,8 @@ async function main() {
 
   const serverPromise = process.env.SANDBOX_ID
     ? (async () => {
+        // 须在 client 进程启动后再等 health，避免误判旧 Vite 已就绪
+        await sleep(2000);
         await waitForViteResponding(CLIENT_DEV_PORT);
         await sleep(5000);
         return startProcess({
