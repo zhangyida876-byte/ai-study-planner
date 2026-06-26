@@ -13,7 +13,7 @@
     "dev:sandbox-restart": "./scripts/sandbox-restart.sh",
     "dev:server": "NODE_ENV=development nest start --watch",
     "dev:server:sandbox": "NODE_ENV=development nest start",
-    "dev:server:sandbox:dist": "NODE_ENV=development node dist/server/main.js",
+    "dev:server:sandbox:dist": "NODE_ENV=production node dist/server/main.js",
     "dev:client": "NODE_ENV=development vite --config vite.config.ts",
     "gen:db-schema": "npx -y @lark-apaas/db-schema-sync@latest --output server/database/schema.ts --export-custom-types",
     "gen:openapi": "echo 'UNSUPPORTED, SKIP'",
