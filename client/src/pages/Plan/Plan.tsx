@@ -49,12 +49,6 @@ const GRADE_OPTIONS: Record<ExamType, string[]> = {
   '高考': ['高一', '高二', '高三'],
 };
 
-function buildPolicyContext(policies: AdmissionPolicy[]): string {
-  if (!policies.length) return '暂无该地区政策数据';
-  const p = policies[0];
-  return buildPolicyText(p.totalScore, p.scoreStructure, p.admissionLines, p.policyContent);
-}
-
 function summarizePolicyText(content: string): string {
   if (!content) return '';
   const pieces = content
@@ -109,6 +103,13 @@ interface TargetDecomposition {
   items: SubjectTargetItem[];
 }
 
+interface HighMajorRecommendation {
+  direction: string;
+  majors: string[];
+  reason: string;
+  jobs: string;
+}
+
 interface PlanSessionState {
   examType: ExamType;
   grade: string;
@@ -123,9 +124,118 @@ interface PlanSessionState {
   scores: Record<string, number>;
   targetSchool: string;
   targetScore?: number;
+  careerIntent: string;
   boardingType: string;
   reportContent: string;
   timelineContent: string;
+}
+
+function detectTopSubjects(scores: Record<string, number>): string[] {
+  return Object.entries(scores)
+    .filter(([, score]) => score > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([subject]) => subject);
+}
+
+function buildHighMajorRecommendations(input: {
+  scores: Record<string, number>;
+  careerIntent: string;
+  examMode?: string;
+}): HighMajorRecommendation[] {
+  const { scores, careerIntent, examMode } = input;
+  const intent = careerIntent.trim();
+  const tops = detectTopSubjects(scores);
+  const hasPhysics = (scores['物理'] ?? 0) > 0;
+  const hasHistory = (scores['历史'] ?? 0) > 0;
+  const recs: HighMajorRecommendation[] = [];
+
+  const intentRules: Array<{
+    keywords: string[];
+    item: HighMajorRecommendation;
+  }> = [
+    {
+      keywords: ['人工智能', 'ai', '编程', '软件', '算法', '计算机', '互联网'],
+      item: {
+        direction: '智能技术方向',
+        majors: ['计算机科学与技术', '人工智能', '软件工程', '数据科学与大数据技术'],
+        reason: '意向与技术研发岗位高度匹配，建议重点保数学与物理竞争力。',
+        jobs: '算法工程师 / 软件开发 / 数据分析',
+      },
+    },
+    {
+      keywords: ['医生', '医学', '生物', '药学', '护理', '口腔'],
+      item: {
+        direction: '医学健康方向',
+        majors: ['临床医学', '口腔医学', '药学', '生物医学工程'],
+        reason: '医学路径对长期学习稳定性要求高，建议优先强化理科基础与英语阅读。',
+        jobs: '医生 / 医疗研发 / 医药产品',
+      },
+    },
+    {
+      keywords: ['金融', '会计', '商业', '管理', '经济', '投行'],
+      item: {
+        direction: '经管金融方向',
+        majors: ['金融学', '经济学', '会计学', '工商管理'],
+        reason: '经管方向可与数学、语文表达优势结合，后续就业口径更广。',
+        jobs: '金融分析 / 审计 / 商业运营',
+      },
+    },
+    {
+      keywords: ['法律', '法学', '律师', '检察', '公务员'],
+      item: {
+        direction: '法政公共方向',
+        majors: ['法学', '政治学与行政学', '公共管理', '社会学'],
+        reason: '法政方向强调阅读、逻辑与表达，建议强化语文、历史与政治学科能力。',
+        jobs: '律师 / 法务 / 公共事务',
+      },
+    },
+    {
+      keywords: ['设计', '传媒', '新闻', '内容', '新媒体', '动画'],
+      item: {
+        direction: '创意传播方向',
+        majors: ['新闻传播学', '数字媒体技术', '视觉传达设计', '广告学'],
+        reason: '创意方向需要表达与作品积累，建议同步建设语文表达与项目作品集。',
+        jobs: '内容策划 / 设计师 / 品牌传播',
+      },
+    },
+  ];
+
+  for (const rule of intentRules) {
+    if (rule.keywords.some((kw) => intent.toLowerCase().includes(kw.toLowerCase()))) {
+      recs.push(rule.item);
+    }
+  }
+
+  if (recs.length === 0) {
+    const topText = tops.length > 0 ? tops.join('、') : '当前已填科目';
+    recs.push({
+      direction: '优势学科驱动方向',
+      majors: ['信息类', '经管类', '教育类'],
+      reason: `基于你已填科目中优势科目（${topText}）做第一轮方向筛选，后续再按兴趣细化。`,
+      jobs: '按方向选择：技术 / 管理 / 教育服务',
+    });
+  }
+
+  if (examMode === '3+1+2' && !hasPhysics && hasHistory) {
+    recs.push({
+      direction: '选科约束提醒',
+      majors: ['法学', '新闻传播', '汉语言', '教育学'],
+      reason: '当前更偏历史组合，部分工科和医学专业可能受限，建议提前核对目标院校选科要求。',
+      jobs: '文社科与公共管理岗位为主',
+    });
+  }
+
+  if (examMode === '3+1+2' && hasPhysics) {
+    recs.push({
+      direction: '理工通道保留',
+      majors: ['电子信息工程', '自动化', '机械工程', '计算机类'],
+      reason: '已保留物理通道，理工热门专业可继续冲刺，建议补强数学与英语稳定性。',
+      jobs: '研发工程师 / 产品技术岗',
+    });
+  }
+
+  return recs.slice(0, 3);
 }
 
 function normalizeSubjectKey(subject: string): string {
@@ -391,6 +501,7 @@ const Plan: React.FC = () => {
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [targetSchool, setTargetSchool] = useState('');
   const [targetScore, setTargetScore] = useState<number | undefined>(undefined);
+  const [careerIntent, setCareerIntent] = useState('');
   const [boardingType, setBoardingType] = useState('');
   const applyingProfileRef = useRef(false);
   const hydratedRef = useRef(false);
@@ -441,6 +552,17 @@ const Plan: React.FC = () => {
       }),
     [gapActionPlan, targetDecomposition, profile.weakSubjects, profile.strongSubjects],
   );
+  const highMajorRecommendations = useMemo(
+    () =>
+      stageSlug === 'high'
+        ? buildHighMajorRecommendations({
+            scores,
+            careerIntent,
+            examMode,
+          })
+        : [],
+    [stageSlug, scores, careerIntent, examMode],
+  );
 
   const handleScoreChange = useCallback((key: string, val: string): void => {
     const num = val === '' ? 0 : parseInt(val, 10);
@@ -473,6 +595,7 @@ const Plan: React.FC = () => {
     if (fill.grade) setGrade(fill.grade);
     if (fill.targetSchool) setTargetSchool(fill.targetSchool);
     if (fill.targetScore != null) setTargetScore(fill.targetScore);
+    if (fill.careerIntent) setCareerIntent(fill.careerIntent);
     if (fill.boardingType) setBoardingType(fill.boardingType);
     if (fill.examMode) setExamMode(fill.examMode);
     if (fill.examYear) setExamYear(fill.examYear);
@@ -499,6 +622,7 @@ const Plan: React.FC = () => {
     setScores(cached.scores || {});
     setTargetSchool(cached.targetSchool || '');
     setTargetScore(cached.targetScore);
+    setCareerIntent(cached.careerIntent || '');
     setBoardingType(cached.boardingType || '');
     setReportContent(cached.reportContent || '');
     setTimelineContent(cached.timelineContent || '');
@@ -520,6 +644,7 @@ const Plan: React.FC = () => {
       scores,
       targetSchool,
       targetScore,
+      careerIntent,
       boardingType,
       reportContent,
       timelineContent,
@@ -539,6 +664,7 @@ const Plan: React.FC = () => {
     scores,
     targetSchool,
     targetScore,
+    careerIntent,
     boardingType,
     reportContent,
     timelineContent,
@@ -555,6 +681,7 @@ const Plan: React.FC = () => {
         grade,
         targetSchool,
         targetScore,
+        careerIntent,
         boardingType: (boardingType as '' | 'day' | 'boarding') || '',
         examMode,
         examDate: `${examYear}-06-15`,
@@ -570,6 +697,7 @@ const Plan: React.FC = () => {
     grade,
     targetSchool,
     targetScore,
+    careerIntent,
     boardingType,
     examMode,
     examYear,
@@ -622,13 +750,14 @@ const Plan: React.FC = () => {
       grade,
       targetSchool,
       targetScore,
+      careerIntent,
       boardingType: (boardingType as '' | 'day' | 'boarding') || '',
       examMode,
       examDate: examDate.slice(0, 10),
     });
     toast.success('已同步回学段主页档案');
     setProfileDirty(false);
-  }, [updateProfile, selectedProvince, selectedCity, county, grade, targetSchool, targetScore, boardingType, examMode, examDate]);
+  }, [updateProfile, selectedProvince, selectedCity, county, grade, targetSchool, targetScore, careerIntent, boardingType, examMode, examDate]);
 
   const handlePolicySearch = useCallback(async (r: string): Promise<void> => {
     if (!r) { toast.error('请先选择地区'); return; }
@@ -739,13 +868,26 @@ const Plan: React.FC = () => {
         examYear,
         targetSchool: targetSchool || undefined,
         targetScore,
+        careerIntent: careerIntent || undefined,
         boardingType: boardingType || undefined,
       };
       const scoresText = buildScoresText(scores, scoreMaxValues);
-      const policyText = buildPolicyContext(policies);
+      const policyText = buildPolicyText(
+        currentPolicy?.totalScore || 0,
+        currentPolicy?.scoreStructure || {},
+        currentPolicy?.admissionLines || [],
+        currentPolicy?.policyContent || '',
+        examType,
+      );
       const additionalInfo = buildPlanAdditionalInfo(planCtx, { stageSlug, profile });
       const actionPrompt = buildGapActionPrompt(gapActionPlan);
-      const mergedInfo = [additionalInfo, actionPrompt].filter(Boolean).join('；');
+      const highDirectionPrompt =
+        stageSlug === 'high' && highMajorRecommendations.length > 0
+          ? `专业方向建议：${highMajorRecommendations
+              .map((item) => `${item.direction}（推荐专业：${item.majors.join('、')}；理由：${item.reason}）`)
+              .join('；')}`
+          : '';
+      const mergedInfo = [additionalInfo, actionPrompt, highDirectionPrompt].filter(Boolean).join('；');
       let full = '';
       for await (const chunk of streamPlanReport({
         student_scores: scoresText,
@@ -760,7 +902,7 @@ const Plan: React.FC = () => {
     } finally {
       setReportLoading(false);
     }
-  }, [region, scores, policies, hasScores, grade, examDate, examType, examMode, examYear, targetSchool, targetScore, boardingType, stageSlug, profile, gapActionPlan]);
+  }, [region, scores, policies, hasScores, grade, examDate, examType, examMode, examYear, targetSchool, targetScore, careerIntent, boardingType, stageSlug, profile, gapActionPlan, currentPolicy, highMajorRecommendations]);
 
   const handleGenerateTimeline = useCallback(async (): Promise<void> => {
     if (!region) { toast.error('请先选择地区'); return; }
@@ -934,6 +1076,17 @@ const Plan: React.FC = () => {
                   className="font-hand"
                 />
               </div>
+              {isGaokao && (
+                <div className="min-w-[180px] flex-1">
+                  <label className="mb-1 block text-sm font-bold text-ink">想做的事情 / 职业方向</label>
+                  <Input
+                    value={careerIntent}
+                    onChange={(e) => { setProfileDirty(true); setCareerIntent(e.target.value); }}
+                    placeholder="如：人工智能、医生、金融、法律"
+                    className="font-hand"
+                  />
+                </div>
+              )}
               {stageConfig.slug !== 'elementary' && (
                 <div className="w-36">
                   <label className="mb-1 block text-sm font-bold text-ink">匹配分数线</label>
@@ -1106,6 +1259,27 @@ const Plan: React.FC = () => {
               <WobblyCard variant="yellow" decoration="tack" wobblyIndex={2} hoverable={false} className="p-5">
                 <h2 className="mb-4 font-marker text-xl font-bold text-ink">院校推荐</h2>
                 <PlanSchoolRecommend totalScore={totalScore} admissionLines={currentPolicy.admissionLines} />
+              </WobblyCard>
+            )}
+
+            {stageSlug === 'high' && highMajorRecommendations.length > 0 && (
+              <WobblyCard variant="white" decoration="tape" wobblyIndex={13} hoverable={false} className="p-5">
+                <h2 className="mb-3 font-marker text-lg font-bold text-ink">
+                  高中专业方向推荐（基于已填科目 + 意向）
+                </h2>
+                <div className="space-y-2">
+                  {highMajorRecommendations.map((item) => (
+                    <div key={item.direction} className="rounded-md border-2 border-dashed border-ink/20 bg-accent/40 px-3 py-2 text-sm">
+                      <p className="font-marker text-base text-ink">{item.direction}</p>
+                      <p className="mt-1 text-ink/80">推荐专业：{item.majors.join('、')}</p>
+                      <p className="mt-1 text-ink/70">理由：{item.reason}</p>
+                      <p className="mt-1 text-ink/60">典型就业：{item.jobs}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-ink/60">
+                  提示：如果只填了部分科目，建议继续补齐关键科目成绩，系统会自动刷新专业可行性与院校匹配度。
+                </p>
               </WobblyCard>
             )}
 

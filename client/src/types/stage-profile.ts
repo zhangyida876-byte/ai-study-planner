@@ -12,6 +12,8 @@ export interface StageProfile {
   /** 目标学校近年分数线（自动匹配，可手动覆盖） */
   targetScore?: number;
   targetMajor: string;
+  /** 想做的事情/职业方向（用于高中专业与就业推荐） */
+  careerIntent: string;
   examDate: string;
   /** 文本概览，如「语92 数78 英85」 */
   scoresOverview: string;
@@ -35,6 +37,7 @@ export const EMPTY_STAGE_PROFILE: StageProfile = {
   targetSchool: '',
   targetScore: undefined,
   targetMajor: '',
+  careerIntent: '',
   examDate: '',
   scoresOverview: '',
   weakSubjects: '',

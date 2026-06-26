@@ -54,6 +54,7 @@ export interface DiagnosisFormContext {
   targetSchool?: string;
   targetScore?: number;
   targetMajor?: string;
+  careerIntent?: string;
   examDate?: string;
 }
 
@@ -74,6 +75,7 @@ export interface PlanFormContext {
   monthlyStudyHours?: number;
   targetSchool?: string;
   targetScore?: number;
+  careerIntent?: string;
   examYear?: number;
 }
 
@@ -112,6 +114,7 @@ export interface PersonalizedLearningPlanInput {
   examDate?: string;
   currentScore?: string;
   targetScore?: string;
+  careerIntent?: string;
   weakSubjects?: string;
   strongSubjects?: string;
   weeklyHours?: string;
@@ -138,6 +141,7 @@ export function buildPersonalizedLearningPlanPrompt(
     input.examDate ? `目标考试日期：${input.examDate}` : '',
     input.currentScore ? `当前成绩：${input.currentScore}` : '',
     input.targetScore ? `目标成绩：${input.targetScore}` : '',
+    input.careerIntent ? `未来意向方向：${input.careerIntent}` : '',
     input.weakSubjects ? `薄弱科目：${input.weakSubjects}` : '',
     input.strongSubjects ? `优势科目：${input.strongSubjects}` : '',
     `学习模式：${boarding}`,
@@ -158,6 +162,7 @@ export function buildPersonalizedLearningPlanPrompt(
 3. 走读需考虑通勤/作业/晚饭；住读需利用晚自习与周末，禁止生成不匹配的模式。
 4. 每项任务必须有：完成标准、检测方式、优先级。
 5. 政策/分数线/院校信息查不到须标注「暂无官方确认信息」，禁止编造。
+6. 若为高中学段，必须以“大学-专业-就业能力”主线输出，禁止套用中考提分模板；可回溯初中知识点仅用于定位成因。
 
 【输出结构】必须 Markdown，且包含以下章节与表格：
 ## 学习目标总览
@@ -461,10 +466,12 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
   if (boardingLabel) parts.push(`学习模式：${boardingLabel}${ctx.monthlyStudyHours ? `，每月自主学习约${ctx.monthlyStudyHours}小时` : ''}`);
 
   if (stage === 'high') {
+    parts.push('分析边界：仅输出高考-大学-专业-就业主线；禁止给出中考策略。若需回溯基础问题，仅可定位到初中知识短板成因。');
     if (ctx.examMode) parts.push(`高考选科模式：${ctx.examMode}`);
     if (ctx.examDate) parts.push(`高考日期：${ctx.examDate}`);
     if (ctx.targetSchool) parts.push(`目标大学：${ctx.targetSchool}`);
     if (ctx.targetMajor) parts.push(`目标专业：${ctx.targetMajor}`);
+    if (ctx.careerIntent) parts.push(`学生意向方向：${ctx.careerIntent}`);
     if (ctx.targetScore != null) parts.push(`该校近年投档线：${ctx.targetScore}分`);
   } else if (stage === 'middle') {
     if (ctx.examDate) parts.push(`中考日期：${ctx.examDate}`);
@@ -505,10 +512,18 @@ export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBu
     const label = stage === 'high' ? '该校近年投档线' : '该校最新录取线';
     parts.push(`${label}：${ctx.targetScore}分`);
   }
+  if (stage === 'high' && ctx.careerIntent) {
+    parts.push(`学生未来意向方向：${ctx.careerIntent}`);
+  }
   const scoresText = buildScoresText(ctx.scores, ctx.scoreMaxValues);
   parts.push(`各科成绩（含满分与得分率）：${scoresText}`);
   const latestYear = Math.max(new Date().getFullYear(), ctx.examYear || 0);
-  parts.push(`输出要求：政策信息点到为止，重点回答“能上什么学校、差多少分、怎么补分、关键时间点”`);
+  if (stage === 'high') {
+    parts.push('输出要求：以“能冲哪些大学、可选哪些专业、对应就业方向与风险”为主线；禁止按中考逻辑给建议');
+    parts.push('若仅填写部分科目，需先基于已填科目诊断选科与专业约束，再给补全科目建议');
+  } else {
+    parts.push('输出要求：政策信息点到为止，重点回答“能上什么学校、差多少分、怎么补分、关键时间点”');
+  }
   parts.push(`时间要求：必须使用${latestYear}年及之后的最新时间节点，若缺少官方数据请明确说明`);
   parts.push('表达要求：用家长易懂的大白话，不使用晦涩术语');
   const base = parts.join('；');
@@ -531,7 +546,8 @@ export function buildPolicyText(
   totalScore: number,
   scoreStructure: Record<string, number>,
   admissionLines: Array<{ batch: string; school: string; score: number }>,
-  policyContent: string
+  policyContent: string,
+  examType: '小升初' | '中考' | '高考' = '中考',
 ): string {
   const structureText = Object.entries(scoreStructure)
     .map(([subject, score]) => `${subject}${score}分`)
@@ -541,5 +557,6 @@ export function buildPolicyText(
     .map((line) => `${line.batch} - ${line.school}: ${line.score}分`)
     .join('\n');
 
-  return `中考总分: ${totalScore}分\n科目分值构成: ${structureText}\n\n录取分数线:\n${linesText}\n\n政策概要:\n${policyContent}`;
+  const examLabel = examType === '高考' ? '高考' : examType === '小升初' ? '小升初' : '中考';
+  return `${examLabel}总分: ${totalScore}分\n科目分值构成: ${structureText}\n\n录取分数线:\n${linesText}\n\n政策概要:\n${policyContent}`;
 }

@@ -38,6 +38,7 @@ interface StudyPlanSessionState {
   examDate: string;
   currentScore: string;
   targetScore: string;
+  careerIntent: string;
   weakSubjects: string;
   strongSubjects: string;
   weeklyHours: string;
@@ -61,6 +62,7 @@ const StudyPlan: React.FC = () => {
   const [examDate, setExamDate] = useState('');
   const [currentScore, setCurrentScore] = useState('');
   const [targetScore, setTargetScore] = useState('');
+  const [careerIntent, setCareerIntent] = useState('');
   const [weakSubjects, setWeakSubjects] = useState('');
   const [strongSubjects, setStrongSubjects] = useState('');
   const [weeklyHours, setWeeklyHours] = useState('');
@@ -86,6 +88,7 @@ const StudyPlan: React.FC = () => {
     if (fill.region) setRegion(fill.region);
     if (fill.school) setSchool(fill.school);
     if (fill.targetSchool) setTargetSchool(fill.targetSchool);
+    if (fill.careerIntent) setCareerIntent(fill.careerIntent);
     if (fill.examDate) setExamDate(fill.examDate);
     if (fill.currentScore) setCurrentScore(fill.currentScore);
     if (fill.weakSubjects) setWeakSubjects(fill.weakSubjects);
@@ -108,6 +111,7 @@ const StudyPlan: React.FC = () => {
     setExamDate(cached.examDate || '');
     setCurrentScore(cached.currentScore || '');
     setTargetScore(cached.targetScore || '');
+    setCareerIntent(cached.careerIntent || '');
     setWeakSubjects(cached.weakSubjects || '');
     setStrongSubjects(cached.strongSubjects || '');
     setWeeklyHours(cached.weeklyHours || '');
@@ -131,6 +135,7 @@ const StudyPlan: React.FC = () => {
       examDate,
       currentScore,
       targetScore,
+      careerIntent,
       weakSubjects,
       strongSubjects,
       weeklyHours,
@@ -152,6 +157,7 @@ const StudyPlan: React.FC = () => {
     examDate,
     currentScore,
     targetScore,
+    careerIntent,
     weakSubjects,
     strongSubjects,
     weeklyHours,
@@ -175,6 +181,7 @@ const StudyPlan: React.FC = () => {
         targetSchool,
         examDate,
         scoresOverview: currentScore,
+        careerIntent,
         weakSubjects,
         strongSubjects,
         weeklyStudyHours: weeklyHours,
@@ -190,6 +197,7 @@ const StudyPlan: React.FC = () => {
     targetSchool,
     examDate,
     currentScore,
+    careerIntent,
     weakSubjects,
     strongSubjects,
     weeklyHours,
@@ -207,6 +215,7 @@ const StudyPlan: React.FC = () => {
       targetSchool,
       examDate,
       scoresOverview: currentScore,
+      careerIntent,
       weakSubjects,
       strongSubjects,
       weeklyStudyHours: weeklyHours,
@@ -214,7 +223,7 @@ const StudyPlan: React.FC = () => {
     });
     toast.success('已同步回学段主页档案');
     setProfileDirty(false);
-  }, [updateProfile, grade, school, targetSchool, examDate, currentScore, weakSubjects, strongSubjects, weeklyHours, boardingType]);
+  }, [updateProfile, grade, school, targetSchool, examDate, currentScore, careerIntent, weakSubjects, strongSubjects, weeklyHours, boardingType]);
 
   const validate = (): string | null => {
     if (!grade) return '请选择年级';
@@ -245,6 +254,7 @@ const StudyPlan: React.FC = () => {
         examDate,
         currentScore: currentScore.trim(),
         targetScore: targetScore.trim(),
+        careerIntent: careerIntent.trim(),
         weakSubjects: weakSubjects.trim(),
         strongSubjects: strongSubjects.trim(),
         weeklyHours: weeklyHours.trim(),
@@ -270,7 +280,7 @@ const StudyPlan: React.FC = () => {
   }, [
     boardingType, currentScore, customNotes, dailyHours, eveningStudy, examDate,
     extracurricular, grade, region, school, stageConfig.label, stageSlug,
-    strongSubjects, targetSchool, targetScore, timetableNotes, weakSubjects,
+    strongSubjects, targetSchool, targetScore, careerIntent, timetableNotes, weakSubjects,
     weeklyHours, weeklySchedule, profile,
   ]);
 
@@ -354,6 +364,17 @@ const StudyPlan: React.FC = () => {
                 <Label className="font-hand">目标成绩</Label>
                 <Input value={targetScore} onChange={(e) => setTargetScore(e.target.value)} className="font-hand mt-1" />
               </div>
+              {stageSlug === 'high' && (
+                <div className="sm:col-span-2">
+                  <Label className="font-hand">想做的事情 / 职业方向</Label>
+                  <Input
+                    value={careerIntent}
+                    onChange={(e) => { markDirty(); setCareerIntent(e.target.value); }}
+                    placeholder="如：人工智能、医学、金融、法律"
+                    className="font-hand mt-1"
+                  />
+                </div>
+              )}
               <div>
                 <Label className="font-hand">薄弱科目 *</Label>
                 <Input value={weakSubjects} onChange={(e) => { markDirty(); setWeakSubjects(e.target.value); }} placeholder="如：数学、英语" className="font-hand mt-1" />

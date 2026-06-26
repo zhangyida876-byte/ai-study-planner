@@ -23,6 +23,7 @@ const STAGE_RULES: Record<StageSlug, string> = {
 
   high: `【高中学段分析补充规则】
 - 仅围绕「高考目标 + 目标院校 + 专业选择 + 就业前景」，须与录取/选科/专业关联。
+- 禁止把中考策略当作主体输出；如需追因，只能简要回溯「初中哪些知识薄弱导致当前问题」。
 - 政策：3+3 或 3+1+2、赋分规则、批次、专业组、选科限制；联网交叉验证。
 - 目标院校：近两年省录取线、位次、专业组、选科要求、差距拆解；未填则推荐冲刺/匹配/保底院校并说明依据。
 - 专业建议：选科要求、就业方向、典型岗位、应届生薪资及分位值（须有来源，无则写「暂无官方确认信息」）。
@@ -51,6 +52,7 @@ export function appendProfileAndStageRules(
       profile.school ? `当前学校：${profile.school}` : '',
       profile.targetSchool ? `目标学校/院校：${profile.targetSchool}` : '',
       profile.targetMajor ? `目标专业：${profile.targetMajor}` : '',
+      profile.careerIntent ? `未来意向方向：${profile.careerIntent}` : '',
       profile.examDate ? `目标考试时间：${profile.examDate}` : '',
       profile.scoresOverview ? `当前成绩概览：${profile.scoresOverview}` : '',
       profile.weakSubjects ? `薄弱科目：${profile.weakSubjects}` : '',

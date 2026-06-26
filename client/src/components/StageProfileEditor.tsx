@@ -328,6 +328,17 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
             placeholder="如：语92 数78 英85 物70"
           />
         </div>
+        {stageConfig.slug === 'high' && (
+          <div className="sm:col-span-2">
+            <Label className="font-hand">想做的事情 / 职业方向（选填）</Label>
+            <Input
+              className="font-hand mt-1"
+              value={draft.careerIntent}
+              onChange={(e) => patch({ careerIntent: e.target.value })}
+              placeholder="如：人工智能、医生、金融分析、设计、法律"
+            />
+          </div>
+        )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t-2 border-dashed border-ink/10 pt-4">
@@ -335,6 +346,9 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
           {regionSummary && <span className="mr-3">📍 {regionSummary}</span>}
           {draft.grade && <span className="mr-3">🎓 {draft.grade}</span>}
           {draft.targetSchool && <span className="mr-3">🏫 {draft.targetSchool}</span>}
+          {stageConfig.slug === 'high' && draft.careerIntent && (
+            <span className="mr-3">💼 {draft.careerIntent}</span>
+          )}
           {draft.targetScore != null && (
             <span className="mr-3 inline-flex items-center gap-1 text-marker-red">
               <Sparkles className="size-3.5" />

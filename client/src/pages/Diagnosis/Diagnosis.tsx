@@ -159,6 +159,7 @@ const Diagnosis: React.FC = () => {
         problemDesc: data.problemDesc,
         targetSchool: data.targetSchool,
         targetMajor: data.targetMajor,
+        careerIntent: profile.careerIntent,
         targetScore: stage === 'elementary' ? undefined : data.targetScore,
         examDate: data.examDate,
       };
@@ -355,6 +356,14 @@ const Diagnosis: React.FC = () => {
                           <span className="font-hand text-ink/60">目标专业：</span>
                           <span className="font-marker font-bold text-marker-red">
                             {studentInfo.targetMajor}
+                          </span>
+                        </div>
+                      )}
+                      {studentStage === 'high' && profile.careerIntent && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-hand text-ink/60">未来意向：</span>
+                          <span className="font-marker font-bold text-ink">
+                            {profile.careerIntent}
                           </span>
                         </div>
                       )}
