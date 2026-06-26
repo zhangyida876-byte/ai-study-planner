@@ -91,8 +91,40 @@ interface GapActionPlan {
   focusSubjects: SubjectGapItem[];
 }
 
+interface SubjectTargetItem {
+  subject: string;
+  max: number;
+  isFilled: boolean;
+  currentScore: number | null;
+  targetScore: number;
+}
+
+interface TargetDecomposition {
+  enteredCount: number;
+  missingCount: number;
+  enteredTotal: number;
+  missingTargetTotal: number;
+  impossible: boolean;
+  items: SubjectTargetItem[];
+}
+
 function normalizeSubjectKey(subject: string): string {
   return subject.replace(/\s+/g, '').replace('&', '').replace('政治道法', '道法');
+}
+
+function getPolicySubjectKeys(policySubject: string): string[] {
+  const key = normalizeSubjectKey(policySubject);
+  if (key.includes('道法') || key.includes('政治')) return ['道法', '政治', '政治&道法'];
+  if (key.includes('语文')) return ['语文'];
+  if (key.includes('数学')) return ['数学'];
+  if (key.includes('英语')) return ['英语'];
+  if (key.includes('物理')) return ['物理'];
+  if (key.includes('化学')) return ['化学'];
+  if (key.includes('生物')) return ['生物'];
+  if (key.includes('历史')) return ['历史'];
+  if (key.includes('地理')) return ['地理'];
+  if (key.includes('体育')) return ['体育'];
+  return [policySubject];
 }
 
 function getScoreByPolicySubject(scores: Record<string, number>, policySubject: string): number {
@@ -110,6 +142,97 @@ function getScoreByPolicySubject(scores: Record<string, number>, policySubject: 
   if (key.includes('地理')) return scores['地理'] ?? 0;
   if (key.includes('体育')) return scores['体育'] ?? 0;
   return scores[policySubject] ?? 0;
+}
+
+function hasPolicySubjectScore(scores: Record<string, number>, policySubject: string): boolean {
+  const keys = getPolicySubjectKeys(policySubject);
+  return keys.some((key) => Object.prototype.hasOwnProperty.call(scores, key));
+}
+
+function allocateByMaxWeight(
+  total: number,
+  subjects: Array<{ subject: string; max: number }>,
+): Record<string, number> {
+  const output: Record<string, number> = {};
+  if (subjects.length === 0 || total <= 0) return output;
+  const maxTotal = subjects.reduce((sum, item) => sum + item.max, 0);
+  if (maxTotal <= 0) return output;
+  if (total >= maxTotal) {
+    for (const item of subjects) output[item.subject] = item.max;
+    return output;
+  }
+
+  const raw = subjects.map((item) => ({
+    subject: item.subject,
+    max: item.max,
+    value: (item.max / maxTotal) * total,
+  }));
+  let assigned = 0;
+  for (const item of raw) {
+    const base = Math.min(item.max, Math.floor(item.value));
+    output[item.subject] = base;
+    assigned += base;
+  }
+
+  let remain = total - assigned;
+  if (remain > 0) {
+    const order = [...raw].sort((a, b) => (b.value - Math.floor(b.value)) - (a.value - Math.floor(a.value)));
+    let idx = 0;
+    while (remain > 0 && idx < order.length * 4) {
+      const item = order[idx % order.length];
+      if ((output[item.subject] ?? 0) < item.max) {
+        output[item.subject] = (output[item.subject] ?? 0) + 1;
+        remain -= 1;
+      }
+      idx += 1;
+    }
+  }
+  return output;
+}
+
+function buildTargetDecomposition(input: {
+  targetScore?: number;
+  scoreStructure?: Record<string, number>;
+  scores: Record<string, number>;
+}): TargetDecomposition | null {
+  const { targetScore, scoreStructure, scores } = input;
+  if (!targetScore || !scoreStructure) return null;
+
+  const subjects = Object.entries(scoreStructure).map(([subject, max]) => ({
+    subject,
+    max,
+    isFilled: hasPolicySubjectScore(scores, subject),
+    currentScore: hasPolicySubjectScore(scores, subject)
+      ? Math.min(getScoreByPolicySubject(scores, subject), max)
+      : null,
+  }));
+  if (subjects.length === 0) return null;
+
+  const enteredTotal = subjects.reduce((sum, item) => sum + (item.currentScore ?? 0), 0);
+  const missing = subjects.filter((item) => !item.isFilled);
+  const remainNeeded = Math.max(targetScore - enteredTotal, 0);
+  const missingMaxTotal = missing.reduce((sum, item) => sum + item.max, 0);
+  const impossible = remainNeeded > missingMaxTotal;
+  const missingTargets = allocateByMaxWeight(
+    remainNeeded,
+    missing.map((item) => ({ subject: item.subject, max: item.max })),
+  );
+  const items: SubjectTargetItem[] = subjects.map((item) => ({
+    subject: item.subject,
+    max: item.max,
+    isFilled: item.isFilled,
+    currentScore: item.currentScore,
+    targetScore: item.isFilled ? (item.currentScore ?? 0) : (missingTargets[item.subject] ?? 0),
+  }));
+
+  return {
+    enteredCount: subjects.filter((item) => item.isFilled).length,
+    missingCount: missing.length,
+    enteredTotal,
+    missingTargetTotal: missing.reduce((sum, item) => sum + (missingTargets[item.subject] ?? 0), 0),
+    impossible,
+    items,
+  };
 }
 
 function computeMonthsLeft(examYear: number): number {
@@ -169,6 +292,22 @@ function buildGapActionPrompt(plan: GapActionPlan | null): string {
     )
     .join('；');
   return `补分行动计划：距目标还差${plan.gapScore}分，剩余${plan.monthsLeft}个月；建议每月提升${plan.monthlyTarget}分、每周提升${plan.weeklyTarget}分；每周可投入${plan.weeklyHours}小时；重点科目：${subjects}。请把建议落到“每周做什么、做多少题、怎么验收”。`;
+}
+
+function buildParentCommunicationTemplate(plan: GapActionPlan | null): string[] {
+  if (!plan) {
+    return [
+      '先共情：我知道你最近很辛苦，我们先把目标定小一点，一起慢慢来。',
+      '先做一件小事：今天只做 1 份错题整理，完成就结束。',
+      '先肯定再建议：你今天比昨天多坚持了 20 分钟，这就是进步。',
+    ];
+  }
+  return [
+    `开场共情：这段时间不容易，我们不谈大道理，只看每周进步 ${plan.weeklyTarget} 分。`,
+    `目标协商：距离目标还差 ${plan.gapScore} 分，我们拆成每月 +${plan.monthlyTarget} 分，一起完成。`,
+    '执行口令：今天先做“错题回炉 + 限时训练”，做完就休息，不追求一次完美。',
+    '复盘模板：这周做得最好的一件事是什么？下周只改一件事，选最容易做到的那件。',
+  ];
 }
 
 const Plan: React.FC = () => {
@@ -237,6 +376,19 @@ const Plan: React.FC = () => {
     [targetScore, totalScore, currentPolicy?.scoreStructure, scores, profile.weeklyStudyHours, examYear],
   );
   const dataYearMismatch = currentPolicy ? currentPolicy.year !== examYear : false;
+  const targetDecomposition = useMemo(
+    () =>
+      buildTargetDecomposition({
+        targetScore,
+        scoreStructure: currentPolicy?.scoreStructure,
+        scores,
+      }),
+    [targetScore, currentPolicy?.scoreStructure, scores],
+  );
+  const communicationTemplate = useMemo(
+    () => buildParentCommunicationTemplate(gapActionPlan),
+    [gapActionPlan],
+  );
 
   const handleScoreChange = useCallback((key: string, val: string): void => {
     const num = val === '' ? 0 : parseInt(val, 10);
@@ -868,6 +1020,46 @@ const Plan: React.FC = () => {
                 </div>
               </WobblyCard>
             )}
+
+            {targetDecomposition && targetDecomposition.enteredCount > 0 && targetDecomposition.missingCount > 0 && (
+              <WobblyCard variant="white" decoration="tape" wobblyIndex={10} hoverable={false} className="p-5">
+                <h2 className="mb-3 font-marker text-lg font-bold text-ink">目标分拆解（已填 {targetDecomposition.enteredCount} 科）</h2>
+                <p className="mb-2 text-sm text-ink/70">
+                  你已填写科目合计 {targetDecomposition.enteredTotal} 分；其余 {targetDecomposition.missingCount} 科建议目标合计{' '}
+                  {targetDecomposition.missingTargetTotal} 分。
+                </p>
+                {targetDecomposition.impossible && (
+                  <p className="mb-2 rounded border-2 border-marker-red/40 bg-marker-red/5 px-3 py-2 text-xs text-marker-red">
+                    按当前已填分数，剩余科目即使满分也难以达到目标线，建议同步下调目标或提高已填科目预期。
+                  </p>
+                )}
+                <div className="space-y-2">
+                  {targetDecomposition.items.map((item) => (
+                    <div key={item.subject} className="rounded-md border-2 border-dashed border-ink/20 bg-accent/40 px-3 py-2 text-sm">
+                      <span className="font-marker mr-2">{item.subject}</span>
+                      当前：
+                      {item.currentScore == null ? '未填写' : `${item.currentScore}/${item.max}`}，
+                      目标：{item.targetScore}/{item.max}
+                      {!item.isFilled && <span className="ml-2 text-pen-blue">（建议补到该分数）</span>}
+                    </div>
+                  ))}
+                </div>
+              </WobblyCard>
+            )}
+
+            <WobblyCard variant="yellow" decoration="tack" wobblyIndex={12} hoverable={false} className="p-5">
+              <h2 className="mb-3 font-marker text-lg font-bold text-ink">家长沟通模板（让孩子愿意执行）</h2>
+              <div className="space-y-2 text-sm text-ink/80">
+                {communicationTemplate.map((line, idx) => (
+                  <p key={idx} className="rounded-md border border-ink/15 bg-white/70 px-3 py-2">
+                    {line}
+                  </p>
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-ink/60">
+                建议顺序：先共情 → 再谈小目标 → 最后给选择权（先做哪一科由孩子选），执行率会更高。
+              </p>
+            </WobblyCard>
 
             {/* AI Report */}
             <WobblyCard variant="white" decoration="tape" wobblyIndex={4} hoverable={false} className="p-5" rotate={0.3}>
