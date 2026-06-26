@@ -359,7 +359,14 @@ async function cleanup() {
 
 process.on('SIGTERM', cleanup);
 process.on('SIGINT', cleanup);
-process.on('SIGHUP', cleanup);
+if (process.env.SANDBOX_ID) {
+  // 妙搭刷新任务页时经常触发 SIGHUP；沙箱里忽略它，避免 dev 被误杀。
+  process.on('SIGHUP', () => {
+    logEvent('WARN', 'main', 'Ignored SIGHUP in sandbox (keep dev alive across page refresh)');
+  });
+} else {
+  process.on('SIGHUP', cleanup);
+}
 
 // Stale dist makes nest --watch skip missing files; watcher won't self-heal.
 function cleanStaleDist() {
