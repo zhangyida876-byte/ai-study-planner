@@ -88,14 +88,15 @@ function getImportance(detail: KnowledgePoint): { level: string; color: string; 
   return { level: '基础巩固', color: 'border-emerald-600 bg-emerald-600/10 text-emerald-600', stars: 1 };
 }
 
-function getExamProb(detail: KnowledgePoint): { label: string; percent: number; color: string } {
+function getExamProb(detail: KnowledgePoint, stageSlug?: StageSlug): { label: string; percent: number; color: string; title: string } {
   const coreSubjects = ['数学', '语文', '英语', '物理', '化学'];
   const isCore = coreSubjects.includes(detail.subject);
   const coreLen = (detail.content.coreKnowledge || '').length;
-  if (isCore && coreLen > 200) return { label: '极高频', percent: 90, color: 'bg-marker-red' };
-  if (isCore) return { label: '高频', percent: 75, color: 'bg-marker-red/70' };
-  if (coreLen > 150) return { label: '中高频', percent: 60, color: 'bg-pen-blue' };
-  return { label: '中频', percent: 40, color: 'bg-pen-blue/50' };
+  const title = stageSlug === 'high' ? '高考考查概率' : stageSlug === 'middle' ? '中考出题概率' : '阶段测评考查概率';
+  if (isCore && coreLen > 200) return { label: '极高频', percent: 90, color: 'bg-marker-red', title };
+  if (isCore) return { label: '高频', percent: 75, color: 'bg-marker-red/70', title };
+  if (coreLen > 150) return { label: '中高频', percent: 60, color: 'bg-pen-blue', title };
+  return { label: '中频', percent: 40, color: 'bg-pen-blue/50', title };
 }
 
 const AIAnalysisSection: React.FC<{
@@ -207,7 +208,7 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
   }
 
   const importance = getImportance(detail);
-  const examProb = getExamProb(detail);
+  const examProb = getExamProb(detail, stageSlug);
 
   return (
     <div className="space-y-4">
@@ -246,7 +247,7 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
 
       <div className="rounded-lg border-2 border-ink/15 bg-accent/30 p-3">
         <div className="flex items-center justify-between">
-          <span className="font-hand text-xs text-ink/70">中考出题概率</span>
+          <span className="font-hand text-xs text-ink/70">{examProb.title}</span>
           <span className="font-marker text-sm font-bold text-marker-red">
             {examProb.label}
           </span>
@@ -262,7 +263,7 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
         </div>
       </div>
 
-      <KnowledgeGraph detail={detail} />
+      <KnowledgeGraph detail={detail} stageSlug={stageSlug} />
 
       <SectionBlock
         title="核心知识点梳理"
