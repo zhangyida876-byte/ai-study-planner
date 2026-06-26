@@ -466,7 +466,7 @@ async function main() {
         command: 'npm',
         args: ['run', 'dev:client'],
         cleanupPort: CLIENT_DEV_PORT,
-      })();
+      });
     })();
 
     writeOutput(`📋 Dev processes running. Press Ctrl+C to stop.\n`);
