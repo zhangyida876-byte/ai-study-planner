@@ -25,6 +25,7 @@ export function getPlanAutofillFromProfile(profile: StageProfile) {
     region,
     grade: profile.grade,
     targetSchool: profile.targetSchool,
+    targetScore: profile.targetScore,
     boardingType: profile.boardingType,
     examMode: profile.examMode,
     examYear,

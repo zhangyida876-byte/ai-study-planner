@@ -15,6 +15,7 @@ export const PLUGIN_IDS = {
   COLLEGE_POLICY_SEARCH: 'college_entrance_policy_search_1',
   COLLEGE_MAJOR_QUERY: 'college_major_admission_query_1',
   MAJOR_CAREER_QUERY: 'gaokao_major_career_salary_query_1',
+  ADMISSION_SCORE_QUERY: 'high_school_admission_score_query_1',
   FEISHU_BITABLE_READER: 'feishu_bitable_data_reader_1',
 } as const;
 
@@ -290,6 +291,127 @@ export async function* streamMajorCareerQuery(input: MajorCareerQueryInput) {
   }
 }
 
+function normalizeSchoolName(line: string): string {
+  return line
+    .replace(/^[\d\s.\-、]+/, '')
+    .replace(/^[-*]\s*/, '')
+    .replace(/\|/g, ' ')
+    .replace(/（[^）]*）/g, '')
+    .replace(/\([^)]*\)/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractSchoolCandidates(content: string, keyword?: string): string[] {
+  const lines = content.split('\n').map((line) => line.trim()).filter(Boolean);
+  const normalizedKeyword = keyword?.trim();
+  const result: string[] = [];
+  for (const line of lines) {
+    if (
+      line.startsWith('#') ||
+      line.startsWith('|') ||
+      line.startsWith('---') ||
+      line.includes('数据来源') ||
+      line.includes('说明')
+    ) {
+      continue;
+    }
+    const candidate = normalizeSchoolName(line);
+    if (!candidate || candidate.length < 2 || candidate.length > 32) continue;
+    if (
+      !/(中学|高中|附中|大学|学院|学校|一中|二中|三中|四中|五中|六中|七中|八中|九中|十中)/.test(
+        candidate,
+      )
+    ) {
+      continue;
+    }
+    if (normalizedKeyword && !candidate.includes(normalizedKeyword)) continue;
+    result.push(candidate);
+  }
+  return [...new Set(result)];
+}
+
+function extractTopScore(content: string): number | null {
+  const matches = content.match(/(\d{3})\s*分/g) || [];
+  const scores = matches
+    .map((item) => Number.parseInt(item, 10))
+    .filter((score) => Number.isFinite(score) && score >= 200 && score <= 900);
+  if (scores.length === 0) return null;
+  return Math.max(...scores);
+}
+
+export interface SchoolCandidate {
+  name: string;
+  score?: number;
+}
+
+export interface SearchSchoolCandidatesInput {
+  stage: EducationStage;
+  region: string;
+  keyword?: string;
+  examYear?: number;
+  limit?: number;
+}
+
+export async function searchSchoolCandidates(
+  input: SearchSchoolCandidatesInput,
+): Promise<SchoolCandidate[]> {
+  const { stage, region, keyword, examYear, limit = 10 } = input;
+  const kw = keyword?.trim();
+  let merged = '';
+
+  if (stage === 'elementary') {
+    for await (const chunk of streamJuniorHighSearch({
+      region,
+      school_name: kw || undefined,
+    })) {
+      merged += chunk;
+    }
+  } else if (stage === 'middle') {
+    const stream = capabilityClient
+      .load(PLUGIN_IDS.HIGH_SCHOOL_REGION_SEARCH)
+      .callStream('searchSummary', {
+        region,
+        school_name: kw || undefined,
+      } as Record<string, unknown>);
+    for await (const chunk of stream as AsyncIterable<Record<string, unknown>>) {
+      merged += typeof chunk?.summary === 'string' ? chunk.summary : '';
+    }
+  } else {
+    for await (const chunk of streamCollegePolicySearch({
+      region,
+      year: String(examYear || new Date().getFullYear()),
+      keyword: kw ? `${kw} 录取分数线` : '高校 录取分数线',
+    })) {
+      merged += chunk;
+    }
+  }
+
+  const names = extractSchoolCandidates(merged, kw).slice(0, limit);
+  return names.map((name) => ({ name }));
+}
+
+export async function fetchSchoolScoreByName(input: {
+  region: string;
+  schoolName: string;
+  examType: '中考' | '高考';
+}): Promise<number | null> {
+  const stream = capabilityClient
+    .load(PLUGIN_IDS.ADMISSION_SCORE_QUERY)
+    .callStream('searchSummary', {
+      region: input.region,
+      school_name: input.schoolName,
+      exam_type: input.examType,
+    } as Record<string, unknown>);
+  let merged = '';
+  for await (const chunk of stream as AsyncIterable<Record<string, unknown>>) {
+    merged +=
+      (typeof chunk?.summary === 'string' ? chunk.summary : '') ||
+      (typeof chunk?.content === 'string' ? chunk.content : '');
+  }
+  return extractTopScore(merged);
+}
+
 export async function fetchBitableData() {
   const result = await capabilityClient
     .load(PLUGIN_IDS.FEISHU_BITABLE_READER)
@@ -385,6 +507,10 @@ export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBu
   }
   const scoresText = buildScoresText(ctx.scores, ctx.scoreMaxValues);
   parts.push(`各科成绩（含满分与得分率）：${scoresText}`);
+  const latestYear = Math.max(new Date().getFullYear(), ctx.examYear || 0);
+  parts.push(`输出要求：政策信息点到为止，重点回答“能上什么学校、差多少分、怎么补分、关键时间点”`);
+  parts.push(`时间要求：必须使用${latestYear}年及之后的最新时间节点，若缺少官方数据请明确说明`);
+  parts.push('表达要求：用家长易懂的大白话，不使用晦涩术语');
   const base = parts.join('；');
 
   if (options?.stageSlug) {

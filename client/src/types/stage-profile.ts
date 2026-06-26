@@ -9,6 +9,8 @@ export interface StageProfile {
   grade: string;
   school: string;
   targetSchool: string;
+  /** 目标学校近年分数线（自动匹配，可手动覆盖） */
+  targetScore?: number;
   targetMajor: string;
   examDate: string;
   /** 文本概览，如「语92 数78 英85」 */
@@ -31,6 +33,7 @@ export const EMPTY_STAGE_PROFILE: StageProfile = {
   grade: '',
   school: '',
   targetSchool: '',
+  targetScore: undefined,
   targetMajor: '',
   examDate: '',
   scoresOverview: '',

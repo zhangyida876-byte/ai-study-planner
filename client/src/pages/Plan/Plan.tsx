@@ -18,6 +18,7 @@ import {
   streamPlanReport,
   streamTimeline,
   streamPolicySearch,
+  fetchSchoolScoreByName,
   buildScoresText,
   buildPolicyText,
   buildPlanAdditionalInfo,
@@ -34,6 +35,7 @@ import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner'
 import { getPlanAutofillFromProfile } from '@client/src/utils/stage-profile-sync';
 import { stagePath } from '@client/src/config/stages';
 import { toSelectValue } from '@client/src/lib/utils';
+import { policy as policyApi } from '@client/src/api';
 
 const HS_MODES = [
   { value: '3+1+2', label: '3+1+2（物理/历史 二选一）' },
@@ -50,6 +52,26 @@ function buildPolicyContext(policies: AdmissionPolicy[]): string {
   if (!policies.length) return '暂无该地区政策数据';
   const p = policies[0];
   return buildPolicyText(p.totalScore, p.scoreStructure, p.admissionLines, p.policyContent);
+}
+
+function summarizePolicyText(content: string): string {
+  if (!content) return '';
+  const pieces = content
+    .replace(/\s+/g, ' ')
+    .split(/[。；！?？]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return pieces.slice(0, 3).map((part) => `- ${part}`).join('\n');
+}
+
+function compactSearchPolicyText(content: string): string {
+  if (!content) return '';
+  const lines = content
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !line.startsWith('```'));
+  return lines.slice(0, 10).join('\n');
 }
 
 const Plan: React.FC = () => {
@@ -88,6 +110,7 @@ const Plan: React.FC = () => {
   const [timelineContent, setTimelineContent] = useState('');
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [targetSchool, setTargetSchool] = useState('');
+  const [targetScore, setTargetScore] = useState<number | undefined>(undefined);
   const [boardingType, setBoardingType] = useState('');
 
   const cities = PROVINCE_CITIES[selectedProvince] || [];
@@ -135,11 +158,51 @@ const Plan: React.FC = () => {
     }
     if (fill.grade) setGrade(fill.grade);
     if (fill.targetSchool) setTargetSchool(fill.targetSchool);
+    if (fill.targetScore != null) setTargetScore(fill.targetScore);
     if (fill.boardingType) setBoardingType(fill.boardingType);
     if (fill.examMode) setExamMode(fill.examMode);
     if (fill.examYear) setExamYear(fill.examYear);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在档案保存时回填
   }, [profile.updatedAt]);
+
+  useEffect(() => {
+    if (!targetSchool || !region || stageConfig.slug === 'elementary') return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const db = await policyApi.searchSchools(region);
+        if (cancelled) return;
+        const matched = db.schools.find(
+          (item) =>
+            item.name === targetSchool ||
+            item.name.includes(targetSchool) ||
+            targetSchool.includes(item.name),
+        );
+        if (matched?.score) {
+          setTargetScore(matched.score);
+          return;
+        }
+      } catch {
+        // ignore db lookup failures
+      }
+      try {
+        const score = await fetchSchoolScoreByName({
+          region,
+          schoolName: targetSchool,
+          examType: stageConfig.slug === 'high' ? '高考' : '中考',
+        });
+        if (!cancelled && score != null) {
+          setTargetScore(score);
+        }
+      } catch {
+        // ignore internet match failures
+      }
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [targetSchool, region, stageConfig.slug]);
 
   const handleSyncProfileBack = useCallback(() => {
     updateProfile({
@@ -148,13 +211,14 @@ const Plan: React.FC = () => {
       county,
       grade,
       targetSchool,
+      targetScore,
       boardingType: (boardingType as '' | 'day' | 'boarding') || '',
       examMode,
       examDate: examDate.slice(0, 10),
     });
     toast.success('已同步回学段主页档案');
     setProfileDirty(false);
-  }, [updateProfile, selectedProvince, selectedCity, county, grade, targetSchool, boardingType, examMode, examDate]);
+  }, [updateProfile, selectedProvince, selectedCity, county, grade, targetSchool, targetScore, boardingType, examMode, examDate]);
 
   const handlePolicySearch = useCallback(async (r: string): Promise<void> => {
     if (!r) { toast.error('请先选择地区'); return; }
@@ -264,6 +328,7 @@ const Plan: React.FC = () => {
         examMode: examMode || undefined,
         examYear,
         targetSchool: targetSchool || undefined,
+        targetScore,
         boardingType: boardingType || undefined,
       };
       const scoresText = buildScoresText(scores, scoreMaxValues);
@@ -283,7 +348,7 @@ const Plan: React.FC = () => {
     } finally {
       setReportLoading(false);
     }
-  }, [region, scores, policies, hasScores, grade, examDate, examType, examMode, examYear, targetSchool, boardingType, stageSlug, profile]);
+  }, [region, scores, policies, hasScores, grade, examDate, examType, examMode, examYear, targetSchool, targetScore, boardingType, stageSlug, profile]);
 
   const handleGenerateTimeline = useCallback(async (): Promise<void> => {
     if (!region) { toast.error('请先选择地区'); return; }
@@ -291,7 +356,9 @@ const Plan: React.FC = () => {
     setTimelineContent('');
     try {
       let full = '';
-      for await (const chunk of streamTimeline({ current_grade: grade, region, exam_year: String(examYear) })) {
+      const currentYear = new Date().getFullYear();
+      const gradeWithHint = `${grade}（请按${examYear}年考试倒推，仅输出${currentYear}年及以后关键时间节点）`;
+      for await (const chunk of streamTimeline({ current_grade: gradeWithHint, region, exam_year: String(examYear) })) {
         full += chunk;
         setTimelineContent(full);
       }
@@ -455,6 +522,21 @@ const Plan: React.FC = () => {
                   className="font-hand"
                 />
               </div>
+              {stageConfig.slug !== 'elementary' && (
+                <div className="w-36">
+                  <label className="mb-1 block text-sm font-bold text-ink">匹配分数线</label>
+                  <Input
+                    value={targetScore != null ? String(targetScore) : ''}
+                    onChange={(e) => {
+                      setProfileDirty(true);
+                      const value = e.target.value.trim();
+                      setTargetScore(value ? Number(value) : undefined);
+                    }}
+                    placeholder="自动匹配"
+                    className="font-hand"
+                  />
+                </div>
+              )}
 
               <div className="w-28">
                 <label className="mb-1 block text-sm font-bold text-ink">走读/住读</label>
@@ -574,8 +656,10 @@ const Plan: React.FC = () => {
                    )}
                   {currentPolicy.policyContent && (
                     <div>
-                      <h3 className="mb-2 font-marker text-base font-bold">政策摘要</h3>
-                      <p className="text-sm leading-relaxed text-muted-foreground">{currentPolicy.policyContent}</p>
+                      <h3 className="mb-2 font-marker text-base font-bold">政策关键信息</h3>
+                      <div className="prose prose-sm max-w-none font-hand text-muted-foreground">
+                        <Streamdown>{summarizePolicyText(currentPolicy.policyContent)}</Streamdown>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -596,7 +680,7 @@ const Plan: React.FC = () => {
                   </div>
                 ) : policySearchContent ? (
                   <div className="prose prose-sm max-w-none font-hand">
-                    <Streamdown>{policySearchContent}</Streamdown>
+                    <Streamdown>{compactSearchPolicyText(policySearchContent)}</Streamdown>
                   </div>
                 ) : null}
               </WobblyCard>
@@ -610,6 +694,28 @@ const Plan: React.FC = () => {
               <WobblyCard variant="yellow" decoration="tack" wobblyIndex={2} hoverable={false} className="p-5">
                 <h2 className="mb-4 font-marker text-xl font-bold text-ink">院校推荐</h2>
                 <PlanSchoolRecommend totalScore={totalScore} admissionLines={currentPolicy.admissionLines} />
+              </WobblyCard>
+            )}
+
+            {targetScore != null && hasScores && (
+              <WobblyCard variant="white" decoration="tape" wobblyIndex={8} hoverable={false} className="p-5">
+                <h2 className="mb-3 font-marker text-lg font-bold text-ink">一眼看懂当前差距</h2>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-lg border-2 border-ink/20 bg-accent p-3">
+                    <p className="text-xs text-ink/60">当前总分</p>
+                    <p className="font-marker text-2xl text-ink">{totalScore}</p>
+                  </div>
+                  <div className="rounded-lg border-2 border-ink/20 bg-accent p-3">
+                    <p className="text-xs text-ink/60">目标分数线</p>
+                    <p className="font-marker text-2xl text-ink">{targetScore}</p>
+                  </div>
+                  <div className="rounded-lg border-2 border-marker-red/40 bg-marker-red/5 p-3">
+                    <p className="text-xs text-ink/60">还差多少分</p>
+                    <p className="font-marker text-2xl text-marker-red">
+                      {Math.max(targetScore - totalScore, 0)}
+                    </p>
+                  </div>
+                </div>
               </WobblyCard>
             )}
 

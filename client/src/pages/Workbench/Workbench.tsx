@@ -1,47 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Sparkles, School } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
-import { announcement } from '@client/src/api';
-import { fetchBitableData } from '@client/src/api/plugins';
-import type { Announcement } from '@shared/api.interface';
-import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { logger } from '@lark-apaas/client-toolkit/logger';
 import { STAGE_LIST } from '@client/src/config/stages';
 import { stagePath } from '@client/src/config/stages';
 
 const Workbench: React.FC = () => {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
-  const [bitableData, setBitableData] = useState<any>(null);
-  const [loadingBitable, setLoadingBitable] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    const fetchAnnouncements = async () => {
-      try {
-        const res = await announcement.getAnnouncements();
-        if (!cancelled) {
-          setAnnouncements(res.items);
-        }
-      } catch {
-        if (!cancelled) {
-          setAnnouncements([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingAnnouncements(false);
-        }
-      }
-    };
-    fetchAnnouncements();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       {/* 欢迎语 */}
@@ -55,7 +19,7 @@ const Workbench: React.FC = () => {
         </p>
       </div>
 
-      <div className="mb-12 grid grid-cols-1 gap-8 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
         {STAGE_LIST.map((stage, index) => (
           <NavLink
             key={stage.slug}
@@ -91,84 +55,6 @@ const Workbench: React.FC = () => {
           </NavLink>
         ))}
       </div>
-
-      {/* 飞书多维表格读取区域 - 紧凑样式 */}
-      <div className="mb-12">
-        <WobblyCard variant="yellow" decoration="tape" wobblyIndex={3} hoverable={false}>
-          <div className="flex items-center justify-between gap-4 p-4">
-            <div className="flex-1">
-              <h2 className="font-marker text-lg font-bold">飞书多维表格数据</h2>
-              <p className="font-hand text-xs text-ink/60">读取指定表格数据用于系统配置</p>
-            </div>
-            <Button size="sm" onClick={async () => {
-              setLoadingBitable(true);
-              try {
-                const data = await fetchBitableData();
-                setBitableData(data);
-                toast(`成功读取 ${data.total} 条记录`);
-              } catch (err) {
-                logger.error('读取表格失败', String(err));
-                toast('读取表格失败，请检查权限配置');
-              } finally {
-                setLoadingBitable(false);
-              }
-            }} disabled={loadingBitable}>
-              {loadingBitable ? <><Loader2 className="mr-1 size-3 animate-spin" />读取中</> : '读取数据'}
-            </Button>
-          </div>
-        </WobblyCard>
-      </div>
-
-      {/* 公告栏 */}
-      <WobblyCard
-        variant="white"
-        decoration="none"
-        wobblyIndex={3}
-        hoverable={false}
-      >
-        <div className="p-6">
-          <h2 className="font-marker mb-4 text-xl text-ink">
-            📢 系统公告
-          </h2>
-          {loadingAnnouncements ? (
-            <div className="font-hand space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-6 animate-pulse rounded bg-accent"
-                />
-              ))}
-            </div>
-          ) : announcements.length === 0 ? (
-            <p className="font-hand text-base text-ink/40">
-              暂无公告
-            </p>
-          ) : (
-            <ul className="font-hand space-y-0">
-              {announcements.map((item, idx) => (
-                <li
-                  key={item.id}
-                  className={`py-3 ${idx < announcements.length - 1 ? 'border-b-2 border-dashed border-ink/20' : ''}`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <span className="font-marker text-base font-bold text-ink">
-                        {item.title}
-                      </span>
-                      <p className="mt-1 text-sm text-ink/60">
-                        {item.content}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-xs text-ink/40">
-                      {new Date(item.createdAt).toLocaleDateString('zh-CN')}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </WobblyCard>
     </div>
   );
 };
