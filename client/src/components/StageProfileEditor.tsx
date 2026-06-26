@@ -39,6 +39,8 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   }, [profile.updatedAt]);
 
   const cities = PROVINCE_CITIES[draft.province] || [];
+  const safeCity = cities.includes(draft.city) ? draft.city : '';
+  const safeGrade = stageConfig.grades.includes(draft.grade) ? draft.grade : '';
 
   const patch = (partial: Partial<StageProfile>) => {
     setDraft((prev) => ({ ...prev, ...partial }));
@@ -92,7 +94,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         </div>
         <div>
           <Label className="font-hand">城市</Label>
-          <Select value={toSelectValue(draft.city)} onValueChange={(v) => patch({ city: v })} disabled={!draft.province}>
+          <Select value={toSelectValue(safeCity)} onValueChange={(v) => patch({ city: v })} disabled={!draft.province}>
             <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择城市" /></SelectTrigger>
             <SelectContent>
               {cities.map((c) => (
@@ -112,7 +114,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         </div>
         <div>
           <Label className="font-hand">当前年级 *</Label>
-          <Select value={toSelectValue(draft.grade)} onValueChange={(v) => patch({ grade: v })}>
+          <Select value={toSelectValue(safeGrade)} onValueChange={(v) => patch({ grade: v })}>
             <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择年级" /></SelectTrigger>
             <SelectContent>
               {stageConfig.grades.map((g) => (

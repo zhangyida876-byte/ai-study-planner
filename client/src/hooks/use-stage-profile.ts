@@ -8,18 +8,44 @@ import {
   type StageProfile,
 } from '@client/src/types/stage-profile';
 
-function loadProfile(stageSlug: StageSlug): StageProfile {
+/** 各学段空档案单例 — useSyncExternalStore 要求 snapshot 引用稳定 */
+const EMPTY_BY_STAGE: Record<StageSlug, StageProfile> = {
+  elementary: { ...EMPTY_STAGE_PROFILE },
+  middle: { ...EMPTY_STAGE_PROFILE },
+  high: { ...EMPTY_STAGE_PROFILE },
+};
+
+type CacheEntry = { raw: string; profile: StageProfile };
+const profileCache = new Map<StageSlug, CacheEntry>();
+
+function readRaw(stageSlug: StageSlug): string {
+  return localStorage.getItem(getProfileStorageKey(stageSlug)) ?? '';
+}
+
+function parseProfile(stageSlug: StageSlug, raw: string): StageProfile {
+  if (!raw) return EMPTY_BY_STAGE[stageSlug];
   try {
-    const raw = localStorage.getItem(getProfileStorageKey(stageSlug));
-    if (!raw) return { ...EMPTY_STAGE_PROFILE };
     return { ...EMPTY_STAGE_PROFILE, ...JSON.parse(raw) };
   } catch {
-    return { ...EMPTY_STAGE_PROFILE };
+    return EMPTY_BY_STAGE[stageSlug];
   }
 }
 
-function saveToStorage(stageSlug: StageSlug, profile: StageProfile) {
-  localStorage.setItem(getProfileStorageKey(stageSlug), JSON.stringify(profile));
+/** getSnapshot 必须返回稳定引用，否则 React 无限重渲染 */
+function loadProfile(stageSlug: StageSlug): StageProfile {
+  const raw = readRaw(stageSlug);
+  const cached = profileCache.get(stageSlug);
+  if (cached && cached.raw === raw) return cached.profile;
+
+  const profile = parseProfile(stageSlug, raw);
+  profileCache.set(stageSlug, { raw, profile });
+  return profile;
+}
+
+function commitProfile(stageSlug: StageSlug, profile: StageProfile) {
+  const raw = JSON.stringify(profile);
+  localStorage.setItem(getProfileStorageKey(stageSlug), raw);
+  profileCache.set(stageSlug, { raw, profile });
 }
 
 const listeners = new Set<() => void>();
@@ -46,7 +72,7 @@ export function useStageProfile(stageSlug: StageSlug) {
   const saveProfile = useCallback(
     (next: StageProfile) => {
       const withMeta = { ...next, updatedAt: new Date().toISOString() };
-      saveToStorage(stageSlug, withMeta);
+      commitProfile(stageSlug, withMeta);
       notify();
     },
     [stageSlug],
