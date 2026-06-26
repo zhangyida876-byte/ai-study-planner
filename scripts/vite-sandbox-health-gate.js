@@ -1,6 +1,8 @@
 'use strict';
 
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const { isSandboxRuntime } = require('./sandbox-detect');
 
 function sanitizeBasePath(value) {
@@ -48,6 +50,7 @@ function sandboxHealthGatePlugin() {
 
   const serverPort = Number(process.env.SERVER_PORT || 3000);
   const basePath = sanitizeBasePath(process.env.CLIENT_BASE_PATH);
+  const skipServer = process.env.SANDBOX_SKIP_SERVER === '1';
   let viteListening = false;
   let backendReady = false;
   let pollTimer;
@@ -68,12 +71,40 @@ function sandboxHealthGatePlugin() {
 
       pollTimer = setInterval(async () => {
         if (backendReady) return;
+        if (skipServer) {
+          backendReady = true;
+          clearInterval(pollTimer);
+          console.log('[sandbox-boot] skip server mode: backend probe bypassed');
+          return;
+        }
         backendReady = await probeBackend(serverPort, basePath);
         if (backendReady) {
           clearInterval(pollTimer);
           console.log('[sandbox-boot] NestJS HTML ready — preview safe to open');
         }
       }, 800);
+
+      if (skipServer) {
+        // 轻量模式下无 Nest，直接由 Vite 返回入口 HTML，避免 /app/... 502。
+        server.middlewares.use((req, res, next) => {
+          const url = (req.url || '').split('?')[0];
+          const normalized = url.replace(/\/+$/, '') || '/';
+          const baseNormalized = basePath.replace(/\/+$/, '') || '/';
+          const shouldServeHtml = normalized === '/' || normalized === baseNormalized;
+          if (!shouldServeHtml) return next();
+          try {
+            const htmlPath = path.join(process.cwd(), 'dist', 'client', 'index.html');
+            const html = fs.readFileSync(htmlPath, 'utf8');
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.end(html);
+          } catch (err) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.end(`sandbox html fallback failed: ${err.message || err}`);
+          }
+        });
+      }
 
       server.middlewares.use('/dev/health', (req, res, next) => {
         if (req.method && req.method !== 'GET') return next();
