@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# 妙搭编辑后台沙箱：清理环境 + 同步代码 + 预编译 Nest
-# ⚠️ 不要在此脚本里启动 dev —— 预览 UI 只认平台自动拉起的 dev 进程
+# 妙搭编辑后台沙箱：清理环境 + 同步代码 + 前台启动 dev
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -10,7 +9,6 @@ echo "[sandbox-restart] 停止手动 dev（避免与平台 dev 冲突）..."
 pkill -f '[s]cripts/dev.js' 2>/dev/null || true
 pkill -f 'vite --config vite.config.ts' 2>/dev/null || true
 pkill -f 'dist/server/main.js' 2>/dev/null || true
-rm -f /tmp/miaoda-dev.lock
 sleep 1
 
 echo "[sandbox-restart] 释放 8001 / 3000 ..."
@@ -38,15 +36,6 @@ if [ ! -f dist/server/main.js ]; then
   npm run build:server
 fi
 
-echo ""
-echo "============================================"
-echo "✅ 沙箱环境已就绪"
-echo ""
-echo "接下来请："
-echo "  1. 不要在此终端运行 npm run dev"
-echo "  2. 回到妙搭编辑页，按 Cmd+Shift+R 强制刷新整页"
-echo "  3. 等 2–3 分钟，让平台自动启动 dev"
-echo "  4. 预览区应自动加载（无需手动起服务）"
-echo ""
-echo "若仍显示「启动失败」，把平台「启动日志」最后 30 行发我"
-echo "============================================"
+echo "[sandbox-restart] 前台启动 dev（请保持此终端不要关闭）..."
+echo "[sandbox-restart] 看到 VITE ready 后再刷新编辑后台预览"
+exec npm run dev
