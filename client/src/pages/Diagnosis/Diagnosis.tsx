@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Copy, Check, Loader2, Clock, Target, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,6 +13,7 @@ import DiagnosisForm, { type DiagnosisFormData } from './DiagnosisForm';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import { stagePath } from '@client/src/config/stages';
+import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
 
 /* ===== Helpers ===== */
 
@@ -42,8 +43,59 @@ const Diagnosis: React.FC = () => {
   const [studentInfo, setStudentInfo] = useState<DiagnosisFormData | null>(null);
   const [majorInfoContent, setMajorInfoContent] = useState('');
   const [profileDirty, setProfileDirty] = useState(false);
+  const [formSnapshot, setFormSnapshot] = useState<DiagnosisFormData | null>(null);
   const regionPartsRef = useRef({ province: '', city: '', county: '' });
-  const formSnapshotRef = useRef<DiagnosisFormData | null>(null);
+
+  useEffect(() => {
+    const cached = loadModuleSession<{
+      reportContent: string;
+      studentInfo: DiagnosisFormData | null;
+      majorInfoContent: string;
+      formSnapshot: DiagnosisFormData | null;
+    }>(stageSlug, 'diagnosis');
+    if (!cached) return;
+    setReportContent(cached.reportContent || '');
+    setStudentInfo(cached.studentInfo || null);
+    setMajorInfoContent(cached.majorInfoContent || '');
+    setFormSnapshot(cached.formSnapshot || null);
+  }, [stageSlug]);
+
+  useEffect(() => {
+    saveModuleSession(stageSlug, 'diagnosis', {
+      reportContent,
+      studentInfo,
+      majorInfoContent,
+      formSnapshot,
+    });
+  }, [stageSlug, reportContent, studentInfo, majorInfoContent, formSnapshot]);
+
+  useEffect(() => {
+    if (!formSnapshot) return;
+    const timer = setTimeout(() => {
+      const parts = formSnapshot.region?.split(' ').filter(Boolean) ?? [];
+      const province = regionPartsRef.current.province || parts[0] || profile.province;
+      const city = regionPartsRef.current.city || parts[1] || profile.city;
+      const county = regionPartsRef.current.county || parts[2] || profile.county;
+      updateProfile({
+        studentName: formSnapshot.studentName || '',
+        province,
+        city,
+        county,
+        grade: formSnapshot.grade || '',
+        targetSchool: formSnapshot.targetSchool || '',
+        targetMajor: formSnapshot.targetMajor || '',
+        targetScore: formSnapshot.targetScore,
+        examDate: formSnapshot.examDate || '',
+        boardingType: (formSnapshot.boardingType as '' | 'day' | 'boarding') || '',
+        examMode: formSnapshot.examMode || '',
+        weeklyStudyHours: formSnapshot.monthlyStudyHours
+          ? String(Math.round(formSnapshot.monthlyStudyHours / 4))
+          : profile.weeklyStudyHours,
+      });
+      setProfileDirty(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [formSnapshot, updateProfile, profile.province, profile.city, profile.county, profile.weeklyStudyHours]);
 
   const handleCopy = useCallback(async () => {
     try {
@@ -152,7 +204,7 @@ const Diagnosis: React.FC = () => {
   }, [stageSlug, profile]);
 
   const handleSyncProfileBack = useCallback(() => {
-    const snapshot = formSnapshotRef.current || studentInfo;
+    const snapshot = formSnapshot || studentInfo;
     if (!snapshot) {
       toast.error('请先填写或修改表单信息后再同步');
       return;
@@ -174,7 +226,7 @@ const Diagnosis: React.FC = () => {
     });
     toast.success('已同步回学段主页档案');
     setProfileDirty(false);
-  }, [studentInfo, updateProfile, profile]);
+  }, [formSnapshot, studentInfo, updateProfile, profile]);
 
   const countdown = studentInfo?.examDate ? getCountdown(studentInfo.examDate) : null;
   const examLabel = studentInfo ? getExamLabel(studentInfo.grade) : '';
@@ -231,7 +283,7 @@ const Diagnosis: React.FC = () => {
                 stageProfile={profile}
                 onProfileFieldsChange={() => setProfileDirty(true)}
                 onRegionPartsChange={(parts) => { regionPartsRef.current = parts; }}
-                onFormSnapshotChange={(data) => { formSnapshotRef.current = data; }}
+                onFormSnapshotChange={(data) => { setFormSnapshot(data); }}
               />
             </div>
           </div>

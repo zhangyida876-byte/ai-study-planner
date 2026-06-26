@@ -26,8 +26,30 @@ import {
   type PersonalizedLearningPlanInput,
 } from '@client/src/api/plugins';
 import { toSelectValue } from '@client/src/lib/utils';
+import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
 
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+
+interface StudyPlanSessionState {
+  grade: string;
+  region: string;
+  school: string;
+  targetSchool: string;
+  examDate: string;
+  currentScore: string;
+  targetScore: string;
+  weakSubjects: string;
+  strongSubjects: string;
+  weeklyHours: string;
+  dailyHours: string;
+  boardingType: string;
+  eveningStudy: string;
+  extracurricular: string;
+  weeklySchedule: string;
+  timetableNotes: string;
+  customNotes: string;
+  report: string;
+}
 
 const StudyPlan: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
@@ -54,6 +76,7 @@ const StudyPlan: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [profileDirty, setProfileDirty] = useState(false);
   const applyingProfileRef = useRef(false);
+  const hydratedRef = useRef(false);
 
   useEffect(() => {
     if (!profile.updatedAt) return;
@@ -69,8 +92,109 @@ const StudyPlan: React.FC = () => {
     if (fill.strongSubjects) setStrongSubjects(fill.strongSubjects);
     if (fill.weeklyHours) setWeeklyHours(fill.weeklyHours);
     if (fill.boardingType) setBoardingType(fill.boardingType);
-    queueMicrotask(() => { applyingProfileRef.current = false; });
+    queueMicrotask(() => {
+      applyingProfileRef.current = false;
+      hydratedRef.current = true;
+    });
   }, [profile.updatedAt, profile]);
+
+  useEffect(() => {
+    const cached = loadModuleSession<StudyPlanSessionState>(stageSlug, 'study-plan');
+    if (!cached) return;
+    setGrade(cached.grade || '');
+    setRegion(cached.region || '');
+    setSchool(cached.school || '');
+    setTargetSchool(cached.targetSchool || '');
+    setExamDate(cached.examDate || '');
+    setCurrentScore(cached.currentScore || '');
+    setTargetScore(cached.targetScore || '');
+    setWeakSubjects(cached.weakSubjects || '');
+    setStrongSubjects(cached.strongSubjects || '');
+    setWeeklyHours(cached.weeklyHours || '');
+    setDailyHours(cached.dailyHours || '');
+    setBoardingType(cached.boardingType || '');
+    setEveningStudy(cached.eveningStudy || '');
+    setExtracurricular(cached.extracurricular || '');
+    setWeeklySchedule(cached.weeklySchedule || '');
+    setTimetableNotes(cached.timetableNotes || '');
+    setCustomNotes(cached.customNotes || '');
+    setReport(cached.report || '');
+    hydratedRef.current = true;
+  }, [stageSlug]);
+
+  useEffect(() => {
+    saveModuleSession<StudyPlanSessionState>(stageSlug, 'study-plan', {
+      grade,
+      region,
+      school,
+      targetSchool,
+      examDate,
+      currentScore,
+      targetScore,
+      weakSubjects,
+      strongSubjects,
+      weeklyHours,
+      dailyHours,
+      boardingType,
+      eveningStudy,
+      extracurricular,
+      weeklySchedule,
+      timetableNotes,
+      customNotes,
+      report,
+    });
+  }, [
+    stageSlug,
+    grade,
+    region,
+    school,
+    targetSchool,
+    examDate,
+    currentScore,
+    targetScore,
+    weakSubjects,
+    strongSubjects,
+    weeklyHours,
+    dailyHours,
+    boardingType,
+    eveningStudy,
+    extracurricular,
+    weeklySchedule,
+    timetableNotes,
+    customNotes,
+    report,
+  ]);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (applyingProfileRef.current) return;
+    const timer = setTimeout(() => {
+      updateProfile({
+        grade,
+        school,
+        targetSchool,
+        examDate,
+        scoresOverview: currentScore,
+        weakSubjects,
+        strongSubjects,
+        weeklyStudyHours: weeklyHours,
+        boardingType: (boardingType as '' | 'day' | 'boarding') || '',
+      });
+      setProfileDirty(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [
+    updateProfile,
+    grade,
+    school,
+    targetSchool,
+    examDate,
+    currentScore,
+    weakSubjects,
+    strongSubjects,
+    weeklyHours,
+    boardingType,
+  ]);
 
   const markDirty = () => {
     if (!applyingProfileRef.current) setProfileDirty(true);

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Copy, FileText, Clock, Search, Loader2, ArrowLeft } from 'lucide-react';
@@ -36,6 +36,7 @@ import { getPlanAutofillFromProfile } from '@client/src/utils/stage-profile-sync
 import { stagePath } from '@client/src/config/stages';
 import { toSelectValue } from '@client/src/lib/utils';
 import { policy as policyApi } from '@client/src/api';
+import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
 
 const HS_MODES = [
   { value: '3+1+2', label: '3+1+2（物理/历史 二选一）' },
@@ -106,6 +107,25 @@ interface TargetDecomposition {
   missingTargetTotal: number;
   impossible: boolean;
   items: SubjectTargetItem[];
+}
+
+interface PlanSessionState {
+  examType: ExamType;
+  grade: string;
+  examMode: string;
+  examYear: number;
+  selectedProvince: string;
+  selectedCity: string;
+  county: string;
+  region: string;
+  isCustomRegion: boolean;
+  customRegionText: string;
+  scores: Record<string, number>;
+  targetSchool: string;
+  targetScore?: number;
+  boardingType: string;
+  reportContent: string;
+  timelineContent: string;
 }
 
 function normalizeSubjectKey(subject: string): string {
@@ -294,19 +314,43 @@ function buildGapActionPrompt(plan: GapActionPlan | null): string {
   return `补分行动计划：距目标还差${plan.gapScore}分，剩余${plan.monthsLeft}个月；建议每月提升${plan.monthlyTarget}分、每周提升${plan.weeklyTarget}分；每周可投入${plan.weeklyHours}小时；重点科目：${subjects}。请把建议落到“每周做什么、做多少题、怎么验收”。`;
 }
 
-function buildParentCommunicationTemplate(plan: GapActionPlan | null): string[] {
+function buildParentCommunicationTemplate(input: {
+  plan: GapActionPlan | null;
+  decomposition: TargetDecomposition | null;
+  weakSubjectsText?: string;
+  strongSubjectsText?: string;
+}): string[] {
+  const { plan, decomposition, weakSubjectsText, strongSubjectsText } = input;
+  const weak = weakSubjectsText?.trim();
+  const strong = strongSubjectsText?.trim();
+  const weakLine = weak
+    ? `我们先从你最吃力的${weak}下手，每次只解决一个小问题。`
+    : '我们先从最难的两科开始，每次只解决一个小问题。';
+  const strongLine = strong
+    ? `你在${strong}上有优势，我们把它当“稳定得分区”，先把信心守住。`
+    : '先保住你最稳的科目分数，再集中补短板。';
+
   if (!plan) {
     return [
       '先共情：我知道你最近很辛苦，我们先把目标定小一点，一起慢慢来。',
-      '先做一件小事：今天只做 1 份错题整理，完成就结束。',
-      '先肯定再建议：你今天比昨天多坚持了 20 分钟，这就是进步。',
+      weakLine,
+      strongLine,
+      '复盘方式：今天只看一件做好的事，再定明天一个最小行动。',
     ];
   }
+
+  const decompLine = decomposition
+    ? `你已经填了${decomposition.enteredCount}科，剩余${decomposition.missingCount}科按计划补齐就有机会到线。`
+    : `我们先按每周提升${plan.weeklyTarget}分推进，别一次把目标拉太满。`;
+
   return [
     `开场共情：这段时间不容易，我们不谈大道理，只看每周进步 ${plan.weeklyTarget} 分。`,
-    `目标协商：距离目标还差 ${plan.gapScore} 分，我们拆成每月 +${plan.monthlyTarget} 分，一起完成。`,
-    '执行口令：今天先做“错题回炉 + 限时训练”，做完就休息，不追求一次完美。',
-    '复盘模板：这周做得最好的一件事是什么？下周只改一件事，选最容易做到的那件。',
+    `目标协商：距离目标还差 ${plan.gapScore} 分，拆成每月 +${plan.monthlyTarget} 分，你和我一起盯过程。`,
+    weakLine,
+    strongLine,
+    decompLine,
+    '执行口令：先做 30 分钟错题回炉，再做 20 分钟限时训练，做完就休息。',
+    '复盘提问：今天哪一步最难？你希望我明天怎么配合你（提醒/陪练/检查）？',
   ];
 }
 
@@ -348,6 +392,8 @@ const Plan: React.FC = () => {
   const [targetSchool, setTargetSchool] = useState('');
   const [targetScore, setTargetScore] = useState<number | undefined>(undefined);
   const [boardingType, setBoardingType] = useState('');
+  const applyingProfileRef = useRef(false);
+  const hydratedRef = useRef(false);
 
   const cities = PROVINCE_CITIES[selectedProvince] || [];
   const currentPolicy = policies.length > 0 ? policies[0] : null;
@@ -386,8 +432,14 @@ const Plan: React.FC = () => {
     [targetScore, currentPolicy?.scoreStructure, scores],
   );
   const communicationTemplate = useMemo(
-    () => buildParentCommunicationTemplate(gapActionPlan),
-    [gapActionPlan],
+    () =>
+      buildParentCommunicationTemplate({
+        plan: gapActionPlan,
+        decomposition: targetDecomposition,
+        weakSubjectsText: profile.weakSubjects,
+        strongSubjectsText: profile.strongSubjects,
+      }),
+    [gapActionPlan, targetDecomposition, profile.weakSubjects, profile.strongSubjects],
   );
 
   const handleScoreChange = useCallback((key: string, val: string): void => {
@@ -409,6 +461,7 @@ const Plan: React.FC = () => {
 
   useEffect(() => {
     if (!profile.updatedAt) return;
+    applyingProfileRef.current = true;
     const fill = getPlanAutofillFromProfile(profile);
     if (fill.selectedProvince) setSelectedProvince(fill.selectedProvince);
     if (fill.selectedCity) setSelectedCity(fill.selectedCity);
@@ -423,8 +476,104 @@ const Plan: React.FC = () => {
     if (fill.boardingType) setBoardingType(fill.boardingType);
     if (fill.examMode) setExamMode(fill.examMode);
     if (fill.examYear) setExamYear(fill.examYear);
+    queueMicrotask(() => {
+      applyingProfileRef.current = false;
+      hydratedRef.current = true;
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在档案保存时回填
   }, [profile.updatedAt]);
+
+  useEffect(() => {
+    const cached = loadModuleSession<PlanSessionState>(stageSlug, 'plan');
+    if (!cached) return;
+    setExamType(cached.examType);
+    setGrade(cached.grade);
+    setExamMode(cached.examMode);
+    setExamYear(cached.examYear);
+    setSelectedProvince(cached.selectedProvince);
+    setSelectedCity(cached.selectedCity);
+    setCounty(cached.county);
+    setRegion(cached.region);
+    setIsCustomRegion(cached.isCustomRegion);
+    setCustomRegionText(cached.customRegionText);
+    setScores(cached.scores || {});
+    setTargetSchool(cached.targetSchool || '');
+    setTargetScore(cached.targetScore);
+    setBoardingType(cached.boardingType || '');
+    setReportContent(cached.reportContent || '');
+    setTimelineContent(cached.timelineContent || '');
+    hydratedRef.current = true;
+  }, [stageSlug]);
+
+  useEffect(() => {
+    saveModuleSession<PlanSessionState>(stageSlug, 'plan', {
+      examType,
+      grade,
+      examMode,
+      examYear,
+      selectedProvince,
+      selectedCity,
+      county,
+      region,
+      isCustomRegion,
+      customRegionText,
+      scores,
+      targetSchool,
+      targetScore,
+      boardingType,
+      reportContent,
+      timelineContent,
+    });
+  }, [
+    stageSlug,
+    examType,
+    grade,
+    examMode,
+    examYear,
+    selectedProvince,
+    selectedCity,
+    county,
+    region,
+    isCustomRegion,
+    customRegionText,
+    scores,
+    targetSchool,
+    targetScore,
+    boardingType,
+    reportContent,
+    timelineContent,
+  ]);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (applyingProfileRef.current) return;
+    const timer = setTimeout(() => {
+      updateProfile({
+        province: selectedProvince,
+        city: selectedCity,
+        county,
+        grade,
+        targetSchool,
+        targetScore,
+        boardingType: (boardingType as '' | 'day' | 'boarding') || '',
+        examMode,
+        examDate: `${examYear}-06-15`,
+      });
+      setProfileDirty(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [
+    updateProfile,
+    selectedProvince,
+    selectedCity,
+    county,
+    grade,
+    targetSchool,
+    targetScore,
+    boardingType,
+    examMode,
+    examYear,
+  ]);
 
   useEffect(() => {
     if (!targetSchool || !region || stageConfig.slug === 'elementary') return;

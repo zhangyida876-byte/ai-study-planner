@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, BookOpen, Layers, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,8 +13,24 @@ import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
 import { getKnowledgeAutofillFromProfile } from '@client/src/utils/stage-profile-sync';
 import { stagePath } from '@client/src/config/stages';
+import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
 
 const PAGE_SIZE = 20;
+
+interface KnowledgeSessionState {
+  province: string;
+  city: string;
+  region: string;
+  isCustomRegion: boolean;
+  customRegionText: string;
+  grade: string;
+  semester: string;
+  subject: string;
+  version: string;
+  searchInput: string;
+  keyword: string;
+  selectedChapter: string;
+}
 
 const Knowledge: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
@@ -41,6 +57,7 @@ const Knowledge: React.FC = () => {
   const [selectedChapter, setSelectedChapter] = useState('');
   const [chapterUnits, setChapterUnits] = useState<ChapterUnit[]>([]);
   const [hasQueried, setHasQueried] = useState(false);
+  const hydratedRef = useRef(false);
 
   const effectiveVersion = version === '__all__'
     ? (province ? REGION_VERSION_MAP[province] || '' : '')
@@ -165,7 +182,70 @@ const Knowledge: React.FC = () => {
     if (fill.city) setCity(fill.city);
     if (fill.region) setRegion(fill.region);
     if (fill.grade) setGrade(fill.grade);
+    hydratedRef.current = true;
   }, [profile.updatedAt, profile]);
+
+  useEffect(() => {
+    const cached = loadModuleSession<KnowledgeSessionState>(stageSlug, 'knowledge');
+    if (!cached) return;
+    setProvince(cached.province || '');
+    setCity(cached.city || '');
+    setRegion(cached.region || '');
+    setIsCustomRegion(Boolean(cached.isCustomRegion));
+    setCustomRegionText(cached.customRegionText || '');
+    setGrade(cached.grade || '');
+    setSemester(cached.semester || '');
+    setSubject(cached.subject || '__all__');
+    setVersion(cached.version || '__all__');
+    setSearchInput(cached.searchInput || '');
+    setKeyword(cached.keyword || '');
+    setSelectedChapter(cached.selectedChapter || '');
+    hydratedRef.current = true;
+  }, [stageSlug]);
+
+  useEffect(() => {
+    saveModuleSession<KnowledgeSessionState>(stageSlug, 'knowledge', {
+      province,
+      city,
+      region,
+      isCustomRegion,
+      customRegionText,
+      grade,
+      semester,
+      subject,
+      version,
+      searchInput,
+      keyword,
+      selectedChapter,
+    });
+  }, [
+    stageSlug,
+    province,
+    city,
+    region,
+    isCustomRegion,
+    customRegionText,
+    grade,
+    semester,
+    subject,
+    version,
+    searchInput,
+    keyword,
+    selectedChapter,
+  ]);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const timer = setTimeout(() => {
+      updateProfile({
+        province,
+        city,
+        grade,
+      });
+      setProfileDirty(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [updateProfile, province, city, grade]);
 
   const handleSyncProfileBack = useCallback(() => {
     updateProfile({
