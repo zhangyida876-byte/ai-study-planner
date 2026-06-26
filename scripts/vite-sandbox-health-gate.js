@@ -80,7 +80,9 @@ function sandboxHealthGatePlugin() {
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Cache-Control', 'no-store');
         res.statusCode = 200;
-        res.end(JSON.stringify({ ready: viteListening && backendReady }));
+        // 妙搭外壳规范：Vite listening 即 ready:true（与 preset healthPlugin 一致）
+        // Nest 仍在后台预热；预览 iframe 通过 Vite 反代，不必等 Nest 才报 ready
+        res.end(JSON.stringify({ ready: viteListening }));
       });
     },
   };
