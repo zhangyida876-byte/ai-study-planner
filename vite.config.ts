@@ -26,7 +26,8 @@ export default defineConfig({
         optimizeDeps: {
           noDiscovery: true,
           // 关闭常驻预构建，降低沙箱启动期内存峰值（避免 OOM 137）
-          include: [],
+          // 但 react-is 必须预构建，否则会出现 "does not provide export 'ForwardRef'"
+          include: ['react-is'],
         },
       }
     : {}),
