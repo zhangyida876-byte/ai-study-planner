@@ -9,6 +9,11 @@ echo "[sandbox-restart] 停止手动 dev（避免与平台 dev 冲突）..."
 pkill -f '[s]cripts/dev.js' 2>/dev/null || true
 pkill -f 'vite --config vite.config.ts' 2>/dev/null || true
 pkill -f 'dist/server/main.js' 2>/dev/null || true
+pkill -f 'sandbox-stub-server.js' 2>/dev/null || true
+pkill -f 'dev:server:sandbox:stub' 2>/dev/null || true
+pkill -f 'dev:server:sandbox:dist' 2>/dev/null || true
+pkill -f 'npm run dev:server' 2>/dev/null || true
+pkill -f 'npm run dev$' 2>/dev/null || true
 sleep 1
 
 echo "[sandbox-restart] 释放 8001 / 3000 ..."
@@ -29,11 +34,6 @@ echo "[sandbox-restart] at $(git rev-parse --short HEAD)"
 if [ ! -d node_modules/vite ]; then
   echo "[sandbox-restart] npm install ..."
   npm install --include=optional --no-audit --no-fund
-fi
-
-if [ ! -f dist/server/main.js ]; then
-  echo "[sandbox-restart] 预编译 Nest（首次约 1 分钟）..."
-  npm run build:server
 fi
 
 echo "[sandbox-restart] 前台启动轻量模式 dev:client（请保持此终端不要关闭）..."
