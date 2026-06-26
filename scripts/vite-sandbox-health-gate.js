@@ -73,7 +73,7 @@ function sandboxHealthGatePlugin() {
           clearInterval(pollTimer);
           console.log('[sandbox-boot] NestJS HTML ready — preview safe to open');
         }
-      }, 1000);
+      }, 800);
 
       server.middlewares.use('/dev/health', (req, res, next) => {
         if (req.method && req.method !== 'GET') return next();

@@ -11,6 +11,7 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 process.chdir(PROJECT_ROOT);
 
 require('./sandbox-env').bootstrap(PROJECT_ROOT);
+const { cleanStaleClientJs } = require('./clean-stale-client-js');
 
 // ── Load .env (sandbox-env 已加载 .env.local + .env) ─────────────────────────
 function loadEnv() {}
@@ -372,30 +373,8 @@ function cleanStaleDist() {
   }
 }
 
-/** Remove stray compiled *.js under client/src that shadow matching TSX sources. */
-function cleanStaleClientJs() {
-  const srcRoot = path.join(PROJECT_ROOT, 'client', 'src');
-  if (!fs.existsSync(srcRoot)) return;
-
-  const removed = [];
-  const walk = (dir) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(fullPath);
-        continue;
-      }
-      if (!entry.name.endsWith('.js')) continue;
-      const tsxPath = fullPath.slice(0, -3) + '.tsx';
-      const tsPath = fullPath.slice(0, -3) + '.ts';
-      if (fs.existsSync(tsxPath) || fs.existsSync(tsPath)) {
-        fs.rmSync(fullPath, { force: true });
-        removed.push(path.relative(PROJECT_ROOT, fullPath));
-      }
-    }
-  };
-
-  walk(srcRoot);
+function removeStaleClientJs() {
+  const removed = cleanStaleClientJs(PROJECT_ROOT);
   if (removed.length > 0) {
     logEvent('INFO', 'main', `Removed stale client JS emit: ${removed.join(', ')}`);
   }
@@ -425,7 +404,7 @@ async function main() {
   logEvent('INFO', 'main', '========== Dev session started ==========');
 
   cleanStaleDist();
-  cleanStaleClientJs();
+  removeStaleClientJs();
 
   ensureActionPlugins();
 
@@ -463,11 +442,11 @@ async function main() {
   const serverPromise = process.env.SANDBOX_ID
     ? (async () => {
         await waitForViteResponding(CLIENT_DEV_PORT);
-        await sleep(20000);
+        await sleep(5000);
         return startProcess({
           name: 'server',
           command: 'npm',
-          args: ['run', 'dev:server'],
+          args: ['run', 'dev:server:sandbox'],
           cleanupPort: SERVER_PORT,
         })();
       })()
