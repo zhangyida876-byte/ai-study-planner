@@ -51,8 +51,9 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname.startsWith(`${basePath}/api`) || pathname.startsWith('/api')) {
-    // 业务 API 在轻量模式下不可用，显式返回 503，避免前端把 stub 数据当真。
-    return sendJson(res, 503, { ok: false, message: 'sandbox light mode: api unavailable' });
+    // 轻量模式下给前端返回安全空数据，避免因 API 不可达触发运行时崩溃。
+    if (pathname.includes('announcement')) return sendJson(res, 200, { items: [] });
+    return sendJson(res, 200, { ok: true, stub: true, data: {} });
   }
 
   res.statusCode = 204;
