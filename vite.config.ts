@@ -25,13 +25,8 @@ export default defineConfig({
         },
         optimizeDeps: {
           noDiscovery: true,
-          hold: true,
-          include: [
-            'react',
-            'react-dom',
-            'react/jsx-runtime',
-            'react/jsx-dev-runtime',
-          ],
+          // 关闭常驻预构建，降低沙箱启动期内存峰值（避免 OOM 137）
+          include: [],
         },
       }
     : {}),

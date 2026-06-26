@@ -142,7 +142,8 @@ function buildChildEnv(name) {
   const env = { ...process.env };
   if (!process.env.SANDBOX_ID) return env;
   env.DISABLE_INSPECTOR = 'true';
-  const heap = name === 'client' ? '768' : '512';
+  // 沙箱内存上限较紧，client/server 同时运行时需要更保守的堆大小
+  const heap = name === 'client' ? '448' : '256';
   env.NODE_OPTIONS = mergeNodeOptions(env.NODE_OPTIONS, `--max-old-space-size=${heap}`);
   return env;
 }
