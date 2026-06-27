@@ -755,6 +755,11 @@ const Plan: React.FC = () => {
   useEffect(() => {
     if (examType === '小升初') {
       setPolicies([]);
+      setSubjectMaxHints((prev) => ({
+        语文: prev['语文'] || 100,
+        数学: prev['数学'] || 100,
+        英语: prev['英语'] || 100,
+      }));
     }
   }, [examType]);
 
@@ -965,7 +970,17 @@ const Plan: React.FC = () => {
         for await (const chunk of streamPolicySearch({ region: r, year: y, keyword })) {
           full += chunk;
           setPolicySearchContent(sanitizePolicyContentByStage(full, stageConfig.slug));
-          setSubjectMaxHints(extractSubjectMaxHintsFromPolicyText(full));
+          const parsedHints = extractSubjectMaxHintsFromPolicyText(full);
+          if (stageConfig.slug === 'elementary') {
+            setSubjectMaxHints({
+              语文: parsedHints['语文'] || 100,
+              数学: parsedHints['数学'] || 100,
+              英语: parsedHints['英语'] || 100,
+              ...parsedHints,
+            });
+          } else {
+            setSubjectMaxHints(parsedHints);
+          }
         }
       }
       if (stageConfig.slug === 'elementary' && !sanitizePolicyContentByStage(full, stageConfig.slug).trim()) {

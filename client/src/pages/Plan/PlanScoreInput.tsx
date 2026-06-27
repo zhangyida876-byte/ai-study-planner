@@ -11,9 +11,9 @@ interface SubjectDef {
 }
 
 const XSC_SUBJECTS: SubjectDef[] = [
-  { key: '语文', label: '语文', max: 120 },
-  { key: '数学', label: '数学', max: 120 },
-  { key: '英语', label: '英语', max: 120 },
+  { key: '语文', label: '语文', max: 100 },
+  { key: '数学', label: '数学', max: 100 },
+  { key: '英语', label: '英语', max: 100 },
 ];
 
 const ZK_SUBJECTS: SubjectDef[] = [
