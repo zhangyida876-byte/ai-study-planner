@@ -8,6 +8,7 @@ import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import { stagePath } from '@client/src/config/stages';
 import { loadModuleSession } from '@client/src/utils/module-session';
+import { getInternalScriptAnchor } from '@client/src/config/internal-resource-library';
 
 interface DiagnosisSessionState {
   reportContent: string;
@@ -40,6 +41,7 @@ function pickKeySentences(text: string, limit: number): string[] {
 }
 
 function buildAdviceLines(input: {
+  stageSlug: 'elementary' | 'middle' | 'high';
   stageLabel: string;
   targetSchool: string;
   targetMajor: string;
@@ -50,6 +52,7 @@ function buildAdviceLines(input: {
   knowledgeSummary: string[];
 }): string[] {
   const {
+    stageSlug,
     stageLabel,
     targetSchool,
     targetMajor,
@@ -59,6 +62,7 @@ function buildAdviceLines(input: {
     studyPlanSummary,
     knowledgeSummary,
   } = input;
+  const internalAnchor = getInternalScriptAnchor(stageSlug, 'advice');
   const weakText = weakSubjects || '当前薄弱科目';
   const targetText = [targetSchool, targetMajor].filter(Boolean).join(' / ');
 
@@ -83,6 +87,7 @@ function buildAdviceLines(input: {
     : '知识点上，先补当前章节的前置知识，再做同类题巩固。';
 
   return [
+    `【内部话术锚点】${internalAnchor}`,
     `【${stageLabel}沟通开场】${openLine}`,
     `【现状说明】${diagnosisLine}`,
     `【目标聚焦】${planLine}`,
@@ -126,6 +131,7 @@ const Advice: React.FC = () => {
   const adviceLines = useMemo(
     () =>
       buildAdviceLines({
+        stageSlug,
         stageLabel: stageConfig.label,
         targetSchool: profile.targetSchool,
         targetMajor: profile.targetMajor,

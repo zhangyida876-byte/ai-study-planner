@@ -38,6 +38,7 @@ import { toSelectValue } from '@client/src/lib/utils';
 import { policy as policyApi } from '@client/src/api';
 import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
 import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
+import { getInternalScriptAnchor } from '@client/src/config/internal-resource-library';
 
 const HS_MODES = [
   { value: '3+1+2', label: '3+1+2（物理/历史 二选一）' },
@@ -975,7 +976,9 @@ const Plan: React.FC = () => {
     const gap = targetScore != null ? Math.max(targetScore - totalScore, 0) : null;
     const reportPoint = pickFirstSentence(reportContent);
     const timelinePoint = pickFirstSentence(timelineContent);
+    const internalAnchor = getInternalScriptAnchor(stageSlug, 'plan');
     return buildReferenceScript([
+      `内部话术重点：${internalAnchor}`,
       `咱们先看结论：现在总分${totalScore}${targetScore != null ? `，目标线${targetScore}` : ''}`,
       gap != null ? (gap > 0 ? `目前还差${gap}分，先抓最容易提分的科目` : '当前分数已经具备冲刺更高目标的空间') : '',
       targetSchool ? `目标学校先盯住${targetSchool}` : '',

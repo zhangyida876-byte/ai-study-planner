@@ -29,6 +29,7 @@ import {
 import { toSelectValue } from '@client/src/lib/utils';
 import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
 import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
+import { getInternalScriptAnchor } from '@client/src/config/internal-resource-library';
 
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
@@ -300,7 +301,9 @@ const StudyPlan: React.FC = () => {
   const buildStudyPlanReferenceScript = useCallback(() => {
     if (!grade || !region) return '';
     const reportPoint = pickFirstSentence(report);
+    const internalAnchor = getInternalScriptAnchor(stageSlug, 'study-plan');
     return buildReferenceScript([
+      `内部话术重点：${internalAnchor}`,
       `我们这周先按${grade}当前节奏来，不求一下子全改完`,
       weakSubjects ? `先把${weakSubjects}放在第一优先级` : '',
       weeklyHours ? `每周可用${weeklyHours}小时，就按固定时段执行` : '',

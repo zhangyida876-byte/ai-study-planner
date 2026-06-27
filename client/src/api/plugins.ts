@@ -2,6 +2,7 @@ import { capabilityClient } from '@lark-apaas/client-toolkit';
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import type { StageSlug } from '@client/src/config/stages';
 import { appendProfileAndStageRules } from '@client/src/config/stage-analysis-rules';
+import { getInternalMaterialContext } from '@client/src/config/internal-resource-library';
 import type { StageProfile } from '@client/src/types/stage-profile';
 
 export const PLUGIN_IDS = {
@@ -32,6 +33,12 @@ export function getExamTypeByGrade(grade: string): string {
   if (stage === 'high') return '高考';
   if (stage === 'middle') return '中考';
   return '小升初';
+}
+
+function mapEducationStageToStageSlug(stage: EducationStage): StageSlug {
+  if (stage === 'elementary') return 'elementary';
+  if (stage === 'high') return 'high';
+  return 'middle';
 }
 
 export interface DiagnosisReportInput {
@@ -131,6 +138,12 @@ export function buildPersonalizedLearningPlanPrompt(
   input: PersonalizedLearningPlanInput,
   options?: PromptBuildOptions,
 ): string {
+  const inferredStageSlug = options?.stageSlug ?? input.stageSlug ?? mapEducationStageToStageSlug(getEducationStage(input.grade));
+  const internalMaterial = getInternalMaterialContext({
+    stageSlug: inferredStageSlug,
+    module: 'study-plan',
+    limit: 12,
+  });
   const boarding = input.boardingType === 'day' ? '走读' : input.boardingType === 'boarding' ? '住读' : '未说明';
   const lines = [
     `【任务】为${input.stage}学段学生生成个性化、可执行、可验收的学习规划报告。`,
@@ -155,6 +168,14 @@ export function buildPersonalizedLearningPlanPrompt(
   ].filter(Boolean);
 
   const base = `${lines.join('\n')}
+
+【内部资源库素材（优先使用）】
+${internalMaterial}
+
+【融合要求】
+1. 话术、产品能力、服务表达先采用内部资源库口径。
+2. 政策、时间节点、分数线再融合最新公开信息；若冲突，政策类以公开最新为准。
+3. 输出必须体现“内部经验 + 公开信息”双来源，不得只写单一来源。
 
 【生成规则】
 1. 按${input.stage}学段特点制定，禁止泛泛而谈。
@@ -430,12 +451,25 @@ export async function* streamKnowledgeAnalysis(
 ) {
   let payload: Record<string, unknown> = { ...input };
   if (options?.stageSlug) {
+    const internalMaterial = getInternalMaterialContext({
+      stageSlug: options.stageSlug,
+      module: 'knowledge',
+      limit: 10,
+    });
     const appendix = appendProfileAndStageRules(
       `【知识点】${input.knowledge_point}（${input.chapter}）`,
       options.stageSlug,
       options.profile,
     );
-    payload = { ...input, knowledge_point: appendix };
+    payload = {
+      ...input,
+      knowledge_point: `${appendix}
+
+【内部资源库讲解素材（优先）】
+${internalMaterial}
+
+【融合要求】先按内部讲解话术组织表达，再结合最新公开教材/考情信息补充，输出必须可执行。`,
+    };
   }
   const stream = capabilityClient
     .load(PLUGIN_IDS.KNOWLEDGE_ANALYSIS)
@@ -461,6 +495,12 @@ export function buildScoresText(
 
 export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: PromptBuildOptions): string {
   const stage = getEducationStage(ctx.grade);
+  const currentStageSlug = options?.stageSlug ?? mapEducationStageToStageSlug(stage);
+  const internalMaterial = getInternalMaterialContext({
+    stageSlug: currentStageSlug,
+    module: 'diagnosis',
+    limit: 12,
+  });
   const parts: string[] = [];
   const boardingLabel = ctx.boardingType === 'day' ? '走读' : ctx.boardingType === 'boarding' ? '住读' : '';
   if (boardingLabel) parts.push(`学习模式：${boardingLabel}${ctx.monthlyStudyHours ? `，每月自主学习约${ctx.monthlyStudyHours}小时` : ''}`);
@@ -487,16 +527,29 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
   }
   const scoresText = buildScoresText(ctx.scores, ctx.scoreMaxValues);
   const examLabel = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '小升初期末统考';
-  const base = `考试类型：${examLabel}\n各科成绩（含满分与得分率）：${scoresText}\n${parts.join('\n')}`;
+  const base = `考试类型：${examLabel}\n各科成绩（含满分与得分率）：${scoresText}\n${parts.join('\n')}
 
-  if (options?.stageSlug) {
-    return appendProfileAndStageRules(base, options.stageSlug, options.profile);
+【内部资源库素材（优先使用）】
+${internalMaterial}
+
+【融合要求】
+1. 先按内部诊断与沟通口径组织输出，再补充最新公开政策信息。
+2. 产品/服务表达以内部口径为准；政策/时间节点以公开最新信息为准。`;
+
+  if (currentStageSlug) {
+    return appendProfileAndStageRules(base, currentStageSlug, options?.profile);
   }
   return base;
 }
 
 export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBuildOptions): string {
   const stage = getEducationStage(ctx.grade);
+  const currentStageSlug = options?.stageSlug ?? mapEducationStageToStageSlug(stage);
+  const internalMaterial = getInternalMaterialContext({
+    stageSlug: currentStageSlug,
+    module: 'plan',
+    limit: 12,
+  });
   const parts: string[] = [];
   parts.push(`升学类型：${stage === 'high' ? '高考' : stage === 'middle' ? '中考' : '小升初'}`);
   parts.push(`当前年级：${ctx.grade}`);
@@ -528,10 +581,12 @@ export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBu
   parts.push('结构要求：最多 5 个小节，每节不超过 3 条要点');
   parts.push(`时间要求：必须使用${latestYear}年及之后的最新时间节点，若缺少官方数据请明确说明`);
   parts.push('表达要求：用家长易懂的大白话，不使用晦涩术语');
+  parts.push(`内部资源库素材（优先）：\n${internalMaterial}`);
+  parts.push('融合要求：先采用内部话术与产品口径，再结合互联网最新政策和分数信息综合输出');
   const base = parts.join('；');
 
-  if (options?.stageSlug) {
-    return appendProfileAndStageRules(base, options.stageSlug, options.profile);
+  if (currentStageSlug) {
+    return appendProfileAndStageRules(base, currentStageSlug, options?.profile);
   }
   return base;
 }

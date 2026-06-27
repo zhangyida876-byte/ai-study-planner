@@ -16,6 +16,7 @@ import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import { stagePath } from '@client/src/config/stages';
 import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
 import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
+import { getInternalScriptAnchor } from '@client/src/config/internal-resource-library';
 
 /* ===== Helpers ===== */
 
@@ -257,7 +258,9 @@ const Diagnosis: React.FC = () => {
           ? `离目标还差${scoreGap}分`
           : `目前已经超过目标${Math.abs(scoreGap)}分`;
     const reportPoint = pickFirstSentence(reportContent);
+    const internalAnchor = getInternalScriptAnchor(stageSlug, 'diagnosis');
     return buildReferenceScript([
+      `内部话术重点：${internalAnchor}`,
       `${name}现在最关键是先把${weak}稳住`,
       targetText ? `咱们目标是${targetText}` : '',
       gapText,
