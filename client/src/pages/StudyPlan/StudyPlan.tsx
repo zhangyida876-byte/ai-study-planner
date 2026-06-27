@@ -303,12 +303,12 @@ const StudyPlan: React.FC = () => {
     const reportPoint = pickFirstSentence(report);
     const internalAnchor = getInternalScriptAnchor(stageSlug, 'study-plan');
     return buildReferenceScript([
-      `内部话术重点：${internalAnchor}`,
+      `先按一个原则：${internalAnchor}`,
       `我们这周先按${grade}当前节奏来，不求一下子全改完`,
       weakSubjects ? `先把${weakSubjects}放在第一优先级` : '',
       weeklyHours ? `每周可用${weeklyHours}小时，就按固定时段执行` : '',
       targetSchool ? `目标先盯住${targetSchool}` : '',
-      reportPoint ? `计划里最关键一句是：${reportPoint}` : '',
+      reportPoint ? `先说一句最实在的：${reportPoint}` : '',
       '每天做完就打勾，没完成也没关系，周末一起复盘改下一周。',
     ]);
   }, [grade, region, weakSubjects, weeklyHours, targetSchool, report]);

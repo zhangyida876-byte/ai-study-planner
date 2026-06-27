@@ -1,7 +1,9 @@
 import type { StageSlug } from '@client/src/config/stages';
 
+const MODULE_SESSION_VERSION = 'v2';
+
 function getSessionKey(stageSlug: StageSlug, moduleName: string): string {
-  return `education-ai:module-session:${stageSlug}:${moduleName}`;
+  return `education-ai:module-session:${MODULE_SESSION_VERSION}:${stageSlug}:${moduleName}`;
 }
 
 export function loadModuleSession<T>(
@@ -26,5 +28,13 @@ export function saveModuleSession<T>(
     localStorage.setItem(getSessionKey(stageSlug, moduleName), JSON.stringify(data));
   } catch {
     // ignore quota/storage errors
+  }
+}
+
+export function clearModuleSession(stageSlug: StageSlug, moduleName: string) {
+  try {
+    localStorage.removeItem(getSessionKey(stageSlug, moduleName));
+  } catch {
+    // ignore storage errors
   }
 }

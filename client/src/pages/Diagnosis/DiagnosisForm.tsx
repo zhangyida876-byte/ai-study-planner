@@ -8,7 +8,7 @@ import { axiosForBackend } from '@lark-apaas/client-toolkit/utils/getAxiosForBac
 
 import { capabilityClient } from '@lark-apaas/client-toolkit';
 import { policy as policyApi } from '@client/src/api';
-import { PLUGIN_IDS, getEducationStage } from '@client/src/api/plugins';
+import { PLUGIN_IDS, getEducationStage, streamPolicySearch, extractSubjectMaxHintsFromPolicyText } from '@client/src/api/plugins';
 import {
   Form,
   FormControl,
@@ -182,6 +182,20 @@ const STAGE_SUBJECTS: Record<string, typeof NORMAL_SUBJECTS> = {
   middle: MIDDLE_SUBJECTS,
 };
 
+function resolveSubjectMax(
+  label: string,
+  fallback: number,
+  hints: Record<string, number>,
+): number {
+  const direct = hints[label];
+  if (typeof direct === 'number' && direct > 0) return direct;
+  if (label === '政治&道法') {
+    const daofa = hints['道法'] ?? hints['政治'];
+    if (typeof daofa === 'number' && daofa > 0) return daofa;
+  }
+  return fallback;
+}
+
 function getStageSubjects(grade: string): typeof NORMAL_SUBJECTS {
   if (['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'].includes(grade)) return ELEMENTARY_SUBJECTS;
   if (['初一', '初二', '初三'].includes(grade)) return MIDDLE_SUBJECTS;
@@ -284,6 +298,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   const [schoolsLoading, setSchoolsLoading] = useState(false);
   const [majorInfoContent, setMajorInfoContent] = useState('');
   const [majorInfoLoading, setMajorInfoLoading] = useState(false);
+  const [internetSubjectMaxHints, setInternetSubjectMaxHints] = useState<Record<string, number>>({});
   const customRegionRef = useRef('');
   const schoolCacheRef = useRef<Record<string, string[]>>({});
   const applyingProfileRef = useRef(false);
@@ -323,7 +338,12 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     if (profileSnapshotKey && profileSnapshotKey === lastAppliedProfileKeyRef.current) return;
     applyingProfileRef.current = true;
     if (stageProfile.studentName) form.setValue('studentName', stageProfile.studentName);
-    if (stageProfile.grade) form.setValue('grade', stageProfile.grade);
+    if (stageProfile.grade) {
+      const safeGrade = allowedGrades?.includes(stageProfile.grade)
+        ? stageProfile.grade
+        : (allowedGrades?.[allowedGrades.length - 1] || stageProfile.grade);
+      form.setValue('grade', safeGrade);
+    }
     if (stageProfile.province) {
       setSelectedProvince(stageProfile.province);
       setSelectedCity(stageProfile.city || '');
@@ -359,7 +379,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
         lastAppliedProfileKeyRef.current = profileSnapshotKey;
       }
     });
-  }, [form, profileSnapshotKey, stageProfile, onRegionPartsChange]);
+  }, [form, profileSnapshotKey, stageProfile, onRegionPartsChange, allowedGrades]);
 
   useEffect(() => {
     if (!onProfileFieldsChange) return;
@@ -464,6 +484,41 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   }, [watchedRegion, isCustomRegion, watchedGrade]);
 
   const watchedSchool = form.watch('targetSchool');
+
+  useEffect(() => {
+    if (!watchedRegion || !watchedGrade) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const stage = getEducationStage(watchedGrade);
+        const keyword =
+          stage === 'elementary'
+            ? '小升初 科目 分值 总分构成'
+            : stage === 'middle'
+              ? '中考 科目 分值 总分构成'
+              : '高考 科目 分值 总分构成';
+        const year = String(new Date().getFullYear());
+        let full = '';
+        for await (const chunk of streamPolicySearch({
+          region: watchedRegion,
+          year,
+          keyword,
+        })) {
+          if (cancelled) break;
+          full += chunk;
+        }
+        if (!cancelled) {
+          setInternetSubjectMaxHints(extractSubjectMaxHintsFromPolicyText(full));
+        }
+      } catch {
+        if (!cancelled) setInternetSubjectMaxHints({});
+      }
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [watchedRegion, watchedGrade]);
 
   useEffect(() => {
     if (!watchedRegion || !watchedSchool || isElementary) return;
@@ -646,7 +701,9 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     onSubmit(data);
   }, [onSubmit]);
 
-  const renderSubjectInput = (subject: { name: keyof DiagnosisFormData; label: string; max: number }) => (
+  const renderSubjectInput = (subject: { name: keyof DiagnosisFormData; label: string; max: number }) => {
+    const effectiveMax = resolveSubjectMax(subject.label, subject.max, internetSubjectMaxHints);
+    return (
     <FormField
       key={String(subject.name)}
       control={form.control}
@@ -655,14 +712,14 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
         <FormItem>
           <FormLabel className="text-sm">
             {subject.label}
-            <span className="ml-1 text-xs font-normal text-ink/50">(满分{subject.max})</span>
+            <span className="ml-1 text-xs font-normal text-ink/50">(满分{effectiveMax})</span>
           </FormLabel>
           <FormControl>
             <Input
               type="number"
-              placeholder={`0-${subject.max}`}
+              placeholder={`0-${effectiveMax}`}
               min={0}
-              max={subject.max}
+              max={effectiveMax}
               name={field.name}
               ref={field.ref}
               disabled={field.disabled}
@@ -681,7 +738,8 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
         </FormItem>
       )}
     />
-  );
+    );
+  };
 
   return (
     <Form {...form}>

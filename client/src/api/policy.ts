@@ -2,12 +2,15 @@ import { axiosForBackend } from '@lark-apaas/client-toolkit/utils/getAxiosForBac
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import type { SchoolSearchResponse, AdmissionPolicyListResponse } from '@shared/api.interface';
 
-export async function searchSchools(region: string): Promise<SchoolSearchResponse> {
+export async function searchSchools(
+  region: string,
+  examType?: '小升初' | '中考' | '高考',
+): Promise<SchoolSearchResponse> {
   try {
     const response = await axiosForBackend({
       url: '/api/admission-policies/schools',
       method: 'GET',
-      params: { region },
+      params: { region, examType },
     });
     return response.data;
   } catch (error) {
@@ -19,6 +22,7 @@ export async function searchSchools(region: string): Promise<SchoolSearchRespons
 export async function getAdmissionPolicies(params: {
   region?: string;
   year?: number;
+  examType?: '小升初' | '中考' | '高考';
 }): Promise<AdmissionPolicyListResponse> {
   try {
     const response = await axiosForBackend({

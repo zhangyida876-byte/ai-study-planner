@@ -10,7 +10,7 @@ import { Streamdown } from '@client/src/components/ui/streamdown';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import { stagePath } from '@client/src/config/stages';
-import { loadModuleSession } from '@client/src/utils/module-session';
+import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
 import {
   getInternalMaterialContext,
   getInternalScriptAnchor,
@@ -26,6 +26,7 @@ import {
   buildStructuredDiagnosis,
   estimateConfidence,
   parseScoreOverview,
+  type AdviceSourceFilter,
   type AdviceDataSourceMeta,
   type AdviceScriptTemplate,
   type StudentSnapshot,
@@ -46,6 +47,11 @@ interface KnowledgeSessionState {
   keyword: string;
 }
 
+interface AdviceEvidenceSessionState {
+  sourceFilter: AdviceSourceFilter;
+  confirmedSourceKeys: string[];
+}
+
 function pickKeySentences(text: string, limit: number): string[] {
   if (!text.trim()) return [];
   const pieces = text
@@ -59,7 +65,14 @@ function pickKeySentences(text: string, limit: number): string[] {
 const Advice: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
   const { profile } = useStageProfile(stageSlug);
+  const persistedEvidenceSession = loadModuleSession<AdviceEvidenceSessionState>(stageSlug, 'advice-evidence');
   const [viewMode, setViewMode] = useState<'consultant' | 'parent'>('consultant');
+  const [sourceFilter, setSourceFilter] = useState<AdviceSourceFilter>(
+    () => persistedEvidenceSession?.sourceFilter || 'all',
+  );
+  const [confirmedSourceKeys, setConfirmedSourceKeys] = useState<string[]>(
+    () => persistedEvidenceSession?.confirmedSourceKeys || [],
+  );
   const [comprehensiveAdvice, setComprehensiveAdvice] = useState('');
   const [loadingComprehensive, setLoadingComprehensive] = useState(false);
   const [objectionQuery, setObjectionQuery] = useState('');
@@ -132,6 +145,14 @@ const Advice: React.FC = () => {
   const followupScripts = useMemo(() => buildFollowupScripts(missingItems), [missingItems]);
   const confidence = useMemo(() => estimateConfidence(snapshot), [snapshot]);
   const evidenceMeta = useMemo(() => buildEvidenceMeta(snapshot, confidence), [snapshot, confidence]);
+  const confirmedSourceKeySet = useMemo(() => new Set(confirmedSourceKeys), [confirmedSourceKeys]);
+  const filteredEvidenceMeta = useMemo(() => {
+    if (sourceFilter === 'all') return evidenceMeta;
+    if (sourceFilter === 'official') {
+      return evidenceMeta.filter((item) => item.source_type === '官方');
+    }
+    return evidenceMeta.filter((item) => item.source_type !== '官方');
+  }, [evidenceMeta, sourceFilter]);
   const salesScripts = useMemo(() => buildSalesScriptTemplates(snapshot), [snapshot]);
   const parentSections = useMemo(() => buildParentSections(snapshot, diagnosis), [snapshot, diagnosis]);
 
@@ -288,17 +309,81 @@ const Advice: React.FC = () => {
     }
   };
 
-  const renderMeta = (meta: AdviceDataSourceMeta) => (
-    <div key={`${meta.source_name}-${meta.source_type}`} className="rounded border border-ink/20 bg-white/70 p-2 text-xs">
+  const persistEvidenceSession = useCallback(
+    (nextFilter: AdviceSourceFilter, nextConfirmedKeys: string[]) => {
+      saveModuleSession<AdviceEvidenceSessionState>(stageSlug, 'advice-evidence', {
+        sourceFilter: nextFilter,
+        confirmedSourceKeys: nextConfirmedKeys,
+      });
+    },
+    [stageSlug],
+  );
+
+  const switchSourceFilter = useCallback(
+    (nextFilter: AdviceSourceFilter) => {
+      setSourceFilter(nextFilter);
+      persistEvidenceSession(nextFilter, confirmedSourceKeys);
+    },
+    [confirmedSourceKeys, persistEvidenceSession],
+  );
+
+  const buildSourceKey = useCallback((meta: AdviceDataSourceMeta) => {
+    return `${meta.source_name}::${meta.source_type}`;
+  }, []);
+
+  const handleConfirmSource = useCallback(
+    (meta: AdviceDataSourceMeta) => {
+      const sourceKey = buildSourceKey(meta);
+      if (confirmedSourceKeySet.has(sourceKey)) return;
+      const nextKeys = [...confirmedSourceKeys, sourceKey];
+      setConfirmedSourceKeys(nextKeys);
+      persistEvidenceSession(sourceFilter, nextKeys);
+      toast.success('来源已标记为人工确认');
+    },
+    [buildSourceKey, confirmedSourceKeySet, confirmedSourceKeys, persistEvidenceSession, sourceFilter],
+  );
+
+  const handleUndoConfirmSource = useCallback(
+    (meta: AdviceDataSourceMeta) => {
+      const sourceKey = buildSourceKey(meta);
+      if (!confirmedSourceKeySet.has(sourceKey)) return;
+      const nextKeys = confirmedSourceKeys.filter((key) => key !== sourceKey);
+      setConfirmedSourceKeys(nextKeys);
+      persistEvidenceSession(sourceFilter, nextKeys);
+      toast.success('已撤销人工确认标记');
+    },
+    [buildSourceKey, confirmedSourceKeySet, confirmedSourceKeys, persistEvidenceSession, sourceFilter],
+  );
+
+  const renderMeta = (meta: AdviceDataSourceMeta) => {
+    const sourceKey = buildSourceKey(meta);
+    const isConfirmed = confirmedSourceKeySet.has(sourceKey);
+    const needConfirm = meta.need_confirm && !isConfirmed;
+    return (
+      <div key={`${meta.source_name}-${meta.source_type}`} className="rounded border border-ink/20 bg-white/70 p-2 text-xs">
       <p className="font-semibold">{meta.source_name}</p>
       <p>来源类型：{meta.source_type}</p>
       <p>适用：{meta.region} / {meta.grade}</p>
       <p>更新时间：{new Date(meta.updated_at).toLocaleString()}</p>
       <p>可信度：{meta.confidence}</p>
       <p>限制：{meta.limitation}</p>
-      <p>需人工确认：{meta.need_confirm ? '是' : '否'}</p>
-    </div>
-  );
+      <p>需人工确认：{needConfirm ? '是' : '否'}</p>
+      {isConfirmed ? (
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <span className="text-emerald-700">已人工确认</span>
+          <Button variant="outline" size="sm" onClick={() => handleUndoConfirmSource(meta)}>
+            撤销
+          </Button>
+        </div>
+      ) : null}
+      {!isConfirmed && meta.need_confirm ? (
+        <Button className="mt-2" variant="outline" size="sm" onClick={() => handleConfirmSource(meta)}>
+          标记已确认
+        </Button>
+      ) : null}
+      </div>
+    );
+  };
 
   const renderScriptTemplate = (item: AdviceScriptTemplate, idx: number) => (
     <div key={`${item.scene}-${idx}`} className="rounded-md border border-ink/20 bg-white/70 p-3">
@@ -387,9 +472,30 @@ const Advice: React.FC = () => {
 
       <WobblyCard variant="white" decoration="tape" wobblyIndex={3} hoverable={false} className="p-5">
         <h3 className="font-marker mb-3 text-lg font-bold">数据依据与可信度</h3>
-        <p className="mb-2 text-sm text-ink/70">当前可信度：{confidence} / 100</p>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-ink/70">当前可信度：{confidence} / 100</p>
+          <div className="flex gap-2">
+            <Button variant={sourceFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => switchSourceFilter('all')}>
+              全部
+            </Button>
+            <Button
+              variant={sourceFilter === 'official' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => switchSourceFilter('official')}
+            >
+              仅官方
+            </Button>
+            <Button
+              variant={sourceFilter === 'internal' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => switchSourceFilter('internal')}
+            >
+              仅内部
+            </Button>
+          </div>
+        </div>
         <div className="grid gap-2 md:grid-cols-2">
-          {evidenceMeta.map(renderMeta)}
+          {filteredEvidenceMeta.map(renderMeta)}
         </div>
       </WobblyCard>
 

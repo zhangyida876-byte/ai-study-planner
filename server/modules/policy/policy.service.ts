@@ -17,6 +17,45 @@ const PROVINCE_CAPITALS: Record<string, string> = {
   '青海': '西宁', '宁夏': '银川', '新疆': '乌鲁木齐',
 };
 
+type PolicyExamType = '小升初' | '中考' | '高考';
+
+function inferPolicyExamTypeFromRow(input: {
+  totalScore: number;
+  scoreStructure: unknown;
+  admissionLines: unknown;
+  policyContent: string | null;
+}): PolicyExamType | 'unknown' {
+  const scoreKeys = Object.keys((input.scoreStructure ?? {}) as Record<string, number>).join(' ');
+  const linesText = ((input.admissionLines ?? []) as AdmissionLine[])
+    .map((item) => `${item.batch || ''} ${item.school || ''}`)
+    .join(' ');
+  const text = `${scoreKeys} ${linesText} ${input.policyContent ?? ''}`;
+
+  if (/(高考|本科|专科|大学|学院|专业组|物理类|历史类|位次|投档)/.test(text)) return '高考';
+  if (/(中考|普高|会考|中招|统招线|录取分数线)/.test(text)) return '中考';
+  if (/(小升初|义务教育|公民同招|划片|摇号|对口直升|入学)/.test(text)) return '小升初';
+  if (input.totalScore >= 650) return '中考';
+  if (input.totalScore > 0 && input.totalScore <= 400) return '小升初';
+  return 'unknown';
+}
+
+function matchExamType(
+  row: {
+    totalScore: number;
+    scoreStructure: unknown;
+    admissionLines: unknown;
+    policyContent: string | null;
+  },
+  examType?: string,
+): boolean {
+  if (!examType) return true;
+  const inferred = inferPolicyExamTypeFromRow(row);
+  if (examType === '小升初') return inferred === '小升初';
+  if (examType === '中考') return inferred === '中考';
+  if (examType === '高考') return inferred === '高考';
+  return true;
+}
+
 @Injectable()
 export class PolicyService {
   constructor(
@@ -25,7 +64,8 @@ export class PolicyService {
 
   async findAll(
     region?: string,
-    year?: number
+    year?: number,
+    examType?: string,
   ): Promise<AdmissionPolicyListResponse> {
     if (!region && !year) {
       return { items: [] };
@@ -52,7 +92,8 @@ export class PolicyService {
         .where(and(...conditions))
         .orderBy(desc(admissionPolicy.year));
 
-      if (rows.length > 0) return this.mapRows(rows);
+      const matchedRows = rows.filter((row) => matchExamType(row, examType));
+      if (matchedRows.length > 0) return this.mapRows(matchedRows);
 
       const fallbackRows = await this.db
         .select()
@@ -60,7 +101,7 @@ export class PolicyService {
         .where(or(...regionConditions))
         .orderBy(desc(admissionPolicy.year));
 
-      return this.mapRows(fallbackRows);
+      return this.mapRows(fallbackRows.filter((row) => matchExamType(row, examType)));
     }
 
     const rows = await this.db
@@ -69,10 +110,10 @@ export class PolicyService {
       .where(eq(admissionPolicy.year, year!))
       .orderBy(desc(admissionPolicy.year));
 
-    return this.mapRows(rows);
+    return this.mapRows(rows.filter((row) => matchExamType(row, examType)));
   }
 
-  async searchSchools(region: string): Promise<SchoolSearchResponse> {
+  async searchSchools(region: string, examType?: string): Promise<SchoolSearchResponse> {
     if (!region) return { schools: [], totalScore: 0, year: 2025 };
 
     const parts = region.split(' ').filter(Boolean);
@@ -94,12 +135,13 @@ export class PolicyService {
       .where(or(...conditions))
       .orderBy(desc(admissionPolicy.year))
       .limit(5);
+    const matchedRows = rows.filter((row) => matchExamType(row, examType));
 
     const schoolMap = new Map<string, SchoolInfo>();
     let totalScore = 0;
     let year = 2025;
 
-    for (const row of rows) {
+    for (const row of matchedRows) {
       if (!totalScore && row.totalScore) totalScore = row.totalScore;
       if (row.year > year) year = row.year;
       const lines = (row.admissionLines ?? []) as AdmissionLine[];

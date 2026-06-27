@@ -11,13 +11,14 @@ import type {
 
 export async function getAdmissionPolicies(
   region?: string,
-  year?: number
+  year?: number,
+  examType?: '小升初' | '中考' | '高考',
 ): Promise<AdmissionPolicyListResponse> {
   try {
     const response = await axiosForBackend({
       url: '/api/admission-policies',
       method: 'GET',
-      params: { region, year },
+      params: { region, year, examType },
     });
     return response.data;
   } catch (error) {

@@ -64,13 +64,34 @@ interface PlanScoreInputProps {
   examType: ExamType;
   examMode?: string;
   scores: Record<string, number>;
+  subjectMaxHints?: Record<string, number>;
   onScoreChange: (key: string, val: string) => void;
+}
+
+function resolveSubjectMax(
+  subjectKey: string,
+  fallback: number,
+  hints?: Record<string, number>,
+): number {
+  if (!hints) return fallback;
+  const direct = hints[subjectKey];
+  if (typeof direct === 'number' && direct > 0) return direct;
+  if (subjectKey === '政治') {
+    const daofa = hints['道法'];
+    if (typeof daofa === 'number' && daofa > 0) return daofa;
+  }
+  if (subjectKey === '道法') {
+    const politics = hints['政治'];
+    if (typeof politics === 'number' && politics > 0) return politics;
+  }
+  return fallback;
 }
 
 const PlanScoreInput: React.FC<PlanScoreInputProps> = ({
   examType,
   examMode,
   scores,
+  subjectMaxHints,
   onScoreChange,
 }) => {
   const groups = getSubjects(examType, examMode);
@@ -86,19 +107,26 @@ const PlanScoreInput: React.FC<PlanScoreInputProps> = ({
           )}
           {group.map((def) => (
             <div key={def.key} className="w-20">
+              {(() => {
+                const max = resolveSubjectMax(def.key, def.max, subjectMaxHints);
+                return (
+                  <>
               <label className="mb-1 block text-xs text-muted-foreground">
                 {def.label}
-                <span className="text-marker-red">/{def.max}</span>
+                <span className="text-marker-red">/{max}</span>
               </label>
               <Input
                 type="number"
                 min={0}
-                max={def.max}
+                max={max}
                 value={scores[def.key] || ''}
                 onChange={(e) => onScoreChange(def.key, e.target.value)}
                 placeholder="0"
                 className="h-auto border-0 border-b-2 border-dashed border-ink/30 bg-transparent px-1 py-1.5 text-center font-hand text-ink shadow-none focus-visible:border-marker-red focus-visible:border-solid focus-visible:ring-0"
               />
+                  </>
+                );
+              })()}
             </div>
           ))}
         </React.Fragment>

@@ -21,6 +21,7 @@ import {
   fetchSchoolScoreByName,
   buildScoresText,
   buildPlanAdditionalInfo,
+  extractSubjectMaxHintsFromPolicyText,
   type PlanFormContext,
 } from '@client/src/api/plugins';
 import PlanTimeline from './PlanTimeline';
@@ -36,7 +37,7 @@ import { getPlanAutofillFromProfile } from '@client/src/utils/stage-profile-sync
 import { stagePath } from '@client/src/config/stages';
 import { toSelectValue } from '@client/src/lib/utils';
 import { policy as policyApi } from '@client/src/api';
-import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
+import { clearModuleSession, loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
 import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
 import { getInternalScriptAnchor } from '@client/src/config/internal-resource-library';
 
@@ -50,6 +51,11 @@ const GRADE_OPTIONS: Record<ExamType, string[]> = {
   '中考': ['初一', '初二', '初三'],
   '高考': ['高一', '高二', '高三'],
 };
+
+function normalizeStageGrade(grade: string, allowedGrades: string[]): string {
+  if (allowedGrades.includes(grade)) return grade;
+  return allowedGrades[allowedGrades.length - 1] || '';
+}
 
 function summarizePolicyText(content: string): string {
   if (!content) return '';
@@ -69,6 +75,42 @@ function compactSearchPolicyText(content: string): string {
     .filter(Boolean)
     .filter((line) => !line.startsWith('```'));
   return lines.slice(0, 10).join('\n');
+}
+
+function sanitizePolicyContentByStage(content: string, stageSlug: string): string {
+  if (!content) return '';
+  const lines = content
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (stageSlug === 'elementary') {
+    return lines
+      .filter((line) => !/(中考|高考|生地会考|本科|专科|投档线|录取分数线)/.test(line))
+      .filter((line) => /(小升初|义务教育|公民同招|划片|摇号|对口直升|民办|公办|入学|学位)/.test(line))
+      .slice(0, 10)
+      .join('\n');
+  }
+  if (stageSlug === 'middle') {
+    return lines
+      .filter((line) => !/(高考|本科|专科|选科组合|赋分)/.test(line))
+      .slice(0, 12)
+      .join('\n');
+  }
+  return lines
+    .filter((line) => !/(小升初|公民同招|划片摇号)/.test(line))
+    .slice(0, 12)
+    .join('\n');
+}
+
+function inferPolicyStage(policy: AdmissionPolicy): 'elementary' | 'middle' | 'high' | 'unknown' {
+  const scoreStructureText = Object.keys(policy.scoreStructure || {}).join(' ');
+  const text = `${policy.policyContent || ''} ${scoreStructureText} ${(policy.admissionLines || []).map((line) => `${line.batch} ${line.school}`).join(' ')}`;
+  if (/(高考|本科|专科|物理类|历史类|大学|学院|专业组|志愿批次)/.test(text)) return 'high';
+  if (/(中考|普高|会考|中招|中考分|统招线|投档线)/.test(text)) return 'middle';
+  if (/(小升初|义务教育|公民同招|划片|摇号|对口直升|入学)/.test(text)) return 'elementary';
+  if (policy.totalScore >= 650) return 'middle';
+  if (policy.totalScore > 0 && policy.totalScore <= 400) return 'elementary';
+  return 'unknown';
 }
 
 function buildCompactPolicyContext(input: {
@@ -99,11 +141,63 @@ function buildCompactPolicyContext(input: {
     .slice(0, 2)
     .join('；');
 
+  if (examType === '小升初') {
+    return [
+      `升学类型：小升初`,
+      structure ? `学科结构参考：${structure}` : '',
+      `入学政策关键点：${policySummary || '以官方最新发布为准'}`,
+      '说明：小升初一般以入学规则为主，不以中高考录取分数线为依据。',
+    ]
+      .filter(Boolean)
+      .join('\n');
+  }
+
   return [
     `${examType}总分：${policy.totalScore}分`,
     `科目结构：${structure}`,
     `与你当前分数最相关录取线：${lineText}`,
     `政策关键点：${policySummary || '以官方最新发布为准'}`,
+  ].join('\n');
+}
+
+function buildElementaryTimelineMarkdown(input: {
+  region: string;
+  examYear: number;
+  currentYear: number;
+  policyHint: string;
+}): string {
+  const { region, examYear, currentYear, policyHint } = input;
+  const yearText = `${Math.max(currentYear, examYear - 1)}-${examYear}`;
+  const hint = policyHint || '以当地教育局/招考部门当年入学通知为准';
+  return [
+    '# 小升初时间路线图',
+    '',
+    `- 地区：${region || '待补充'}`,
+    `- 适用周期：${yearText}`,
+    '- 说明：仅适用于小升初/小六毕业统考，不含中考/高考节点。',
+    '',
+    '## 1) 9-11月：信息摸底',
+    '- 核对学籍、户籍、居住证、房产/租房等入学资格材料。',
+    '- 确认公办对口、民办摇号、寄宿/特色班等可选路径。',
+    '',
+    '## 2) 12-2月：目标校范围确认',
+    '- 根据区域政策确定 3 所目标初中（冲/稳/保）。',
+    '- 关注学校开放日、招生简章发布时间。',
+    '',
+    '## 3) 3-4月：报名与材料提交',
+    '- 按官方通知完成系统报名与材料上传。',
+    '- 对口与摇号类流程注意截止时间，避免错过。',
+    '',
+    '## 4) 5-6月：毕业统考与录取流程',
+    '- 完成小六毕业统考（若当地组织）。',
+    '- 关注民办摇号、公办分配、录取确认时间。',
+    '',
+    '## 5) 7-8月：入学衔接',
+    '- 完成录取确认、报到与分班信息登记。',
+    '- 做初中衔接：语文阅读、数学计算与应用题、英语词汇语法。',
+    '',
+    `政策核验提示：${hint}`,
+    '数据要求：关键节点至少交叉核验 2 个来源（教育局官网 + 招考部门公告）。',
   ].join('\n');
 }
 
@@ -514,6 +608,12 @@ const Plan: React.FC = () => {
     setGrade(stageConfig.grades[stageConfig.grades.length - 1]);
   }, [stageConfig]);
 
+  useEffect(() => {
+    if (examType !== stageConfig.examType) {
+      setExamType(stageConfig.examType);
+    }
+  }, [examType, stageConfig.examType]);
+
   const [examMode, setExamMode] = useState<string>('');
   const currentYear = new Date().getFullYear();
   const [examYear, setExamYear] = useState<number>(currentYear + 1);
@@ -532,6 +632,7 @@ const Plan: React.FC = () => {
   const [policies, setPolicies] = useState<AdmissionPolicy[]>([]);
   const [policyLoading, setPolicyLoading] = useState(false);
   const [policySearchContent, setPolicySearchContent] = useState('');
+  const [subjectMaxHints, setSubjectMaxHints] = useState<Record<string, number>>({});
   const [policySearchLoading, setPolicySearchLoading] = useState(false);
   const [reportContent, setReportContent] = useState('');
   const [reportLoading, setReportLoading] = useState(false);
@@ -543,12 +644,40 @@ const Plan: React.FC = () => {
   const [boardingType, setBoardingType] = useState('');
   const applyingProfileRef = useRef(false);
   const hydratedRef = useRef(false);
+  const hideElementaryPlanBlocks = useMemo(() => {
+    if (stageConfig.slug === 'elementary') return true;
+    if (examType === '小升初') return true;
+    return ['三年级', '四年级', '五年级', '六年级'].includes(grade);
+  }, [stageConfig.slug, examType, grade]);
 
   const cities = PROVINCE_CITIES[selectedProvince] || [];
-  const currentPolicy = policies.length > 0 ? policies[0] : null;
+  const filteredPolicies = useMemo(() => {
+    if (examType === '小升初') return [];
+    return policies.filter((item) => {
+      const inferred = inferPolicyStage(item);
+      if (stageConfig.slug === 'elementary') {
+        if (inferred !== 'elementary') return false;
+        if (item.totalScore > 450) return false;
+        const scoreKeys = Object.keys(item.scoreStructure || {}).join(' ');
+        if (/(中考|高考|中考分|投档线|统招线)/.test(scoreKeys)) return false;
+        return true;
+      }
+      if (stageConfig.slug === 'middle') return inferred === 'middle' || inferred === 'unknown';
+      return inferred === 'high' || inferred === 'unknown';
+    });
+  }, [policies, stageConfig.slug, examType]);
+  const currentPolicy = filteredPolicies.length > 0 ? filteredPolicies[0] : null;
+  const sanitizedPolicySearchContent = useMemo(
+    () => sanitizePolicyContentByStage(policySearchContent, stageConfig.slug),
+    [policySearchContent, stageConfig.slug],
+  );
+  const hasCrossVerifiedPolicy = useMemo(
+    () => Boolean(currentPolicy?.policyContent?.trim()) && Boolean(sanitizedPolicySearchContent.trim()),
+    [currentPolicy?.policyContent, sanitizedPolicySearchContent],
+  );
   const hasScores = Object.values(scores).some((v) => v > 0);
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
-  const isGaokao = examType === '高考';
+  const isGaokao = stageConfig.slug === 'high';
   const groupedLines = useMemo(() => {
     if (!currentPolicy?.admissionLines) return [] as Array<[string, typeof currentPolicy.admissionLines]>;
     const groups = new Map<string, typeof currentPolicy.admissionLines>();
@@ -608,16 +737,35 @@ const Plan: React.FC = () => {
   }, []);
 
   const fetchPolicies = useCallback(async (r: string): Promise<void> => {
+    if (examType === '小升初') {
+      setPolicies([]);
+      return;
+    }
     setPolicyLoading(true);
     try {
-      const res = await plan.getAdmissionPolicies(r);
+      const res = await plan.getAdmissionPolicies(r, undefined, stageConfig.examType);
       setPolicies(res.items);
     } catch {
       toast.error('获取政策数据失败');
     } finally {
       setPolicyLoading(false);
     }
-  }, []);
+  }, [stageConfig.examType, examType]);
+
+  useEffect(() => {
+    if (examType === '小升初') {
+      setPolicies([]);
+    }
+  }, [examType]);
+
+  useEffect(() => {
+    if (!hideElementaryPlanBlocks) return;
+    // Hard clear elementary-only hidden blocks and cached session
+    setPolicies([]);
+    setPolicySearchContent('');
+    setTimelineContent('');
+    clearModuleSession(stageSlug, 'plan');
+  }, [hideElementaryPlanBlocks, stageSlug]);
 
   useEffect(() => {
     if (!profile.updatedAt) return;
@@ -630,7 +778,7 @@ const Plan: React.FC = () => {
       setRegion(fill.region);
       fetchPolicies(fill.region);
     }
-    if (fill.grade) setGrade(fill.grade);
+    if (fill.grade) setGrade(normalizeStageGrade(fill.grade, stageConfig.grades));
     if (fill.targetSchool) setTargetSchool(fill.targetSchool);
     if (fill.targetScore != null) setTargetScore(fill.targetScore);
     if (fill.careerIntent) setCareerIntent(fill.careerIntent);
@@ -642,13 +790,13 @@ const Plan: React.FC = () => {
       hydratedRef.current = true;
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在档案保存时回填
-  }, [profile.updatedAt]);
+  }, [profile.updatedAt, stageConfig.grades]);
 
   useEffect(() => {
     const cached = loadModuleSession<PlanSessionState>(stageSlug, 'plan');
     if (!cached) return;
-    setExamType(cached.examType);
-    setGrade(cached.grade);
+    setExamType(stageConfig.examType);
+    setGrade(normalizeStageGrade(cached.grade, stageConfig.grades));
     setExamMode(cached.examMode);
     setExamYear(cached.examYear);
     setSelectedProvince(cached.selectedProvince);
@@ -665,7 +813,7 @@ const Plan: React.FC = () => {
     setReportContent(cached.reportContent || '');
     setTimelineContent(cached.timelineContent || '');
     hydratedRef.current = true;
-  }, [stageSlug]);
+  }, [stageSlug, stageConfig.examType, stageConfig.grades]);
 
   useEffect(() => {
     saveModuleSession<PlanSessionState>(stageSlug, 'plan', {
@@ -742,11 +890,11 @@ const Plan: React.FC = () => {
   ]);
 
   useEffect(() => {
-    if (!targetSchool || !region || stageConfig.slug === 'elementary') return;
+    if (!targetSchool || !region || stageConfig.slug === 'elementary' || examType === '小升初') return;
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const db = await policyApi.searchSchools(region);
+        const db = await policyApi.searchSchools(region, stageConfig.examType);
         if (cancelled) return;
         const matched = db.schools.find(
           (item) =>
@@ -778,14 +926,15 @@ const Plan: React.FC = () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [targetSchool, region, stageConfig.slug]);
+  }, [targetSchool, region, stageConfig.slug, stageConfig.examType, examType]);
 
   const handleSyncProfileBack = useCallback(() => {
+    const safeGrade = normalizeStageGrade(grade, stageConfig.grades);
     updateProfile({
       province: selectedProvince,
       city: selectedCity,
       county,
-      grade,
+      grade: safeGrade,
       targetSchool,
       targetScore,
       careerIntent,
@@ -795,28 +944,47 @@ const Plan: React.FC = () => {
     });
     toast.success('已同步回学段主页档案');
     setProfileDirty(false);
-  }, [updateProfile, selectedProvince, selectedCity, county, grade, targetSchool, targetScore, careerIntent, boardingType, examMode, examDate]);
+  }, [updateProfile, selectedProvince, selectedCity, county, grade, targetSchool, targetScore, careerIntent, boardingType, examMode, examDate, stageConfig.grades]);
 
   const handlePolicySearch = useCallback(async (r: string): Promise<void> => {
     if (!r) { toast.error('请先选择地区'); return; }
     setPolicySearchLoading(true);
     setPolicySearchContent('');
+    setSubjectMaxHints({});
     try {
       const currentY = new Date().getFullYear();
       const searchYears = [String(currentY), String(currentY - 1), String(currentY - 2)];
       let full = '';
+      const keyword =
+        stageConfig.slug === 'elementary'
+          ? '小升初 划片 摇号 对口直升 公民同招 入学政策'
+          : stageConfig.slug === 'middle'
+            ? '中考录取分数线 政策'
+            : '高考录取分数线 政策';
       for (const y of searchYears) {
-        for await (const chunk of streamPolicySearch({ region: r, year: y, keyword: `${examType}录取分数线 政策` })) {
+        for await (const chunk of streamPolicySearch({ region: r, year: y, keyword })) {
           full += chunk;
-          setPolicySearchContent(full);
+          setPolicySearchContent(sanitizePolicyContentByStage(full, stageConfig.slug));
+          setSubjectMaxHints(extractSubjectMaxHintsFromPolicyText(full));
         }
+      }
+      if (stageConfig.slug === 'elementary' && !sanitizePolicyContentByStage(full, stageConfig.slug).trim()) {
+        setPolicySearchContent(
+          [
+            `地区：${r}`,
+            '联网检索未返回可用的小升初结构化结果，请按以下双来源核验：',
+            '1) 当地教育局官网：核对公民同招、划片/摇号、对口直升、入学材料与时间。',
+            '2) 当地招考部门公告：核对报名入口、报名时间、录取确认时间。',
+            '说明：在拿到两来源一致信息前，系统只展示“待核实”结论。',
+          ].join('\n'),
+        );
       }
     } catch {
       toast.error('网络政策搜索失败');
     } finally {
       setPolicySearchLoading(false);
     }
-  }, [examType]);
+  }, [stageConfig.slug]);
 
   const handleProvinceChange = useCallback((val: string): void => {
     setProfileDirty(true);
@@ -890,15 +1058,23 @@ const Plan: React.FC = () => {
     setReportLoading(true);
     setReportContent('');
     try {
+      const safeGrade = normalizeStageGrade(grade, stageConfig.grades);
       await plan.createPlanRecord({ region, scores });
       const scoreMaxValues: Record<string, number> = {
         '语文': 150, '数学': 150, '英语': 150,
         '物理': 100, '化学': 100, '生物': 100,
         '历史': 100, '地理': 100, '政治': 100, '政治&道法': 100,
       };
+      for (const [subject, max] of Object.entries(subjectMaxHints)) {
+        if (typeof max === 'number' && max > 0) {
+          scoreMaxValues[subject] = max;
+          if (subject === '道法') scoreMaxValues['政治&道法'] = max;
+          if (subject === '政治') scoreMaxValues['政治&道法'] = max;
+        }
+      }
       const planCtx: PlanFormContext = {
-        examType,
-        grade,
+        examType: stageConfig.examType,
+        grade: safeGrade,
         region,
         scores,
         scoreMaxValues,
@@ -910,12 +1086,29 @@ const Plan: React.FC = () => {
         boardingType: boardingType || undefined,
       };
       const scoresText = buildScoresText(scores, scoreMaxValues);
-      const policyText = buildCompactPolicyContext({
-        policy: currentPolicy,
-        examType,
-        totalScore,
-        targetScore,
-      });
+      const policyText =
+        examType === '小升初'
+          ? [
+              '升学类型：小升初（仅联网政策）',
+              sanitizedPolicySearchContent
+                ? `联网政策来源摘要：\n${sanitizedPolicySearchContent}`
+                : '联网政策摘要：暂无，请先点击“联网搜索政策数据”。',
+              '数据核验要求：至少列出 2 个官方来源（教育局官网 + 招考部门公告），否则标注待核实。',
+            ].join('\n')
+          : [
+              buildCompactPolicyContext({
+                policy: currentPolicy,
+                examType: stageConfig.examType,
+                totalScore,
+                targetScore,
+              }),
+              sanitizedPolicySearchContent ? `联网政策来源摘要：\n${sanitizedPolicySearchContent}` : '',
+              hasCrossVerifiedPolicy
+                ? '数据核验：已完成数据库政策 + 联网政策双来源交叉验证。'
+                : '数据核验：当前未满足双来源交叉验证，请将关键政策节点标记为待核实。',
+            ]
+              .filter(Boolean)
+              .join('\n');
       const additionalInfo = buildPlanAdditionalInfo(planCtx, { stageSlug, profile });
       const actionPrompt = buildGapActionPrompt(gapActionPlan);
       const highDirectionPrompt =
@@ -939,16 +1132,32 @@ const Plan: React.FC = () => {
     } finally {
       setReportLoading(false);
     }
-  }, [region, scores, policies, hasScores, grade, examDate, examType, examMode, examYear, targetSchool, targetScore, careerIntent, boardingType, stageSlug, profile, gapActionPlan, currentPolicy, highMajorRecommendations]);
+  }, [region, scores, policies, hasScores, grade, examDate, examType, examMode, examYear, targetSchool, targetScore, careerIntent, boardingType, stageSlug, profile, gapActionPlan, currentPolicy, highMajorRecommendations, stageConfig.examType, stageConfig.grades, sanitizedPolicySearchContent, hasCrossVerifiedPolicy, subjectMaxHints]);
 
   const handleGenerateTimeline = useCallback(async (): Promise<void> => {
     if (!region) { toast.error('请先选择地区'); return; }
     setTimelineLoading(true);
     setTimelineContent('');
     try {
+      if (stageConfig.slug === 'elementary' || examType === '小升初') {
+        const currentYear = new Date().getFullYear();
+        const markdown = buildElementaryTimelineMarkdown({
+          region,
+          examYear,
+          currentYear,
+          policyHint: compactSearchPolicyText(sanitizedPolicySearchContent),
+        });
+        setTimelineContent(markdown);
+        return;
+      }
+      const safeGrade = normalizeStageGrade(grade, stageConfig.grades);
       let full = '';
       const currentYear = new Date().getFullYear();
-      const gradeWithHint = `${grade}（请按${examYear}年考试倒推，仅输出${currentYear}年及以后关键时间节点）`;
+      const stageSpecificConstraint =
+        stageConfig.slug === 'middle'
+          ? '仅输出中考体系节点，禁止混入高考或小升初节点。'
+          : '仅输出高考体系节点，禁止混入中考会考或小升初节点。';
+      const gradeWithHint = `${safeGrade}（请严格按${stageConfig.examType}体系倒推到${examYear}年，仅输出${currentYear}年及以后关键时间节点，${stageSpecificConstraint}）`;
       for await (const chunk of streamTimeline({ current_grade: gradeWithHint, region, exam_year: String(examYear) })) {
         full += chunk;
         setTimelineContent(full);
@@ -958,7 +1167,7 @@ const Plan: React.FC = () => {
     } finally {
       setTimelineLoading(false);
     }
-  }, [region, grade, examYear]);
+  }, [region, grade, examYear, stageConfig.examType, stageConfig.grades, stageConfig.slug, sanitizedPolicySearchContent, examType]);
 
   const handleCopyReport = useCallback(async (): Promise<void> => {
     if (!reportContent) return;
@@ -970,7 +1179,7 @@ const Plan: React.FC = () => {
     }
   }, [reportContent]);
 
-  const config = EXAM_TYPE_CONFIG[examType];
+  const config = EXAM_TYPE_CONFIG[stageConfig.examType];
   const buildPlanReferenceScript = useCallback(() => {
     if (!hasScores) return '';
     const gap = targetScore != null ? Math.max(targetScore - totalScore, 0) : null;
@@ -978,11 +1187,11 @@ const Plan: React.FC = () => {
     const timelinePoint = pickFirstSentence(timelineContent);
     const internalAnchor = getInternalScriptAnchor(stageSlug, 'plan');
     return buildReferenceScript([
-      `内部话术重点：${internalAnchor}`,
+      `先按一个原则：${internalAnchor}`,
       `咱们先看结论：现在总分${totalScore}${targetScore != null ? `，目标线${targetScore}` : ''}`,
       gap != null ? (gap > 0 ? `目前还差${gap}分，先抓最容易提分的科目` : '当前分数已经具备冲刺更高目标的空间') : '',
       targetSchool ? `目标学校先盯住${targetSchool}` : '',
-      reportPoint ? `规划里最关键一句是：${reportPoint}` : '',
+      reportPoint ? `先说一句最实在的：${reportPoint}` : '',
       timelinePoint ? `时间上先记住：${timelinePoint}` : '',
       '我们先按周执行小目标，做得到比做得多更重要，周末复盘再微调。',
     ]);
@@ -1091,7 +1300,7 @@ const Plan: React.FC = () => {
               {/* Exam Year */}
               <div className="w-36">
                 <label className="mb-1 block text-sm font-bold text-ink">
-                  {examYear}年{examType}
+                  {examYear}年{stageConfig.examType}
                 </label>
                 <Select value={String(examYear)} onValueChange={(v) => setExamYear(Number(v))}>
                   <SelectTrigger className="font-hand">
@@ -1125,7 +1334,7 @@ const Plan: React.FC = () => {
                 <Input
                   value={targetSchool}
                   onChange={(e) => { setProfileDirty(true); setTargetSchool(e.target.value); }}
-                  placeholder={isGaokao ? '目标院校' : '目标学校'}
+                  placeholder={stageConfig.slug === 'elementary' ? '目标初中' : stageConfig.slug === 'middle' ? '目标高中' : '目标院校'}
                   className="font-hand"
                 />
               </div>
@@ -1177,29 +1386,72 @@ const Plan: React.FC = () => {
 
             {/* Row 2: Scores + Actions */}
             <div className="flex flex-wrap items-end gap-4">
-              <PlanScoreInput examType={examType} examMode={examMode || undefined} scores={scores} onScoreChange={handleScoreChange} />
+              <PlanScoreInput
+                examType={stageConfig.examType}
+                examMode={examMode || undefined}
+                scores={scores}
+                subjectMaxHints={subjectMaxHints}
+                onScoreChange={handleScoreChange}
+              />
               <div className="flex gap-2">
                 <Button onClick={handleGenerateReport} disabled={reportLoading || !region || !hasScores} className="border-[3px] border-ink font-hand shadow-hard">
                   <FileText className="size-4" />
                   {reportLoading ? '生成中...' : '生成规划报告'}
                 </Button>
-                <Button variant="secondary" onClick={handleGenerateTimeline} disabled={timelineLoading || !region} className="border-[3px] border-ink bg-postit-yellow font-hand shadow-hard">
-                  <Clock className="size-4" />
-                  {timelineLoading ? '生成中...' : '生成时间路线图'}
-                </Button>
+                {!hideElementaryPlanBlocks && (
+                  <Button variant="secondary" onClick={handleGenerateTimeline} disabled={timelineLoading || !region} className="border-[3px] border-ink bg-postit-yellow font-hand shadow-hard">
+                    <Clock className="size-4" />
+                    {timelineLoading ? '生成中...' : '生成时间路线图'}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
         </WobblyCard>
 
         {/* Main Content */}
-        <div className="flex gap-6">
+        <div className={`flex gap-6 ${hideElementaryPlanBlocks ? 'flex-col' : ''}`}>
           {/* Left: Policy & Score Lines */}
+          {!hideElementaryPlanBlocks && (
           <div className="w-96 shrink-0">
             <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false} className="p-5" rotate={-0.5}>
-               <h2 className="mb-4 font-marker text-xl font-bold text-ink">政策与分数线</h2>
+               <h2 className="mb-4 font-marker text-xl font-bold text-ink">
+                 {examType === '小升初' ? '小升初政策与入学规则（联网）' : '政策与分数线'}
+               </h2>
+              <div className="mb-3 rounded border-2 border-dashed border-ink/30 bg-white/70 px-3 py-2 text-xs">
+                交叉验证状态：{hasCrossVerifiedPolicy ? '已满足（本地政策 + 联网政策）' : '未满足（请先联网补充并核验）'}
+              </div>
               {policyLoading ? (
                 <div className="py-8 text-center text-muted-foreground">加载政策数据中...</div>
+              ) : examType === '小升初' ? (
+                <div className="space-y-3">
+                  {policySearchLoading && !sanitizedPolicySearchContent ? (
+                    <div className="py-6 text-center text-muted-foreground">
+                      <Loader2 className="mx-auto mb-2 size-5 animate-spin" />
+                      正在联网检索小升初政策...
+                    </div>
+                  ) : sanitizedPolicySearchContent ? (
+                    <div className="prose prose-sm max-w-none font-hand">
+                      <Streamdown>{compactSearchPolicyText(sanitizedPolicySearchContent)}</Streamdown>
+                    </div>
+                  ) : (
+                    <div className="py-4 text-center text-muted-foreground">
+                      请先点击“联网搜索政策数据”，仅展示互联网检索结果
+                    </div>
+                  )}
+                  {region && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handlePolicySearch(region)}
+                      disabled={policySearchLoading}
+                      className="w-full border-2 border-ink font-hand"
+                    >
+                      <Search className="size-3.5" />
+                      {policySearchLoading ? '搜索中...' : '联网搜索政策数据'}
+                    </Button>
+                  )}
+                </div>
               ) : !currentPolicy ? (
                 <div className="space-y-3">
                   <div className="py-4 text-center text-muted-foreground">
@@ -1222,7 +1474,7 @@ const Plan: React.FC = () => {
                 <div className="space-y-4">
                    <div className="text-center">
                      <span className="text-sm text-muted-foreground">
-                       {currentPolicy.region} {currentPolicy.year}年{examType}总分
+                      {currentPolicy.region} {currentPolicy.year}年{stageConfig.examType}总分
                      </span>
                      <div className="font-marker text-3xl font-bold text-marker-red">{currentPolicy.totalScore}分</div>
                      {dataYearMismatch && (
@@ -1276,7 +1528,7 @@ const Plan: React.FC = () => {
                     <div>
                       <h3 className="mb-2 font-marker text-base font-bold">政策关键信息</h3>
                       <div className="prose prose-sm max-w-none font-hand text-muted-foreground">
-                        <Streamdown>{summarizePolicyText(currentPolicy.policyContent)}</Streamdown>
+                        <Streamdown>{summarizePolicyText(sanitizePolicyContentByStage(currentPolicy.policyContent, stageConfig.slug))}</Streamdown>
                       </div>
                     </div>
                   )}
@@ -1289,7 +1541,7 @@ const Plan: React.FC = () => {
               <WobblyCard variant="white" decoration="tape" wobblyIndex={11} hoverable={false} className="mt-4 p-5" rotate={0.3}>
                 <h2 className="mb-3 font-marker text-lg font-bold text-ink">网络政策搜索</h2>
                 <p className="mb-3 text-xs text-muted-foreground">
-                  数据来源互联网，已交叉验证过去 3 年分数线信息
+                  数据来源互联网，用于与本地政策数据做交叉验证（至少两来源）
                 </p>
                 {policySearchLoading && !policySearchContent ? (
                   <div className="py-6 text-center text-muted-foreground">
@@ -1298,17 +1550,18 @@ const Plan: React.FC = () => {
                   </div>
                 ) : policySearchContent ? (
                   <div className="prose prose-sm max-w-none font-hand">
-                    <Streamdown>{compactSearchPolicyText(policySearchContent)}</Streamdown>
+                    <Streamdown>{compactSearchPolicyText(sanitizedPolicySearchContent)}</Streamdown>
                   </div>
                 ) : null}
               </WobblyCard>
             )}
           </div>
+          )}
 
           {/* Right: Report + School Recommendations */}
           <div className="min-w-0 flex-1 space-y-6">
             {/* School Recommendations */}
-            {currentPolicy && currentPolicy.admissionLines.length > 0 && hasScores && (
+            {!hideElementaryPlanBlocks && examType !== '小升初' && currentPolicy && currentPolicy.admissionLines.length > 0 && hasScores && (
               <WobblyCard variant="yellow" decoration="tack" wobblyIndex={2} hoverable={false} className="p-5">
                 <h2 className="mb-4 font-marker text-xl font-bold text-ink">院校推荐</h2>
                 <PlanSchoolRecommend totalScore={totalScore} admissionLines={currentPolicy.admissionLines} />
@@ -1473,7 +1726,9 @@ const Plan: React.FC = () => {
         </div>
 
         {/* Bottom: Timeline */}
-        <PlanTimeline content={timelineContent} loading={timelineLoading} examType={examType} examDate={examDate} grade={grade} />
+        {!hideElementaryPlanBlocks && (
+          <PlanTimeline content={timelineContent} loading={timelineLoading} examType={examType} examDate={examDate} grade={grade} />
+        )}
       </div>
     </div>
   );

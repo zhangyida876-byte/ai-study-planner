@@ -41,6 +41,12 @@ function mapEducationStageToStageSlug(stage: EducationStage): StageSlug {
   return 'middle';
 }
 
+function mapStageSlugToEducationStage(stageSlug: StageSlug): EducationStage {
+  if (stageSlug === 'elementary') return 'elementary';
+  if (stageSlug === 'high') return 'high';
+  return 'middle';
+}
+
 export interface DiagnosisReportInput {
   student_grade: string;
   student_region?: string;
@@ -52,6 +58,8 @@ export interface DiagnosisFormContext {
   grade: string;
   region: string;
   scores: Record<string, number>;
+  filledSubjects?: string[];
+  missingSubjects?: string[];
   scoreMaxValues?: Record<string, number>;
   examType?: string;
   boardingType?: string;
@@ -262,6 +270,46 @@ export async function* streamPolicySearch(input: PolicySearchInput) {
     const summary = (chunk as { summary?: string }).summary || '';
     if (summary) yield summary;
   }
+}
+
+function normalizeSubjectForHint(raw: string): string {
+  const text = raw.replace(/\s+/g, '');
+  if (/(语文|语)/.test(text)) return '语文';
+  if (/(数学|数)/.test(text)) return '数学';
+  if (/(英语|英)/.test(text)) return '英语';
+  if (/物理/.test(text)) return '物理';
+  if (/化学/.test(text)) return '化学';
+  if (/生物/.test(text)) return '生物';
+  if (/历史/.test(text)) return '历史';
+  if (/地理/.test(text)) return '地理';
+  if (/(道法|政治)/.test(text)) return '道法';
+  if (/体育/.test(text)) return '体育';
+  return raw;
+}
+
+export function extractSubjectMaxHintsFromPolicyText(text: string): Record<string, number> {
+  const result: Record<string, number> = {};
+  if (!text.trim()) return result;
+  const normalized = text.replace(/\s+/g, ' ');
+  const subjectPattern = /(语文|数学|英语|物理|化学|生物|历史|地理|道法|政治|体育)/g;
+  const lines = normalized.split('\n');
+
+  for (const line of lines) {
+    const subjects = line.match(subjectPattern);
+    if (!subjects || subjects.length === 0) continue;
+    const nums = line.match(/\d{2,3}(?=\s*分|\s*$)/g)?.map((n) => Number.parseInt(n, 10)) || [];
+    const validNums = nums.filter((n) => Number.isFinite(n) && n > 0 && n <= 200);
+    if (validNums.length === 0) continue;
+
+    for (const subjectRaw of subjects) {
+      const subject = normalizeSubjectForHint(subjectRaw);
+      const best = Math.max(...validNums);
+      const prev = result[subject] || 0;
+      // pick the most likely full-mark number in educational ranges
+      result[subject] = prev > 0 ? Math.min(prev, best) : best;
+    }
+  }
+  return result;
 }
 
 export interface CollegeMajorQueryInput {
@@ -494,7 +542,7 @@ export function buildScoresText(
 }
 
 export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: PromptBuildOptions): string {
-  const stage = getEducationStage(ctx.grade);
+  const stage = options?.stageSlug ? mapStageSlugToEducationStage(options.stageSlug) : getEducationStage(ctx.grade);
   const currentStageSlug = options?.stageSlug ?? mapEducationStageToStageSlug(stage);
   const internalMaterial = getInternalMaterialContext({
     stageSlug: currentStageSlug,
@@ -526,8 +574,24 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
     parts.push(`学生/家长自述痛点：${ctx.problemDesc.trim()}`);
   }
   const scoresText = buildScoresText(ctx.scores, ctx.scoreMaxValues);
+  const filledSubjectsText = (ctx.filledSubjects || Object.keys(ctx.scores)).join('、');
+  const missingSubjectsText = (ctx.missingSubjects || []).join('、');
   const examLabel = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '小升初期末统考';
-  const base = `考试类型：${examLabel}\n各科成绩（含满分与得分率）：${scoresText}\n${parts.join('\n')}
+  const stageLabel = stage === 'high' ? '高中' : stage === 'middle' ? '初中' : '小学';
+  const base = `当前学段（强约束）：${stageLabel}
+考试类型（强约束）：${examLabel}
+若输入年级与学段冲突，必须以当前学段为准；禁止切换为其他考试体系（小学=小升初，初中=中考，高中=高考）。
+各科成绩（含满分与得分率）：${scoresText}\n${parts.join('\n')}
+
+已填写科目：${filledSubjectsText || '未提供'}
+未填写科目：${missingSubjectsText || '无'}
+
+【诊断输出硬性要求】
+1. 只对“已填写科目”做分数评价，不得臆测未填写科目的具体分数表现。
+2. 已填写科目需逐科回答：当前是否达到目标学校单科要求、是否构成拖后腿风险（若缺少官方单科线，请明确“按经验阈值初判，需人工二次确认”）。
+3. 对“未填写科目”仅输出“未来潜在卡点提醒”，说明这些科目在后续升学/选科/提分中的风险点与补数建议，不得给出具体分数结论。
+4. 若只填写1-2科，必须强调“当前结论为局部诊断”，并给出下一步最优先补齐科目。
+5. 表达要家长易懂、顾问可直接口播，避免官话和模板腔。
 
 【内部资源库素材（优先使用）】
 ${internalMaterial}
@@ -543,7 +607,7 @@ ${internalMaterial}
 }
 
 export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBuildOptions): string {
-  const stage = getEducationStage(ctx.grade);
+  const stage = options?.stageSlug ? mapStageSlugToEducationStage(options.stageSlug) : getEducationStage(ctx.grade);
   const currentStageSlug = options?.stageSlug ?? mapEducationStageToStageSlug(stage);
   const internalMaterial = getInternalMaterialContext({
     stageSlug: currentStageSlug,
@@ -551,7 +615,9 @@ export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBu
     limit: 12,
   });
   const parts: string[] = [];
-  parts.push(`升学类型：${stage === 'high' ? '高考' : stage === 'middle' ? '中考' : '小升初'}`);
+  const lockedExamType = stage === 'high' ? '高考' : stage === 'middle' ? '中考' : '小升初';
+  parts.push(`升学类型（强约束）：${lockedExamType}`);
+  parts.push('学段强约束：若输入年级与学段冲突，必须按当前学段输出，不得混入其他考试体系。');
   parts.push(`当前年级：${ctx.grade}`);
   if (ctx.examYear) parts.push(`目标考试年份：${ctx.examYear}年`);
   const boardingLabel = ctx.boardingType === 'day' ? '走读' : ctx.boardingType === 'boarding' ? '住读' : '';

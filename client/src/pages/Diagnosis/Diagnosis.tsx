@@ -35,6 +35,51 @@ function getExamLabel(grade: string): string {
   return '小升初';
 }
 
+type DiagnosisSubjectKey =
+  | 'chinese'
+  | 'math'
+  | 'english'
+  | 'physics'
+  | 'chemistry'
+  | 'biology'
+  | 'history'
+  | 'geography'
+  | 'politics';
+
+const SUBJECT_LABELS: Record<DiagnosisSubjectKey, string> = {
+  chinese: '语文',
+  math: '数学',
+  english: '英语',
+  physics: '物理',
+  chemistry: '化学',
+  biology: '生物',
+  history: '历史',
+  geography: '地理',
+  politics: '政治&道法',
+};
+
+const CORE_SUBJECT_KEYS: DiagnosisSubjectKey[] = ['chinese', 'math', 'english'];
+const ELECTIVE_12_KEYS: DiagnosisSubjectKey[] = ['chemistry', 'biology', 'politics', 'geography'];
+const ALL_ELECTIVE_KEYS: DiagnosisSubjectKey[] = ['physics', 'chemistry', 'biology', 'history', 'geography', 'politics'];
+
+function resolveExpectedSubjects(data: DiagnosisFormData): DiagnosisSubjectKey[] {
+  const isHighSchool = ['高一', '高二', '高三'].includes(data.grade);
+  const isElementary = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'].includes(data.grade);
+  if (isElementary) return CORE_SUBJECT_KEYS;
+  if (!isHighSchool) return [...CORE_SUBJECT_KEYS, ...ALL_ELECTIVE_KEYS];
+
+  if (data.examMode === '3+1+2') {
+    const preferred: DiagnosisSubjectKey = data.physics != null ? 'physics' : 'history';
+    const selectedSecond = ELECTIVE_12_KEYS.filter((key) => typeof data[key] === 'number');
+    return [...CORE_SUBJECT_KEYS, preferred, ...selectedSecond];
+  }
+  if (data.examMode === '3+3') {
+    const selected = ALL_ELECTIVE_KEYS.filter((key) => typeof data[key] === 'number');
+    return [...CORE_SUBJECT_KEYS, ...selected];
+  }
+  return CORE_SUBJECT_KEYS;
+}
+
 /* ===== Component ===== */
 
 const Diagnosis: React.FC = () => {
@@ -112,21 +157,24 @@ const Diagnosis: React.FC = () => {
   }, [reportContent]);
 
   const onSubmit = useCallback(async (data: DiagnosisFormData) => {
-    setStudentInfo(data);
+    const safeGrade = stageConfig.grades.includes(data.grade)
+      ? data.grade
+      : stageConfig.grades[stageConfig.grades.length - 1];
+    const normalizedData: DiagnosisFormData = { ...data, grade: safeGrade };
+    setStudentInfo(normalizedData);
 
     const scores: Record<string, number> = {};
-    const activeFields = ['chinese', 'math', 'english', 'physics', 'chemistry', 'biology', 'history', 'geography', 'politics'] as const;
-    const labels: Record<string, string> = {
-      chinese: '语文', math: '数学', english: '英语',
-      physics: '物理', chemistry: '化学', biology: '生物',
-      history: '历史', geography: '地理', politics: '政治&道法',
-    };
-    for (const key of activeFields) {
-      const val = data[key];
+    const expectedSubjectKeys = resolveExpectedSubjects(normalizedData);
+    for (const key of expectedSubjectKeys) {
+      const val = normalizedData[key];
       if (typeof val === 'number') {
-        scores[labels[key]] = val;
+        scores[SUBJECT_LABELS[key]] = val;
       }
     }
+    const filledSubjects = Object.keys(scores);
+    const missingSubjects = expectedSubjectKeys
+      .map((key) => SUBJECT_LABELS[key])
+      .filter((label) => !(label in scores));
 
     setIsGenerating(true);
     setReportContent('');
@@ -134,37 +182,40 @@ const Diagnosis: React.FC = () => {
     let recordId: string | null = null;
     try {
       const createRes = await diagnosisApi.createDiagnosisRecord({
-        studentName: data.studentName || '',
-        grade: data.grade,
-        region: data.region,
+        studentName: normalizedData.studentName || '',
+        grade: normalizedData.grade,
+        region: normalizedData.region,
         scores,
-        problemDesc: data.problemDesc || '',
+        problemDesc: normalizedData.problemDesc || '',
       });
       recordId = createRes.id;
 
-      const stage = getEducationStage(data.grade);
+      const stage = getEducationStage(normalizedData.grade);
       const coreMax = stage === 'elementary' ? 100 : stage === 'middle' ? 120 : 150;
-      const scoreMaxValues: Record<string, number> = {
-        '语文': coreMax, '数学': coreMax, '英语': coreMax,
-        '物理': 100, '化学': 100, '生物': 100,
-        '历史': 100, '地理': 100, '政治&道法': 100,
-      };
+      const scoreMaxValues: Record<string, number> = {};
+      for (const key of expectedSubjectKeys) {
+        const label = SUBJECT_LABELS[key];
+        scoreMaxValues[label] =
+          key === 'chinese' || key === 'math' || key === 'english' ? coreMax : 100;
+      }
       const examType = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '小升初期末统考';
       const formCtx: DiagnosisFormContext = {
-        grade: data.grade,
-        region: data.region,
+        grade: normalizedData.grade,
+        region: normalizedData.region,
         scores,
+        filledSubjects,
+        missingSubjects,
         scoreMaxValues,
         examType,
-        boardingType: data.boardingType,
-        monthlyStudyHours: data.monthlyStudyHours,
-        examMode: data.examMode,
-        problemDesc: data.problemDesc,
-        targetSchool: data.targetSchool,
-        targetMajor: data.targetMajor,
+        boardingType: normalizedData.boardingType,
+        monthlyStudyHours: normalizedData.monthlyStudyHours,
+        examMode: normalizedData.examMode,
+        problemDesc: normalizedData.problemDesc,
+        targetSchool: normalizedData.targetSchool,
+        targetMajor: normalizedData.targetMajor,
         careerIntent: profile.careerIntent,
-        targetScore: stage === 'elementary' ? undefined : data.targetScore,
-        examDate: data.examDate,
+        targetScore: stage === 'elementary' ? undefined : normalizedData.targetScore,
+        examDate: normalizedData.examDate,
       };
       const scoresText = buildScoresText(scores, scoreMaxValues);
       const learningProblems = buildDiagnosisPrompt(formCtx, {
@@ -172,8 +223,8 @@ const Diagnosis: React.FC = () => {
         profile,
       });
       const generator = streamDiagnosisReport({
-        student_grade: data.grade,
-        student_region: data.region,
+        student_grade: normalizedData.grade,
+        student_region: normalizedData.region,
         subject_scores: scoresText,
         learning_problems: learningProblems,
       });
@@ -205,7 +256,7 @@ const Diagnosis: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [stageSlug, profile]);
+  }, [stageSlug, profile, stageConfig.grades]);
 
   const handleSyncProfileBack = useCallback(() => {
     const snapshot = formSnapshot || studentInfo;
@@ -260,12 +311,12 @@ const Diagnosis: React.FC = () => {
     const reportPoint = pickFirstSentence(reportContent);
     const internalAnchor = getInternalScriptAnchor(stageSlug, 'diagnosis');
     return buildReferenceScript([
-      `内部话术重点：${internalAnchor}`,
-      `${name}现在最关键是先把${weak}稳住`,
+      `先按一个原则：${internalAnchor}`,
+      `${name}现在最该做的是把${weak}先稳住`,
       targetText ? `咱们目标是${targetText}` : '',
       gapText,
-      reportPoint ? `这次诊断最重要结论是：${reportPoint}` : '',
-      '这周先别求全，先抓一科短板，每天固定时间做错题回炉，周末我们一起复盘调整。',
+      reportPoint ? `我先说最关键一点：${reportPoint}` : '',
+      '这周先别求全，先抓一科短板，每天固定时间做错题回炉，周末咱们再一起复盘怎么调。',
     ]);
   }, [studentInfo, profile.weakSubjects, scoreGap, reportContent]);
 

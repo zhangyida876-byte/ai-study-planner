@@ -215,7 +215,7 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
   const effectiveStageSlug: StageSlug = stageSlug || 'middle';
   const buildKnowledgeReferenceScript = () =>
     buildReferenceScript([
-      `内部话术重点：${getInternalScriptAnchor(effectiveStageSlug, 'knowledge')}`,
+      `先按一个原则：${getInternalScriptAnchor(effectiveStageSlug, 'knowledge')}`,
       `这个知识点是${detail.name}，在${detail.chapter}阶段很关键`,
       `重要程度是${importance.level}，先别贪多，先把核心题型做熟`,
       pickFirstSentence(detail.content.commonMistakes)
