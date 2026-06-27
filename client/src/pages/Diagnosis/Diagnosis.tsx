@@ -7,6 +7,7 @@ import { diagnosis as diagnosisApi } from '@client/src/api';
 import { streamDiagnosisReport, buildScoresText, buildDiagnosisPrompt, getEducationStage, type DiagnosisFormContext } from '@client/src/api/plugins';
 import WobblyCard from '@client/src/components/WobblyCard';
 import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
+import ReferenceScriptCard from '@client/src/components/ReferenceScriptCard';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { Button } from '@/components/ui/button';
 import DiagnosisForm, { type DiagnosisFormData } from './DiagnosisForm';
@@ -14,6 +15,7 @@ import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import { stagePath } from '@client/src/config/stages';
 import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
+import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
 
 /* ===== Helpers ===== */
 
@@ -241,6 +243,28 @@ const Diagnosis: React.FC = () => {
       ).reduce((sum, key) => sum + ((studentInfo[key as keyof DiagnosisFormData] as number) || 0), 0)
     : 0;
   const scoreGap = (studentInfo?.targetScore != null && studentStage !== 'elementary') ? studentInfo.targetScore - totalScore : null;
+  const buildDiagnosisReferenceScript = useCallback(() => {
+    if (!studentInfo) return '';
+    const name = studentInfo.studentName || '孩子';
+    const weak = profile.weakSubjects || '当前薄弱科目';
+    const targetText = studentInfo.targetSchool
+      ? `${studentInfo.targetSchool}${studentInfo.targetMajor ? `（${studentInfo.targetMajor}）` : ''}`
+      : '';
+    const gapText =
+      scoreGap == null
+        ? ''
+        : scoreGap > 0
+          ? `离目标还差${scoreGap}分`
+          : `目前已经超过目标${Math.abs(scoreGap)}分`;
+    const reportPoint = pickFirstSentence(reportContent);
+    return buildReferenceScript([
+      `${name}现在最关键是先把${weak}稳住`,
+      targetText ? `咱们目标是${targetText}` : '',
+      gapText,
+      reportPoint ? `这次诊断最重要结论是：${reportPoint}` : '',
+      '这周先别求全，先抓一科短板，每天固定时间做错题回炉，周末我们一起复盘调整。',
+    ]);
+  }, [studentInfo, profile.weakSubjects, scoreGap, reportContent]);
 
   return (
     <div className="space-y-4">
@@ -418,6 +442,13 @@ const Diagnosis: React.FC = () => {
             </p>
           </div>
         )}
+        <div className="mt-4">
+          <ReferenceScriptCard
+            onGenerate={buildDiagnosisReferenceScript}
+            hint="基于当前诊断结果生成可直接和孩子沟通的话术（300字内）。"
+            wobblyIndex={31}
+          />
+        </div>
       </div>
     </div>
     </div>

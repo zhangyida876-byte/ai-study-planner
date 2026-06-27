@@ -31,11 +31,13 @@ import type { AdmissionPolicy, AdmissionLine } from '@shared/api.interface';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
+import ReferenceScriptCard from '@client/src/components/ReferenceScriptCard';
 import { getPlanAutofillFromProfile } from '@client/src/utils/stage-profile-sync';
 import { stagePath } from '@client/src/config/stages';
 import { toSelectValue } from '@client/src/lib/utils';
 import { policy as policyApi } from '@client/src/api';
 import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
+import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
 
 const HS_MODES = [
   { value: '3+1+2', label: '3+1+2（物理/历史 二选一）' },
@@ -968,6 +970,20 @@ const Plan: React.FC = () => {
   }, [reportContent]);
 
   const config = EXAM_TYPE_CONFIG[examType];
+  const buildPlanReferenceScript = useCallback(() => {
+    if (!hasScores) return '';
+    const gap = targetScore != null ? Math.max(targetScore - totalScore, 0) : null;
+    const reportPoint = pickFirstSentence(reportContent);
+    const timelinePoint = pickFirstSentence(timelineContent);
+    return buildReferenceScript([
+      `咱们先看结论：现在总分${totalScore}${targetScore != null ? `，目标线${targetScore}` : ''}`,
+      gap != null ? (gap > 0 ? `目前还差${gap}分，先抓最容易提分的科目` : '当前分数已经具备冲刺更高目标的空间') : '',
+      targetSchool ? `目标学校先盯住${targetSchool}` : '',
+      reportPoint ? `规划里最关键一句是：${reportPoint}` : '',
+      timelinePoint ? `时间上先记住：${timelinePoint}` : '',
+      '我们先按周执行小目标，做得到比做得多更重要，周末复盘再微调。',
+    ]);
+  }, [hasScores, totalScore, targetScore, reportContent, timelineContent, targetSchool]);
 
   return (
     <div className="min-h-screen bg-paper-dots p-6 font-hand">
@@ -1444,6 +1460,12 @@ const Plan: React.FC = () => {
                 </div>
               )}
             </WobblyCard>
+
+            <ReferenceScriptCard
+              onGenerate={buildPlanReferenceScript}
+              hint="基于当前升学规划结果生成可直接沟通的话术（300字内）。"
+              wobblyIndex={14}
+            />
           </div>
         </div>
 

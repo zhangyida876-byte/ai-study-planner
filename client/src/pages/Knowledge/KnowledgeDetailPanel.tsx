@@ -1,11 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import { Copy, Check, AlertTriangle, Star, Target, Sparkles, Loader2 } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
+import ReferenceScriptCard from '@client/src/components/ReferenceScriptCard';
 import { Button } from '@/components/ui/button';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { streamKnowledgeAnalysis, buildKnowledgeGradeSemester } from '@client/src/api/plugins';
 import type { KnowledgePoint } from '@shared/api.interface';
 import KnowledgeGraph from './KnowledgeGraph';
+import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
 
 import type { StageProfile } from '@client/src/types/stage-profile';
 import type { StageSlug } from '@client/src/config/stages';
@@ -209,6 +211,15 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
 
   const importance = getImportance(detail);
   const examProb = getExamProb(detail, stageSlug);
+  const buildKnowledgeReferenceScript = () =>
+    buildReferenceScript([
+      `这个知识点是${detail.name}，在${detail.chapter}阶段很关键`,
+      `重要程度是${importance.level}，先别贪多，先把核心题型做熟`,
+      pickFirstSentence(detail.content.commonMistakes)
+        ? `最容易丢分在：${pickFirstSentence(detail.content.commonMistakes)}`
+        : '',
+      '先把前置知识补齐，再做同类题3到5道，做完马上复盘错因，效果会更稳。',
+    ]);
 
   return (
     <div className="space-y-4">
@@ -290,6 +301,12 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
           {detail.content.commonMistakes || '暂无易错点数据'}
         </div>
       </div>
+
+      <ReferenceScriptCard
+        onGenerate={buildKnowledgeReferenceScript}
+        hint="基于当前知识点详情生成可直接沟通的话术（300字内）。"
+        wobblyIndex={34}
+      />
 
       <AIAnalysisSection detail={detail} stageSlug={stageSlug} profile={profile} />
     </div>

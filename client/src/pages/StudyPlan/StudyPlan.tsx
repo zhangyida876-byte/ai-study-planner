@@ -18,6 +18,7 @@ import {
 import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
+import ReferenceScriptCard from '@client/src/components/ReferenceScriptCard';
 import { getStudyPlanAutofillFromProfile } from '@client/src/utils/stage-profile-sync';
 import { stagePath } from '@client/src/config/stages';
 import {
@@ -27,6 +28,7 @@ import {
 } from '@client/src/api/plugins';
 import { toSelectValue } from '@client/src/lib/utils';
 import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
+import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
 
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
@@ -295,6 +297,19 @@ const StudyPlan: React.FC = () => {
     }
   };
 
+  const buildStudyPlanReferenceScript = useCallback(() => {
+    if (!grade || !region) return '';
+    const reportPoint = pickFirstSentence(report);
+    return buildReferenceScript([
+      `我们这周先按${grade}当前节奏来，不求一下子全改完`,
+      weakSubjects ? `先把${weakSubjects}放在第一优先级` : '',
+      weeklyHours ? `每周可用${weeklyHours}小时，就按固定时段执行` : '',
+      targetSchool ? `目标先盯住${targetSchool}` : '',
+      reportPoint ? `计划里最关键一句是：${reportPoint}` : '',
+      '每天做完就打勾，没完成也没关系，周末一起复盘改下一周。',
+    ]);
+  }, [grade, region, weakSubjects, weeklyHours, targetSchool, report]);
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
@@ -453,34 +468,42 @@ const StudyPlan: React.FC = () => {
           </WobblyCard>
         </div>
 
-        <WobblyCard variant="white" decoration="tape" wobblyIndex={2} hoverable={false} className="p-4 lg:min-h-[480px]">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-marker font-bold">学习计划报告</h2>
-            {report && (
-              <Button variant="outline" size="sm" onClick={handleCopy}>
-                {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-              </Button>
+        <div className="space-y-4">
+          <WobblyCard variant="white" decoration="tape" wobblyIndex={2} hoverable={false} className="p-4 lg:min-h-[480px]">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-marker font-bold">学习计划报告</h2>
+              {report && (
+                <Button variant="outline" size="sm" onClick={handleCopy}>
+                  {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                </Button>
+              )}
+            </div>
+            {loading && !report && (
+              <div className="flex items-center gap-2 py-12 font-hand text-muted-foreground">
+                <Loader2 className="size-5 animate-spin" />
+                正在生成结构化学习计划...
+              </div>
             )}
-          </div>
-          {loading && !report && (
-            <div className="flex items-center gap-2 py-12 font-hand text-muted-foreground">
-              <Loader2 className="size-5 animate-spin" />
-              正在生成结构化学习计划...
-            </div>
-          )}
-          {!loading && !report && (
-            <div className="flex flex-col items-center py-12 text-center text-muted-foreground">
-              <AlertCircle className="mb-2 size-8 opacity-40" />
-              <p className="font-hand text-sm">填写左侧信息后生成</p>
-              <p className="font-hand mt-1 text-xs">将包含周计划表、日安排、科目拆解与检测标准</p>
-            </div>
-          )}
-          {report && (
-            <div className="font-hand prose-headings:font-marker max-h-[70vh] overflow-auto">
-              <Streamdown>{report}</Streamdown>
-            </div>
-          )}
-        </WobblyCard>
+            {!loading && !report && (
+              <div className="flex flex-col items-center py-12 text-center text-muted-foreground">
+                <AlertCircle className="mb-2 size-8 opacity-40" />
+                <p className="font-hand text-sm">填写左侧信息后生成</p>
+                <p className="font-hand mt-1 text-xs">将包含周计划表、日安排、科目拆解与检测标准</p>
+              </div>
+            )}
+            {report && (
+              <div className="font-hand prose-headings:font-marker max-h-[70vh] overflow-auto">
+                <Streamdown>{report}</Streamdown>
+              </div>
+            )}
+          </WobblyCard>
+
+          <ReferenceScriptCard
+            onGenerate={buildStudyPlanReferenceScript}
+            hint="基于当前学习计划生成可直接沟通的话术（300字内）。"
+            wobblyIndex={33}
+          />
+        </div>
       </div>
     </div>
   );
