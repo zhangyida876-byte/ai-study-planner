@@ -29,6 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import type { StageProfile } from '@client/src/types/stage-profile';
+import { parseScoreOverviewToSubjectScores } from '@client/src/utils/score-overview';
 
 /* ===== Schema & Constants ===== */
 
@@ -274,6 +275,18 @@ interface DiagnosisFormProps {
   onFormSnapshotChange?: (data: DiagnosisFormData) => void;
 }
 
+const SUBJECT_LABEL_TO_FIELD: Partial<Record<string, keyof DiagnosisFormData>> = {
+  语文: 'chinese',
+  数学: 'math',
+  英语: 'english',
+  物理: 'physics',
+  化学: 'chemistry',
+  生物: 'biology',
+  历史: 'history',
+  地理: 'geography',
+  政治: 'politics',
+};
+
 const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   onSubmit,
   isGenerating,
@@ -372,6 +385,15 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
       ].filter(Boolean).join('；');
       const current = form.getValues('problemDesc');
       if (!current?.trim()) form.setValue('problemDesc', hint);
+    }
+    if (stageProfile.scoresOverview) {
+      const parsedScores = parseScoreOverviewToSubjectScores(stageProfile.scoresOverview);
+      for (const [label, score] of Object.entries(parsedScores)) {
+        const fieldName = SUBJECT_LABEL_TO_FIELD[label];
+        if (fieldName) {
+          form.setValue(fieldName, score);
+        }
+      }
     }
     queueMicrotask(() => {
       applyingProfileRef.current = false;

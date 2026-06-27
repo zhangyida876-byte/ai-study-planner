@@ -789,6 +789,7 @@ const Plan: React.FC = () => {
     if (fill.careerIntent) setCareerIntent(fill.careerIntent);
     if (fill.boardingType) setBoardingType(fill.boardingType);
     if (fill.examMode) setExamMode(fill.examMode);
+    if (fill.scores && Object.keys(fill.scores).length > 0) setScores(fill.scores);
     if (fill.examYear) setExamYear(fill.examYear);
     queueMicrotask(() => {
       applyingProfileRef.current = false;

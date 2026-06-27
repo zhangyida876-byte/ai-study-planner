@@ -40,8 +40,8 @@ const FEATURES: StageFeatureConfig[] = [
   },
   {
     slug: 'knowledge',
-    label: '知识点查询解读',
-    description: '按地区/年级/版本查询，或反向检索知识点',
+    label: '知识点&痛点查询',
+    description: '按地区/年级/版本查询知识点，并定位学习卡点',
     pathSuffix: 'knowledge',
   },
   {

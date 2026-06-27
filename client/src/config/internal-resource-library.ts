@@ -59,6 +59,14 @@ const MODULE_RULES: Record<InternalModuleKey, string[]> = {
   ],
 };
 
+const OBJECTION_HANDLING_DOC: string[] = [
+  '异议处理文档要点：先确认家长担心的是“价格、效果、时间还是孩子配合度”，不要混答。',
+  '异议处理文档要点：回应价格时先回到目标收益，再给可执行起步方案和复盘节点。',
+  '异议处理文档要点：回应效果时必须说“可追踪指标 + 周复盘动作”，禁止空口保证提分。',
+  '异议处理文档要点：回应孩子不配合时，先降门槛再提要求，先完成再完美。',
+  '异议处理文档要点：收口必须给下一步动作（本周体验、样题诊断、复盘时间）。',
+];
+
 const SCRIPT_ANCHOR: Record<StageSlug, Record<InternalModuleKey, string>> = {
   elementary: {
     diagnosis: '先把学习兴趣和基础习惯稳住，再谈提分速度。',
@@ -95,4 +103,10 @@ export function getInternalMaterialContext(input: {
 
 export function getInternalScriptAnchor(stageSlug: StageSlug, module: InternalModuleKey): string {
   return SCRIPT_ANCHOR[stageSlug][module];
+}
+
+export function getObjectionHandlingMaterial(limit = 8): string {
+  return OBJECTION_HANDLING_DOC.slice(0, limit)
+    .map((line, index) => `${index + 1}. ${line}`)
+    .join('\n');
 }

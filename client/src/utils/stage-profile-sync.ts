@@ -1,5 +1,6 @@
 import type { StageProfile } from '@client/src/types/stage-profile';
 import { formatProfileRegion } from '@client/src/types/stage-profile';
+import { parseScoreOverviewToSubjectScores } from '@client/src/utils/score-overview';
 
 /** 省 / 市 / 区县 → 模块内 region 文本（空格分隔，与 Plan/Diagnosis 一致） */
 export function buildRegionTextFromProfile(profile: Pick<StageProfile, 'province' | 'city' | 'county'>): string {
@@ -29,6 +30,7 @@ export function getPlanAutofillFromProfile(profile: StageProfile) {
     careerIntent: profile.careerIntent,
     boardingType: profile.boardingType,
     examMode: profile.examMode,
+    scores: parseScoreOverviewToSubjectScores(profile.scoresOverview || ''),
     examYear,
   };
 }

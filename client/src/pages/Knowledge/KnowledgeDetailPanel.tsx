@@ -102,6 +102,35 @@ function getExamProb(detail: KnowledgePoint, stageSlug?: StageSlug): { label: st
   return { label: '中频', percent: 40, color: 'bg-pen-blue/50', title };
 }
 
+function buildPainPointHints(detail: KnowledgePoint): string[] {
+  const hints: string[] = [];
+  const chapterText = `${detail.chapter} ${detail.name}`.replace(/\s+/g, '');
+  if (chapterText.includes('一次函数')) {
+    hints.push('常卡在“方程建模”：题目读完不知道该设哪个未知数，式子列不出来。');
+    hints.push('常卡在“交点处理”：图像交点与方程组关系不清，代入后容易算错。');
+  } else if (detail.subject.includes('数学')) {
+    hints.push('常卡在“审题转条件”：已知条件和目标之间缺中间步骤，导致无从下手。');
+    hints.push('常卡在“步骤完整性”：思路有但计算/推导断层，丢过程分。');
+  } else if (detail.subject.includes('英语')) {
+    hints.push('常卡在“句子结构识别”：长难句主干抓不住，选项判断摇摆。');
+    hints.push('常卡在“词义语境匹配”：背过单词但放到语篇里不会用。');
+  } else if (detail.subject.includes('语文')) {
+    hints.push('常卡在“题干关键词定位”：问题问法没拆开，答案点找不全。');
+    hints.push('常卡在“组织表达”：有想法但答题语言不够规范，失分明显。');
+  } else {
+    hints.push('常卡在“概念迁移”：会背定义，但遇到综合题不会灵活调用。');
+    hints.push('常卡在“步骤衔接”：单点会做，串联到完整解题链条时断档。');
+  }
+
+  const mistakePieces = (detail.content.commonMistakes || '')
+    .replace(/\s+/g, ' ')
+    .split(/[。；!?？]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (mistakePieces[0]) hints.push(`来自当前错因：${mistakePieces[0]}`);
+  return hints.slice(0, 3);
+}
+
 const AIAnalysisSection: React.FC<{
   detail: KnowledgePoint;
   stageSlug?: StageSlug;
@@ -212,6 +241,7 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
 
   const importance = getImportance(detail);
   const examProb = getExamProb(detail, stageSlug);
+  const painPoints = buildPainPointHints(detail);
   const effectiveStageSlug: StageSlug = stageSlug || 'middle';
   const buildKnowledgeReferenceScript = () =>
     buildReferenceScript([
@@ -276,6 +306,17 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
           {examProb.percent}%
         </div>
       </div>
+
+      <WobblyCard variant="yellow" wobblyIndex={30} hoverable={false} className="p-4">
+        <h3 className="font-marker text-sm font-bold">学习该知识点最难最卡的</h3>
+        <div className="mt-2 space-y-1.5">
+          {painPoints.map((item) => (
+            <p key={item} className="font-hand rounded border border-ink/20 bg-white/70 px-2.5 py-1.5 text-xs leading-relaxed">
+              - {item}
+            </p>
+          ))}
+        </div>
+      </WobblyCard>
 
       <KnowledgeGraph detail={detail} stageSlug={stageSlug} />
 
