@@ -5,6 +5,7 @@ import {
   GraduationCap,
   BookOpen,
   CalendarDays,
+  MessageCircleMore,
   ArrowLeft,
 } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
@@ -19,6 +20,7 @@ const FEATURE_ICONS = {
   plan: GraduationCap,
   knowledge: BookOpen,
   'study-plan': CalendarDays,
+  advice: MessageCircleMore,
 } as const;
 
 const StageHome: React.FC = () => {

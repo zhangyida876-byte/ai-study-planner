@@ -9,6 +9,7 @@ import Diagnosis from './pages/Diagnosis/Diagnosis';
 import Plan from './pages/Plan/Plan';
 import Knowledge from './pages/Knowledge/Knowledge';
 import StudyPlan from './pages/StudyPlan/StudyPlan';
+import Advice from './pages/Advice/Advice';
 import { isStageSlug } from './config/stages';
 
 const StageGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -61,6 +62,14 @@ const RoutesComponent = () => {
           element={
             <StageGuard>
               <StudyPlan />
+            </StageGuard>
+          }
+        />
+        <Route
+          path=":stage/advice"
+          element={
+            <StageGuard>
+              <Advice />
             </StageGuard>
           }
         />

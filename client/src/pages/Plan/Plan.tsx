@@ -20,7 +20,6 @@ import {
   streamPolicySearch,
   fetchSchoolScoreByName,
   buildScoresText,
-  buildPolicyText,
   buildPlanAdditionalInfo,
   type PlanFormContext,
 } from '@client/src/api/plugins';
@@ -67,6 +66,42 @@ function compactSearchPolicyText(content: string): string {
     .filter(Boolean)
     .filter((line) => !line.startsWith('```'));
   return lines.slice(0, 10).join('\n');
+}
+
+function buildCompactPolicyContext(input: {
+  policy: AdmissionPolicy | null;
+  examType: ExamType;
+  totalScore: number;
+  targetScore?: number;
+}): string {
+  const { policy, examType, totalScore, targetScore } = input;
+  if (!policy) return '暂无该地区政策数据';
+  const lines = [...policy.admissionLines].sort((a, b) => a.score - b.score);
+  const nearest = lines
+    .map((line) => ({
+      ...line,
+      diff: Math.abs(line.score - (targetScore ?? totalScore)),
+    }))
+    .sort((a, b) => a.diff - b.diff)
+    .slice(0, 5);
+
+  const structure = Object.entries(policy.scoreStructure)
+    .map(([subject, score]) => `${subject}${score}分`)
+    .slice(0, 8)
+    .join('、');
+  const lineText = nearest.map((line) => `${line.school} ${line.score}分`).join('；');
+  const policySummary = summarizePolicyText(policy.policyContent)
+    .replace(/^- /gm, '')
+    .split('\n')
+    .slice(0, 2)
+    .join('；');
+
+  return [
+    `${examType}总分：${policy.totalScore}分`,
+    `科目结构：${structure}`,
+    `与你当前分数最相关录取线：${lineText}`,
+    `政策关键点：${policySummary || '以官方最新发布为准'}`,
+  ].join('\n');
 }
 
 interface SubjectGapItem {
@@ -872,13 +907,12 @@ const Plan: React.FC = () => {
         boardingType: boardingType || undefined,
       };
       const scoresText = buildScoresText(scores, scoreMaxValues);
-      const policyText = buildPolicyText(
-        currentPolicy?.totalScore || 0,
-        currentPolicy?.scoreStructure || {},
-        currentPolicy?.admissionLines || [],
-        currentPolicy?.policyContent || '',
+      const policyText = buildCompactPolicyContext({
+        policy: currentPolicy,
         examType,
-      );
+        totalScore,
+        targetScore,
+      });
       const additionalInfo = buildPlanAdditionalInfo(planCtx, { stageSlug, profile });
       const actionPrompt = buildGapActionPrompt(gapActionPlan);
       const highDirectionPrompt =

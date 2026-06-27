@@ -2,7 +2,7 @@ import type { EducationStage } from '@client/src/api/plugins';
 
 export type StageSlug = 'elementary' | 'middle' | 'high';
 
-export type FeatureSlug = 'diagnosis' | 'plan' | 'knowledge' | 'study-plan';
+export type FeatureSlug = 'diagnosis' | 'plan' | 'knowledge' | 'study-plan' | 'advice';
 
 export interface StageFeatureConfig {
   slug: FeatureSlug;
@@ -49,6 +49,12 @@ const FEATURES: StageFeatureConfig[] = [
     label: '个性化学习规划',
     description: '结合课表与时间生成可执行周计划与日安排',
     pathSuffix: 'study-plan',
+  },
+  {
+    slug: 'advice',
+    label: '建议话术',
+    description: '汇总四大模块结果，生成可直接沟通的话术建议',
+    pathSuffix: 'advice',
   },
 ];
 

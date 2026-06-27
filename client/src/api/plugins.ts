@@ -524,6 +524,8 @@ export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBu
   } else {
     parts.push('输出要求：政策信息点到为止，重点回答“能上什么学校、差多少分、怎么补分、关键时间点”');
   }
+  parts.push('篇幅要求：整体控制在 600~900 字，先结论后依据，禁止同义重复');
+  parts.push('结构要求：最多 5 个小节，每节不超过 3 条要点');
   parts.push(`时间要求：必须使用${latestYear}年及之后的最新时间节点，若缺少官方数据请明确说明`);
   parts.push('表达要求：用家长易懂的大白话，不使用晦涩术语');
   const base = parts.join('；');

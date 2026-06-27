@@ -35,6 +35,7 @@ import {
   GraduationCap,
   BookOpen,
   CalendarDays,
+  MessageCircleMore,
   LogOut,
   LogIn,
   Pen,
@@ -58,6 +59,7 @@ const FEATURE_ICONS: Record<FeatureSlug, React.FC<{ className?: string }>> = {
   plan: GraduationCap,
   knowledge: BookOpen,
   'study-plan': CalendarDays,
+  advice: MessageCircleMore,
 };
 
 function resolveFeatureFromPath(pathname: string, stage: StageSlug | null): FeatureSlug | null {
@@ -66,6 +68,7 @@ function resolveFeatureFromPath(pathname: string, stage: StageSlug | null): Feat
   if (pathname.includes('/plan') && !pathname.includes('/study-plan')) return 'plan';
   if (pathname.includes('/knowledge')) return 'knowledge';
   if (pathname.includes('/study-plan')) return 'study-plan';
+  if (pathname.includes('/advice')) return 'advice';
   return null;
 }
 
