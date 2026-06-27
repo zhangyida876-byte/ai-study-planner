@@ -60,13 +60,21 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   const [schoolCandidates, setSchoolCandidates] = useState<SchoolCandidate[]>([]);
   const [searchingSchool, setSearchingSchool] = useState(false);
   const [matchingScore, setMatchingScore] = useState(false);
+  const [citySearch, setCitySearch] = useState('');
+  const [useCustomCity, setUseCustomCity] = useState(false);
+  const [customCity, setCustomCity] = useState('');
 
   useEffect(() => {
     setDraft(profile);
     setSchoolKeyword(profile.targetSchool || '');
+    const citiesOfProvince = PROVINCE_CITIES[profile.province] || [];
+    const cityInList = citiesOfProvince.includes(profile.city);
+    setUseCustomCity(Boolean(profile.city) && !cityInList);
+    setCustomCity(cityInList ? '' : (profile.city || ''));
   }, [profile.updatedAt]);
 
   const cities = PROVINCE_CITIES[draft.province] || [];
+  const filteredCities = cities.filter((city) => !citySearch || city.includes(citySearch));
   const safeCity = cities.includes(draft.city) ? draft.city : '';
   const safeGrade = stageConfig.grades.includes(draft.grade) ? draft.grade : '';
 
@@ -75,15 +83,16 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   };
 
   const handleSave = () => {
+    const finalCity = useCustomCity ? customCity.trim() : draft.city;
     if (!draft.province) {
       toast.error('请选择省份');
       return;
     }
-    if (!draft.city) {
+    if (!finalCity) {
       toast.error('请选择城市');
       return;
     }
-    onSave(draft);
+    onSave({ ...draft, city: finalCity });
     toast.success('已保存个人信息，下面 4 个模块会自动带入');
   };
 
@@ -121,17 +130,19 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   }, [schoolCandidates, currentTotalScore]);
 
   const handleSearchSchools = async () => {
-    if (!draft.province || !draft.city) {
+    const finalCity = useCustomCity ? customCity.trim() : draft.city;
+    if (!draft.province || !finalCity) {
       toast.error('请先选择省份和城市');
       return;
     }
+    const keyword = schoolKeyword.trim();
     setSearchingSchool(true);
     try {
-      const region = [draft.province, draft.city].join(' ');
+      const region = [draft.province, finalCity].join(' ');
       let candidates = await searchSchoolCandidates({
         stage: stageConfig.stage,
         region,
-        keyword: schoolKeyword || undefined,
+        keyword: keyword || undefined,
         examYear: new Date().getFullYear(),
         limit: 10,
       });
@@ -141,7 +152,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         try {
           const db = await policyApi.searchSchools(region);
           const dbCandidates = db.schools
-            .filter((item) => !schoolKeyword || item.name.includes(schoolKeyword))
+            .filter((item) => !keyword || item.name.includes(keyword))
             .map((item) => ({ name: item.name, score: item.score > 0 ? item.score : undefined }))
             .slice(0, 10);
           if (dbCandidates.length > 0) {
@@ -158,7 +169,32 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       }
 
       setSchoolCandidates(candidates.slice(0, 10));
-      if (candidates.length === 0) toast.info('未查到匹配学校，可直接输入学校名称');
+      if (keyword) {
+        patch({ school: keyword, targetSchool: keyword });
+      }
+      // 支持“手动输入学校名”后直接联网匹配分数线
+      if (keyword && stageConfig.slug !== 'elementary') {
+        setMatchingScore(true);
+        try {
+          const score = await fetchSchoolScoreByName({
+            region,
+            schoolName: keyword,
+            examType: stageConfig.slug === 'high' ? '高考' : '中考',
+          });
+          if (score != null) {
+            patch({ targetScore: score });
+            toast.success(`已联网匹配分数线：${score}分`);
+          } else {
+            toast.info('已联网搜索学校，暂未匹配到明确分数线');
+          }
+        } catch {
+          toast.error('联网匹配分数线失败，请稍后重试');
+        } finally {
+          setMatchingScore(false);
+        }
+      } else if (candidates.length === 0) {
+        toast.info('未查到匹配学校，可直接输入学校名称');
+      }
     } catch {
       toast.error('联网搜索学校失败，请稍后重试');
     } finally {
@@ -217,7 +253,15 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         </div>
         <div>
           <Label className="font-hand">省份 *</Label>
-          <Select value={toSelectValue(draft.province)} onValueChange={(v) => patch({ province: v, city: '', county: '' })}>
+          <Select
+            value={toSelectValue(draft.province)}
+            onValueChange={(v) => {
+              setUseCustomCity(false);
+              setCustomCity('');
+              setCitySearch('');
+              patch({ province: v, city: '', county: '' });
+            }}
+          >
             <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择省份" /></SelectTrigger>
             <SelectContent>
               {PROVINCES.map((p) => (
@@ -228,14 +272,48 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         </div>
         <div>
           <Label className="font-hand">城市 *</Label>
-          <Select value={toSelectValue(safeCity)} onValueChange={(v) => patch({ city: v })} disabled={!draft.province}>
+          <Select
+            value={useCustomCity ? '__custom_city__' : toSelectValue(safeCity)}
+            onValueChange={(v) => {
+              if (v === '__custom_city__') {
+                setUseCustomCity(true);
+                patch({ city: customCity.trim() });
+                return;
+              }
+              setUseCustomCity(false);
+              setCustomCity('');
+              patch({ city: v });
+            }}
+            disabled={!draft.province}
+          >
             <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择城市" /></SelectTrigger>
             <SelectContent>
-              {cities.map((c) => (
+              <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
+                <Input
+                  placeholder="筛选城市..."
+                  value={citySearch}
+                  onChange={(e) => setCitySearch(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+              {filteredCities.map((c) => (
                 <SelectItem key={c} value={c}>{c}</SelectItem>
               ))}
+              <SelectItem value="__custom_city__">手动输入城市...</SelectItem>
             </SelectContent>
           </Select>
+          {useCustomCity && (
+            <Input
+              className="font-hand mt-2"
+              value={customCity}
+              onChange={(e) => {
+                const next = e.target.value;
+                setCustomCity(next);
+                patch({ city: next });
+              }}
+              placeholder="请输入城市名称"
+            />
+          )}
         </div>
         <div>
           <Label className="font-hand">区县（选填）</Label>
