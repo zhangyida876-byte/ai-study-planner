@@ -211,12 +211,34 @@ function isScriptMatched(query: string, script: ObjectionHandlingScript): boolea
   });
 }
 
-export function matchObjectionHandlingScript(query: string, limit = 1): string {
+function scoreScriptMatch(query: string, script: ObjectionHandlingScript): number {
+  const normalized = normalizeObjectionQuery(query);
+  if (!normalized) return 0;
+  let score = 0;
+  for (const keyword of script.keywords) {
+    const key = normalizeObjectionQuery(keyword);
+    if (!key) continue;
+    if (normalized.includes(key)) score += 10;
+    else if (key.includes(normalized) || normalized.includes(key.slice(0, 2))) score += 2;
+  }
+  return score;
+}
+
+export function matchObjectionHandlingScript(query: string): string {
   const matched = OBJECTION_HANDLING_SCRIPTS.filter((script) => isScriptMatched(query, script))
-    .slice(0, limit)
-    .map((script) => script.content.trim())
+    .map((script) => ({
+      title: script.title,
+      content: script.content.trim(),
+      score: scoreScriptMatch(query, script),
+    }))
+    .sort((a, b) => b.score - a.score)
     .filter(Boolean);
-  if (matched.length > 0) return matched.join('\n\n');
+
+  if (matched.length > 0) {
+    return matched
+      .map((item, index) => `【话术选项${index + 1}｜${item.title}】\n${item.content}`)
+      .join('\n\n');
+  }
   return '';
 }
 
