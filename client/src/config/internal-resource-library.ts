@@ -155,9 +155,18 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     title: '版本不同步',
     source: '异议处理',
     sourceUrl: 'https://guanghe.feishu.cn/wiki/VTbdwLAoUiPbigkoedlc2zyPng0',
-    keywords: ['版本不同步', '教材不一样', '章节对不上', '人教版'],
+    keywords: ['版本不同步', '教材不一样', '章节对不上', '人教版', '英语版本', '小学英语版本', '英语不同步'],
     content:
       '我们英语不是把每个版本课文同步一遍，我们是注重单词短语积累、语法时态从句这些重点难点、完形填空和阅读理解做题技巧学习。生物地理选用的是考点和知识点最齐全的人教版，和所学版本核心考点都是一样的，只是章节顺序不一样，洋葱本身就是查漏补缺，直接搜索到对应章节知识点题型即可。',
+  },
+  {
+    id: 'child-initiative-weak',
+    title: '孩子学习主动性差/自驱力不足',
+    source: '异议处理---案例提取',
+    sourceUrl: 'https://guanghe.feishu.cn/docx/Csn4d6brBo1nS6xoTdjcm8wznQe',
+    keywords: ['学习主动性差', '主动性差', '自驱力不够', '不爱读书', '不主动学习'],
+    content:
+      '其实我跟你说哈，现实里有多少孩子是自觉的呀，没几个吧。这时候咱们肯定得给孩子做规划、做选择。孩子在这个年纪，很多都不懂啥叫坚持。我见过好多成功培养孩子的家长，都是在后面一直鼓励孩子学习的。并且洋葱课程5到8分钟讲一个知识点，孩子哪没学会就学哪，不会给孩子造成学习负担。孩子排斥的是很多补课类辅导班，洋葱更像一个工具，哪个知识点不会就直接定位课程，5-8分钟解决一个知识点。',
   },
   {
     id: 'compare-learning-machine',
@@ -202,24 +211,41 @@ function normalizeObjectionQuery(query: string): string {
   return query.replace(/\s+/g, '').toLowerCase();
 }
 
+function extractQueryTerms(query: string): string[] {
+  const tokens = query.match(/[\u4e00-\u9fa5a-zA-Z0-9]+/g) || [];
+  const stopWords = new Set(['孩子', '家长', '这个', '那个', '怎么', '问题', '一下', '一下子']);
+  return [...new Set(tokens.map((t) => t.trim()).filter((t) => t.length >= 2 && !stopWords.has(t)))];
+}
+
+function buildScriptHaystack(script: ObjectionHandlingScript): string {
+  return normalizeObjectionQuery(`${script.title} ${script.keywords.join(' ')} ${script.content}`);
+}
+
 function isScriptMatched(query: string, script: ObjectionHandlingScript): boolean {
   const normalized = normalizeObjectionQuery(query);
   if (!normalized) return false;
-  return script.keywords.some((keyword) => {
-    const key = normalizeObjectionQuery(keyword);
-    return key.length > 0 && normalized.includes(key);
-  });
+  const haystack = buildScriptHaystack(script);
+  if (haystack.includes(normalized)) return true;
+  const terms = extractQueryTerms(query).map(normalizeObjectionQuery);
+  return terms.some((term) => term.length >= 2 && haystack.includes(term));
 }
 
 function scoreScriptMatch(query: string, script: ObjectionHandlingScript): number {
   const normalized = normalizeObjectionQuery(query);
   if (!normalized) return 0;
+  const haystack = buildScriptHaystack(script);
+  const terms = extractQueryTerms(query).map(normalizeObjectionQuery);
   let score = 0;
+  if (haystack.includes(normalized)) score += 30;
+  for (const term of terms) {
+    if (term.length < 2) continue;
+    if (haystack.includes(term)) score += 6;
+  }
   for (const keyword of script.keywords) {
     const key = normalizeObjectionQuery(keyword);
     if (!key) continue;
     if (normalized.includes(key)) score += 10;
-    else if (key.includes(normalized) || normalized.includes(key.slice(0, 2))) score += 2;
+    else if (terms.some((term) => key.includes(term) || term.includes(key))) score += 3;
   }
   return score;
 }
