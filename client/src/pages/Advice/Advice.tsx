@@ -14,7 +14,7 @@ import { loadModuleSession } from '@client/src/utils/module-session';
 import {
   getInternalMaterialContext,
   getInternalScriptAnchor,
-  getObjectionHandlingMaterial,
+  matchObjectionHandlingScript,
 } from '@client/src/config/internal-resource-library';
 import { streamDiagnosisReport, streamPolicySearch } from '@client/src/api/plugins';
 import { buildPromptTemplate } from '@client/src/utils/advice-engine';
@@ -93,8 +93,6 @@ const Advice: React.FC = () => {
       }),
     [stageSlug],
   );
-  const objectionMaterial = useMemo(() => getObjectionHandlingMaterial(8), []);
-
   const moduleContext = useMemo(
     () =>
       [
@@ -205,18 +203,14 @@ const Advice: React.FC = () => {
     setLoadingObjection(true);
     setObjectionAnswer('');
     try {
-      await generateAdviceByQuery({
-        query: objectionQuery.trim(),
-        scene: '异议处理话术（必须依据异议处理文档口径）',
-        baseMaterial: `${internalMaterial}\n${objectionMaterial}`,
-        onChunk: setObjectionAnswer,
-      });
+      const matched = matchObjectionHandlingScript(objectionQuery.trim());
+      setObjectionAnswer(matched);
     } catch {
       toast.error('异议处理话术生成失败，请重试');
     } finally {
       setLoadingObjection(false);
     }
-  }, [generateAdviceByQuery, internalMaterial, objectionMaterial, objectionQuery]);
+  }, [objectionQuery]);
 
   const handleGenerateCustom = useCallback(async () => {
     if (!customQuery.trim()) {
@@ -298,7 +292,9 @@ const Advice: React.FC = () => {
 
       <WobblyCard variant="white" decoration="tape" wobblyIndex={6} hoverable={false} className="p-5">
         <h3 className="font-marker mb-3 text-lg font-bold">异议处理</h3>
-        <p className="mb-2 text-xs text-ink/70">回答强制基于你之前添加的异议处理文档口径。</p>
+        <p className="mb-2 text-xs text-ink/70">
+          仅按已上传异议文档做关键词匹配直出：不联网、不分析、不关联学情，仅输出文档话术。
+        </p>
         <div className="flex gap-2">
           <Input
             value={objectionQuery}
