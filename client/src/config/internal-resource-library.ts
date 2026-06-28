@@ -164,7 +164,15 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     title: '孩子学习主动性差/自驱力不足',
     source: '异议处理---案例提取',
     sourceUrl: 'https://guanghe.feishu.cn/docx/Csn4d6brBo1nS6xoTdjcm8wznQe',
-    keywords: ['学习主动性差', '主动性差', '自驱力不够', '不爱读书', '不主动学习'],
+    keywords: [
+      '学习主动性差',
+      '学习主动性',
+      '主动性差',
+      '没有学习主动性',
+      '自驱力不够',
+      '不爱读书',
+      '不主动学习',
+    ],
     content:
       '其实我跟你说哈，现实里有多少孩子是自觉的呀，没几个吧。这时候咱们肯定得给孩子做规划、做选择。孩子在这个年纪，很多都不懂啥叫坚持。我见过好多成功培养孩子的家长，都是在后面一直鼓励孩子学习的。并且洋葱课程5到8分钟讲一个知识点，孩子哪没学会就学哪，不会给孩子造成学习负担。孩子排斥的是很多补课类辅导班，洋葱更像一个工具，哪个知识点不会就直接定位课程，5-8分钟解决一个知识点。',
   },
@@ -214,7 +222,12 @@ function normalizeObjectionQuery(query: string): string {
 function extractQueryTerms(query: string): string[] {
   const tokens = query.match(/[\u4e00-\u9fa5a-zA-Z0-9]+/g) || [];
   const stopWords = new Set(['孩子', '家长', '这个', '那个', '怎么', '问题', '一下', '一下子']);
-  return [...new Set(tokens.map((t) => t.trim()).filter((t) => t.length >= 2 && !stopWords.has(t)))];
+  const baseTerms = tokens.map((t) => t.trim()).filter((t) => t.length >= 2 && !stopWords.has(t));
+  const splitTerms = baseTerms
+    .flatMap((term) => term.split(/还是|或者|以及|并且|但是|没有|没|不是|不|呀|呢|吗|么/))
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !stopWords.has(t));
+  return [...new Set([...baseTerms, ...splitTerms])];
 }
 
 function buildScriptHaystack(script: ObjectionHandlingScript): string {
@@ -227,7 +240,14 @@ function isScriptMatched(query: string, script: ObjectionHandlingScript): boolea
   const haystack = buildScriptHaystack(script);
   if (haystack.includes(normalized)) return true;
   const terms = extractQueryTerms(query).map(normalizeObjectionQuery);
-  return terms.some((term) => term.length >= 2 && haystack.includes(term));
+  return terms.some((term) => {
+    if (term.length < 2) return false;
+    if (haystack.includes(term)) return true;
+    return script.keywords.some((keyword) => {
+      const key = normalizeObjectionQuery(keyword);
+      return key.length > 0 && (key.includes(term) || term.includes(key));
+    });
+  });
 }
 
 function scoreScriptMatch(query: string, script: ObjectionHandlingScript): number {
@@ -265,7 +285,7 @@ export function matchObjectionHandlingScript(query: string): string {
       .map((item, index) => `【话术选项${index + 1}｜${item.title}】\n${item.content}`)
       .join('\n\n');
   }
-  return '';
+  return '未匹配到相关异议话术，请更换关键词重试（例如：学习主动性差、英语版本不同步、住校没时间、价格太贵）。';
 }
 
 const SCRIPT_ANCHOR: Record<StageSlug, Record<InternalModuleKey, string>> = {
