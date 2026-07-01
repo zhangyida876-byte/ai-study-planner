@@ -41,6 +41,7 @@ import { clearModuleSession, loadModuleSession, saveModuleSession } from '@clien
 import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
 import { getInternalScriptAnchor } from '@client/src/config/internal-resource-library';
 import {
+  createCustomRegionOption,
   filterRegionOptions,
   findOptionByName,
   loadCities,
@@ -640,6 +641,10 @@ const Plan: React.FC = () => {
   const [provinceSearch, setProvinceSearch] = useState('');
   const [citySearch, setCitySearch] = useState('');
   const [countySearch, setCountySearch] = useState('');
+  const [cityLoadFailed, setCityLoadFailed] = useState(false);
+  const [countyLoadFailed, setCountyLoadFailed] = useState(false);
+  const [customCityMode, setCustomCityMode] = useState(false);
+  const [customCountyMode, setCustomCountyMode] = useState(false);
   const [customRegionText, setCustomRegionText] = useState('');
 
   const [scores, setScores] = useState<Record<string, number>>({});
@@ -698,6 +703,7 @@ const Plan: React.FC = () => {
     let cancelled = false;
     const fetchCities = async () => {
       setRegionLoading(true);
+      setCityLoadFailed(false);
       try {
         const items = await loadCities(province);
         if (cancelled) return;
@@ -705,7 +711,7 @@ const Plan: React.FC = () => {
       } catch {
         if (!cancelled) {
           setCityOptions([]);
-          toast.error('城市列表联网加载失败，请稍后重试');
+          setCityLoadFailed(true);
         }
       } finally {
         if (!cancelled) setRegionLoading(false);
@@ -723,10 +729,14 @@ const Plan: React.FC = () => {
       return;
     }
     const city = findOptionByName(cityOptions, selectedCity);
-    if (!city) return;
+    if (!city) {
+      setCountyOptions([]);
+      return;
+    }
     let cancelled = false;
     const fetchCounties = async () => {
       setRegionLoading(true);
+      setCountyLoadFailed(false);
       try {
         const items = await loadCounties(city);
         if (cancelled) return;
@@ -734,7 +744,7 @@ const Plan: React.FC = () => {
       } catch {
         if (!cancelled) {
           setCountyOptions([]);
-          toast.error('区县列表联网加载失败，请稍后重试');
+          setCountyLoadFailed(true);
         }
       } finally {
         if (!cancelled) setRegionLoading(false);
@@ -747,8 +757,24 @@ const Plan: React.FC = () => {
   }, [selectedCity, cityOptions, isCustomRegion]);
 
   const filteredProvinces = filterRegionOptions(provinceOptions, provinceSearch);
-  const filteredCities = filterRegionOptions(cityOptions, citySearch);
-  const filteredCounties = filterRegionOptions(countyOptions, countySearch);
+  const filteredCities = filterRegionOptions(
+    selectedCity && !findOptionByName(cityOptions, selectedCity)
+      ? [...cityOptions, createCustomRegionOption(selectedCity, 'city')]
+      : cityOptions,
+    citySearch,
+  );
+  const filteredCounties = filterRegionOptions(
+    county && !findOptionByName(countyOptions, county)
+      ? [...countyOptions, createCustomRegionOption(county, 'county')]
+      : countyOptions,
+    countySearch,
+  );
+  const selectedCityValue = customCityMode || (selectedCity && !findOptionByName(cityOptions, selectedCity))
+    ? '__custom_city__'
+    : toSelectValue(selectedCity);
+  const selectedCountyValue = customCountyMode || (county && !findOptionByName(countyOptions, county))
+    ? '__custom_county__'
+    : toSelectValue(county);
   const filteredPolicies = useMemo(() => {
     if (examType === '小升初') return [];
     return policies.filter((item) => {
@@ -1113,6 +1139,8 @@ const Plan: React.FC = () => {
       setCounty('');
       setCityOptions([]);
       setCountyOptions([]);
+      setCustomCityMode(false);
+      setCustomCountyMode(false);
     } else {
       setIsCustomRegion(false);
       setSelectedProvince(val);
@@ -1120,6 +1148,10 @@ const Plan: React.FC = () => {
       setCounty('');
       setCitySearch('');
       setCountySearch('');
+      setCityLoadFailed(false);
+      setCountyLoadFailed(false);
+      setCustomCityMode(false);
+      setCustomCountyMode(false);
       setRegion(val);
       setReportContent('');
       setTimelineContent('');
@@ -1130,10 +1162,13 @@ const Plan: React.FC = () => {
 
   const handleCityChange = useCallback((val: string): void => {
     setProfileDirty(true);
-    setSelectedCity(val);
+    const next = val === '__custom_city__' ? '' : val;
+    setSelectedCity(next);
     setCounty('');
     setCountySearch('');
-    const r = [selectedProvince, val].filter(Boolean).join(' ');
+    setCustomCityMode(val === '__custom_city__');
+    setCustomCountyMode(false);
+    const r = [selectedProvince, next].filter(Boolean).join(' ');
     setRegion(r);
     setReportContent('');
     setTimelineContent('');
@@ -1143,8 +1178,10 @@ const Plan: React.FC = () => {
 
   const handleCountyChange = useCallback((val: string): void => {
     setProfileDirty(true);
-    setCounty(val);
-    const r = [selectedProvince, selectedCity, val].filter(Boolean).join(' ');
+    const next = val === '__custom_county__' ? '' : val;
+    setCounty(next);
+    setCustomCountyMode(val === '__custom_county__');
+    const r = [selectedProvince, selectedCity, next].filter(Boolean).join(' ');
     setRegion(r);
     setReportContent('');
     setTimelineContent('');
@@ -1350,6 +1387,11 @@ const Plan: React.FC = () => {
         {/* Top Input Bar */}
         <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false} className="p-5">
           <div className="space-y-4">
+            <div className="rounded-lg border-2 border-dashed border-pen-blue/30 bg-pen-blue/5 px-3 py-2 text-sm text-ink/75">
+              当前地区：{region || '未选择'}
+              {regionLoading && <span className="ml-2 text-pen-blue">正在加载地区列表...</span>}
+              {policySearchContent && <span className="ml-2 text-emerald-700">已获取联网考情/政策信息</span>}
+            </div>
             {/* Row 1: Region + Exam Date + Gaokao Mode */}
             <div className="flex flex-wrap items-end gap-4">
               {/* Region cascade */}
@@ -1374,7 +1416,7 @@ const Plan: React.FC = () => {
                 {!isCustomRegion && selectedProvince && (
                   <div className="w-28">
                     <label className="mb-1 block text-sm font-bold text-ink">市/区</label>
-                    <Select value={toSelectValue(selectedCity)} onValueChange={handleCityChange}>
+                    <Select value={selectedCityValue} onValueChange={handleCityChange}>
                       <SelectTrigger className="font-hand">
                         <SelectValue placeholder={regionLoading ? '联网加载中...' : '市/区'} />
                       </SelectTrigger>
@@ -1388,14 +1430,29 @@ const Plan: React.FC = () => {
                           />
                         </div>
                         {filteredCities.map((c) => (<SelectItem key={c.adcode} value={c.name}>{c.name}</SelectItem>))}
+                        <SelectItem value="__custom_city__">自定义城市/盟/州...</SelectItem>
                       </SelectContent>
                     </Select>
+                    {(customCityMode || cityLoadFailed || (selectedCity && !findOptionByName(cityOptions, selectedCity))) && (
+                      <Input
+                        value={selectedCity}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setProfileDirty(true);
+                          setSelectedCity(next);
+                          setCounty('');
+                          setRegion([selectedProvince, next].filter(Boolean).join(' '));
+                        }}
+                        placeholder={cityLoadFailed ? '城市联网失败，可直接输入' : '输入城市/盟/州'}
+                        className="font-hand mt-2"
+                      />
+                    )}
                   </div>
                 )}
                 {!isCustomRegion && selectedCity && (
                   <div className="w-28">
                     <label className="mb-1 block text-sm font-bold text-ink">区/县</label>
-                    <Select value={toSelectValue(county)} onValueChange={handleCountyChange}>
+                    <Select value={selectedCountyValue} onValueChange={handleCountyChange}>
                       <SelectTrigger className="font-hand">
                         <SelectValue placeholder={regionLoading ? '联网加载中...' : '区/县'} />
                       </SelectTrigger>
@@ -1411,8 +1468,22 @@ const Plan: React.FC = () => {
                         {filteredCounties.map((item) => (
                           <SelectItem key={item.adcode} value={item.name}>{item.name}</SelectItem>
                         ))}
+                        <SelectItem value="__custom_county__">手动输入区县...</SelectItem>
                       </SelectContent>
                     </Select>
+                    {(customCountyMode || countyLoadFailed || (county && !findOptionByName(countyOptions, county))) && (
+                      <Input
+                        value={county}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setProfileDirty(true);
+                          setCounty(next);
+                          setRegion([selectedProvince, selectedCity, next].filter(Boolean).join(' '));
+                        }}
+                        placeholder={countyLoadFailed ? '区县联网失败，可选填手输' : '输入区/县/旗（选填）'}
+                        className="font-hand mt-2"
+                      />
+                    )}
                   </div>
                 )}
               </div>

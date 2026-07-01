@@ -22,6 +22,7 @@ import {
 } from '@client/src/api/plugins';
 import { policy as policyApi } from '@client/src/api';
 import {
+  createCustomRegionOption,
   filterRegionOptions,
   findOptionByName,
   loadCities,
@@ -71,6 +72,11 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   const [cityOptions, setCityOptions] = useState<RegionOption[]>([]);
   const [countyOptions, setCountyOptions] = useState<RegionOption[]>([]);
   const [regionLoading, setRegionLoading] = useState(false);
+  const [cityLoadFailed, setCityLoadFailed] = useState(false);
+  const [countyLoadFailed, setCountyLoadFailed] = useState(false);
+  const [customProvinceMode, setCustomProvinceMode] = useState(false);
+  const [customCityMode, setCustomCityMode] = useState(false);
+  const [customCountyMode, setCustomCountyMode] = useState(false);
   const [provinceSearch, setProvinceSearch] = useState('');
   const [citySearch, setCitySearch] = useState('');
   const [countySearch, setCountySearch] = useState('');
@@ -110,10 +116,15 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       return;
     }
     const province = findOptionByName(provinceOptions, draft.province);
-    if (!province) return;
+    if (!province) {
+      setCityOptions([]);
+      setCountyOptions([]);
+      return;
+    }
     let cancelled = false;
     const fetchCities = async () => {
       setRegionLoading(true);
+      setCityLoadFailed(false);
       try {
         const items = await loadCities(province);
         if (cancelled) return;
@@ -121,7 +132,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       } catch {
         if (!cancelled) {
           setCityOptions([]);
-          toast.error('城市列表联网加载失败，请稍后重试');
+          setCityLoadFailed(true);
         }
       } finally {
         if (!cancelled) setRegionLoading(false);
@@ -139,10 +150,14 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       return;
     }
     const city = findOptionByName(cityOptions, draft.city);
-    if (!city) return;
+    if (!city) {
+      setCountyOptions([]);
+      return;
+    }
     let cancelled = false;
     const fetchCounties = async () => {
       setRegionLoading(true);
+      setCountyLoadFailed(false);
       try {
         const items = await loadCounties(city);
         if (cancelled) return;
@@ -150,7 +165,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       } catch {
         if (!cancelled) {
           setCountyOptions([]);
-          toast.error('区县列表联网加载失败，请稍后重试');
+          setCountyLoadFailed(true);
         }
       } finally {
         if (!cancelled) setRegionLoading(false);
@@ -163,10 +178,24 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   }, [draft.city, cityOptions]);
 
   const filteredProvinces = filterRegionOptions(provinceOptions, provinceSearch);
-  const filteredCities = filterRegionOptions(cityOptions, citySearch);
-  const filteredCounties = filterRegionOptions(countyOptions, countySearch);
-  const safeCity = cityOptions.some((item) => item.name === draft.city) ? draft.city : '';
-  const safeCounty = countyOptions.some((item) => item.name === draft.county) ? draft.county : '';
+  const filteredCities = filterRegionOptions(
+    draft.city && !findOptionByName(cityOptions, draft.city)
+      ? [...cityOptions, createCustomRegionOption(draft.city, 'city')]
+      : cityOptions,
+    citySearch,
+  );
+  const filteredCounties = filterRegionOptions(
+    draft.county && !findOptionByName(countyOptions, draft.county)
+      ? [...countyOptions, createCustomRegionOption(draft.county, 'county')]
+      : countyOptions,
+    countySearch,
+  );
+  const isCustomProvince = Boolean(draft.province) && !findOptionByName(provinceOptions, draft.province);
+  const isCustomCity = Boolean(draft.city) && !findOptionByName(cityOptions, draft.city);
+  const isCustomCounty = Boolean(draft.county) && !findOptionByName(countyOptions, draft.county);
+  const selectedProvinceValue = customProvinceMode || isCustomProvince ? '__custom_province__' : toSelectValue(draft.province);
+  const selectedCityValue = customCityMode || isCustomCity ? '__custom_city__' : toSelectValue(draft.city);
+  const selectedCountyValue = customCountyMode || isCustomCounty ? '__custom_county__' : toSelectValue(draft.county);
   const safeGrade = stageConfig.grades.includes(draft.grade) ? draft.grade : '';
 
   const patch = (partial: Partial<StageProfile>) => {
@@ -330,6 +359,11 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         <p className="font-hand text-xs text-muted-foreground">只需先填地区和目标学校，下面模块都会自动复用</p>
       </div>
 
+      <div className="mb-4 rounded-lg border-2 border-dashed border-pen-blue/30 bg-pen-blue/5 px-3 py-2 text-sm text-ink/75">
+        当前地区：{regionSummary || '未选择'}
+        {regionLoading && <span className="ml-2 text-pen-blue">正在加载地区列表...</span>}
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <Label className="font-hand">学生姓名</Label>
@@ -343,12 +377,17 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         <div>
           <Label className="font-hand">省份 *</Label>
           <Select
-            value={toSelectValue(draft.province)}
+            value={selectedProvinceValue}
             onValueChange={(v) => {
               setProvinceSearch('');
               setCitySearch('');
               setCountySearch('');
-              patch({ province: v, city: '', county: '' });
+              setCityLoadFailed(false);
+              setCountyLoadFailed(false);
+              setCustomProvinceMode(v === '__custom_province__');
+              setCustomCityMode(false);
+              setCustomCountyMode(false);
+              patch({ province: v === '__custom_province__' ? '' : v, city: '', county: '' });
             }}
           >
             <SelectTrigger className="font-hand mt-1">
@@ -366,17 +405,29 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               {filteredProvinces.map((p) => (
                 <SelectItem key={p.adcode} value={p.name}>{p.name}</SelectItem>
               ))}
+              <SelectItem value="__custom_province__">自定义省份/地区...</SelectItem>
             </SelectContent>
           </Select>
+          {(isCustomProvince || selectedProvinceValue === '__custom_province__') && (
+            <Input
+              className="font-hand mt-2"
+              value={draft.province}
+              onChange={(e) => patch({ province: e.target.value, city: '', county: '' })}
+              placeholder="输入省份/自治区/直辖市"
+            />
+          )}
         </div>
         <div>
           <Label className="font-hand">城市 *</Label>
           <Select
-            value={toSelectValue(safeCity)}
+            value={selectedCityValue}
             onValueChange={(v) => {
               setCitySearch('');
               setCountySearch('');
-              patch({ city: v, county: '' });
+              setCountyLoadFailed(false);
+              setCustomCityMode(v === '__custom_city__');
+              setCustomCountyMode(false);
+              patch({ city: v === '__custom_city__' ? '' : v, county: '' });
             }}
             disabled={!draft.province}
           >
@@ -395,12 +446,28 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               {filteredCities.map((c) => (
                 <SelectItem key={c.adcode} value={c.name}>{c.name}</SelectItem>
               ))}
+              <SelectItem value="__custom_city__">自定义城市/盟/州...</SelectItem>
             </SelectContent>
           </Select>
+          {(isCustomCity || selectedCityValue === '__custom_city__' || cityLoadFailed) && (
+            <Input
+              className="font-hand mt-2"
+              value={draft.city}
+              onChange={(e) => patch({ city: e.target.value, county: '' })}
+              placeholder={cityLoadFailed ? '城市联网失败，可直接输入城市' : '输入城市/盟/州'}
+            />
+          )}
         </div>
         <div>
           <Label className="font-hand">区县（选填）</Label>
-          <Select value={toSelectValue(safeCounty)} onValueChange={(v) => patch({ county: v })} disabled={!draft.city}>
+          <Select
+            value={selectedCountyValue}
+            onValueChange={(v) => {
+              setCustomCountyMode(v === '__custom_county__');
+              patch({ county: v === '__custom_county__' ? '' : v });
+            }}
+            disabled={!draft.city}
+          >
             <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择区县" /></SelectTrigger>
             <SelectContent>
               <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
@@ -414,8 +481,17 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               {filteredCounties.map((item) => (
                 <SelectItem key={item.adcode} value={item.name}>{item.name}</SelectItem>
               ))}
+              <SelectItem value="__custom_county__">手动输入区县...</SelectItem>
             </SelectContent>
           </Select>
+          {(isCustomCounty || selectedCountyValue === '__custom_county__' || countyLoadFailed) && (
+            <Input
+              className="font-hand mt-2"
+              value={draft.county}
+              onChange={(e) => patch({ county: e.target.value })}
+              placeholder={countyLoadFailed ? '区县联网失败，可选填手输' : '输入区/县/旗/县级市（选填）'}
+            />
+          )}
         </div>
         <div>
           <Label className="font-hand">当前年级（选填）</Label>
