@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/select';
 import type { StageConfig } from '@client/src/config/stages';
 import type { StageProfile } from '@client/src/types/stage-profile';
-import { PROVINCE_CITIES, PROVINCES } from '@client/src/pages/Plan/regionData';
 import { toSelectValue } from '@client/src/lib/utils';
 import {
   fetchSchoolScoreByName,
@@ -22,6 +21,14 @@ import {
   type SchoolCandidate,
 } from '@client/src/api/plugins';
 import { policy as policyApi } from '@client/src/api';
+import {
+  filterRegionOptions,
+  findOptionByName,
+  loadCities,
+  loadCounties,
+  loadProvinces,
+  type RegionOption,
+} from '@client/src/utils/region-network';
 
 interface StageProfileEditorProps {
   stageConfig: StageConfig;
@@ -60,22 +67,106 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   const [schoolCandidates, setSchoolCandidates] = useState<SchoolCandidate[]>([]);
   const [searchingSchool, setSearchingSchool] = useState(false);
   const [matchingScore, setMatchingScore] = useState(false);
+  const [provinceOptions, setProvinceOptions] = useState<RegionOption[]>([]);
+  const [cityOptions, setCityOptions] = useState<RegionOption[]>([]);
+  const [countyOptions, setCountyOptions] = useState<RegionOption[]>([]);
+  const [regionLoading, setRegionLoading] = useState(false);
+  const [provinceSearch, setProvinceSearch] = useState('');
   const [citySearch, setCitySearch] = useState('');
-  const [useCustomCity, setUseCustomCity] = useState(false);
-  const [customCity, setCustomCity] = useState('');
+  const [countySearch, setCountySearch] = useState('');
 
   useEffect(() => {
     setDraft(profile);
     setSchoolKeyword(profile.targetSchool || '');
-    const citiesOfProvince = PROVINCE_CITIES[profile.province] || [];
-    const cityInList = citiesOfProvince.includes(profile.city);
-    setUseCustomCity(Boolean(profile.city) && !cityInList);
-    setCustomCity(cityInList ? '' : (profile.city || ''));
   }, [profile.updatedAt]);
 
-  const cities = PROVINCE_CITIES[draft.province] || [];
-  const filteredCities = cities.filter((city) => !citySearch || city.includes(citySearch));
-  const safeCity = cities.includes(draft.city) ? draft.city : '';
+  useEffect(() => {
+    let cancelled = false;
+    const fetchProvinces = async () => {
+      setRegionLoading(true);
+      try {
+        const items = await loadProvinces();
+        if (cancelled) return;
+        setProvinceOptions(items);
+      } catch {
+        if (!cancelled) {
+          setProvinceOptions([]);
+          toast.error('地区列表联网加载失败，请稍后重试');
+        }
+      } finally {
+        if (!cancelled) setRegionLoading(false);
+      }
+    };
+    fetchProvinces();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!draft.province) {
+      setCityOptions([]);
+      setCountyOptions([]);
+      return;
+    }
+    const province = findOptionByName(provinceOptions, draft.province);
+    if (!province) return;
+    let cancelled = false;
+    const fetchCities = async () => {
+      setRegionLoading(true);
+      try {
+        const items = await loadCities(province);
+        if (cancelled) return;
+        setCityOptions(items);
+      } catch {
+        if (!cancelled) {
+          setCityOptions([]);
+          toast.error('城市列表联网加载失败，请稍后重试');
+        }
+      } finally {
+        if (!cancelled) setRegionLoading(false);
+      }
+    };
+    fetchCities();
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.province, provinceOptions]);
+
+  useEffect(() => {
+    if (!draft.city) {
+      setCountyOptions([]);
+      return;
+    }
+    const city = findOptionByName(cityOptions, draft.city);
+    if (!city) return;
+    let cancelled = false;
+    const fetchCounties = async () => {
+      setRegionLoading(true);
+      try {
+        const items = await loadCounties(city);
+        if (cancelled) return;
+        setCountyOptions(items);
+      } catch {
+        if (!cancelled) {
+          setCountyOptions([]);
+          toast.error('区县列表联网加载失败，请稍后重试');
+        }
+      } finally {
+        if (!cancelled) setRegionLoading(false);
+      }
+    };
+    fetchCounties();
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.city, cityOptions]);
+
+  const filteredProvinces = filterRegionOptions(provinceOptions, provinceSearch);
+  const filteredCities = filterRegionOptions(cityOptions, citySearch);
+  const filteredCounties = filterRegionOptions(countyOptions, countySearch);
+  const safeCity = cityOptions.some((item) => item.name === draft.city) ? draft.city : '';
+  const safeCounty = countyOptions.some((item) => item.name === draft.county) ? draft.county : '';
   const safeGrade = stageConfig.grades.includes(draft.grade) ? draft.grade : '';
 
   const patch = (partial: Partial<StageProfile>) => {
@@ -83,16 +174,15 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   };
 
   const handleSave = () => {
-    const finalCity = useCustomCity ? customCity.trim() : draft.city;
     if (!draft.province) {
       toast.error('请选择省份');
       return;
     }
-    if (!finalCity) {
+    if (!draft.city) {
       toast.error('请选择城市');
       return;
     }
-    onSave({ ...draft, city: finalCity });
+    onSave({ ...draft });
     toast.success('已保存个人信息，下面 4 个模块会自动带入');
   };
 
@@ -130,15 +220,14 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   }, [schoolCandidates, currentTotalScore]);
 
   const handleSearchSchools = async () => {
-    const finalCity = useCustomCity ? customCity.trim() : draft.city;
-    if (!draft.province || !finalCity) {
+    if (!draft.province || !draft.city) {
       toast.error('请先选择省份和城市');
       return;
     }
     const keyword = schoolKeyword.trim();
     setSearchingSchool(true);
     try {
-      const region = [draft.province, finalCity].join(' ');
+      const region = [draft.province, draft.city].join(' ');
       let candidates = await searchSchoolCandidates({
         stage: stageConfig.stage,
         region,
@@ -256,16 +345,26 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
           <Select
             value={toSelectValue(draft.province)}
             onValueChange={(v) => {
-              setUseCustomCity(false);
-              setCustomCity('');
+              setProvinceSearch('');
               setCitySearch('');
+              setCountySearch('');
               patch({ province: v, city: '', county: '' });
             }}
           >
-            <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择省份" /></SelectTrigger>
+            <SelectTrigger className="font-hand mt-1">
+              <SelectValue placeholder={regionLoading ? '联网加载中...' : '选择省份'} />
+            </SelectTrigger>
             <SelectContent>
-              {PROVINCES.map((p) => (
-                <SelectItem key={p} value={p}>{p}</SelectItem>
+              <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
+                <Input
+                  placeholder="搜索省份..."
+                  value={provinceSearch}
+                  onChange={(e) => setProvinceSearch(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+              {filteredProvinces.map((p) => (
+                <SelectItem key={p.adcode} value={p.name}>{p.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -273,56 +372,50 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         <div>
           <Label className="font-hand">城市 *</Label>
           <Select
-            value={useCustomCity ? '__custom_city__' : toSelectValue(safeCity)}
+            value={toSelectValue(safeCity)}
             onValueChange={(v) => {
-              if (v === '__custom_city__') {
-                setUseCustomCity(true);
-                patch({ city: customCity.trim() });
-                return;
-              }
-              setUseCustomCity(false);
-              setCustomCity('');
-              patch({ city: v });
+              setCitySearch('');
+              setCountySearch('');
+              patch({ city: v, county: '' });
             }}
             disabled={!draft.province}
           >
-            <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择城市" /></SelectTrigger>
+            <SelectTrigger className="font-hand mt-1">
+              <SelectValue placeholder={regionLoading ? '联网加载中...' : '选择城市'} />
+            </SelectTrigger>
             <SelectContent>
               <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
                 <Input
-                  placeholder="筛选城市..."
+                  placeholder="筛选/拼音/别名（如 wulanhaote）"
                   value={citySearch}
                   onChange={(e) => setCitySearch(e.target.value)}
                   className="h-8 text-xs"
                 />
               </div>
               {filteredCities.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
+                <SelectItem key={c.adcode} value={c.name}>{c.name}</SelectItem>
               ))}
-              <SelectItem value="__custom_city__">手动输入城市...</SelectItem>
             </SelectContent>
           </Select>
-          {useCustomCity && (
-            <Input
-              className="font-hand mt-2"
-              value={customCity}
-              onChange={(e) => {
-                const next = e.target.value;
-                setCustomCity(next);
-                patch({ city: next });
-              }}
-              placeholder="请输入城市名称"
-            />
-          )}
         </div>
         <div>
           <Label className="font-hand">区县（选填）</Label>
-          <Input
-            className="font-hand mt-1"
-            value={draft.county}
-            onChange={(e) => patch({ county: e.target.value })}
-            placeholder="区/县"
-          />
+          <Select value={toSelectValue(safeCounty)} onValueChange={(v) => patch({ county: v })} disabled={!draft.city}>
+            <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择区县" /></SelectTrigger>
+            <SelectContent>
+              <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
+                <Input
+                  placeholder="筛选/拼音/别名"
+                  value={countySearch}
+                  onChange={(e) => setCountySearch(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+              {filteredCounties.map((item) => (
+                <SelectItem key={item.adcode} value={item.name}>{item.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <Label className="font-hand">当前年级（选填）</Label>

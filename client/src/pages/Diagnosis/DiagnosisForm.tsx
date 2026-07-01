@@ -30,6 +30,14 @@ import { Button } from '@/components/ui/button';
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import type { StageProfile } from '@client/src/types/stage-profile';
 import { parseScoreOverviewToSubjectScores } from '@client/src/utils/score-overview';
+import {
+  filterRegionOptions,
+  findOptionByName,
+  loadCities,
+  loadCounties,
+  loadProvinces,
+  type RegionOption,
+} from '@client/src/utils/region-network';
 
 /* ===== Schema & Constants ===== */
 
@@ -86,42 +94,6 @@ const DEFAULT_SCHOOLS: string[] = [
   '华师一附中光谷分校', '武汉睿升学校', '武汉经济技术开发区第一中学',
   '洪山高级中学', '武汉市第十五中学', '武汉市第二十中学',
 ];
-
-const PROVINCE_CITIES: Record<string, string[]> = {
-  '北京市': ['东城区', '西城区', '朝阳区', '海淀区', '丰台区', '通州区', '大兴区', '昌平区'],
-  '天津市': ['和平区', '南开区', '河西区', '河东区', '滨海新区', '武清区'],
-  '上海市': ['黄浦区', '徐汇区', '长宁区', '静安区', '普陀区', '虹口区', '浦东新区', '闵行区', '宝山区', '嘉定区', '松江区'],
-  '重庆市': ['渝中区', '江北区', '沙坪坝区', '九龙坡区', '南岸区', '北碚区', '渝北区', '巴南区'],
-  '河北省': ['石家庄', '唐山', '秦皇岛', '邯郸', '保定', '廊坊', '沧州', '邢台', '衡水'],
-  '山西省': ['太原', '大同', '长治', '晋城', '临汾', '运城', '晋中', '吕梁'],
-  '内蒙古': ['呼和浩特', '包头', '鄂尔多斯', '赤峰', '通辽', '呼伦贝尔'],
-  '辽宁省': ['沈阳', '大连', '鞍山', '抚顺', '本溪', '锦州', '营口'],
-  '吉林省': ['长春', '吉林', '四平', '通化', '延边', '松原'],
-  '黑龙江省': ['哈尔滨', '齐齐哈尔', '大庆', '牡丹江', '佳木斯', '绥化'],
-  '江苏省': ['南京', '苏州', '无锡', '常州', '南通', '徐州', '扬州', '镇江', '泰州', '连云港'],
-  '浙江省': ['杭州', '宁波', '温州', '嘉兴', '绍兴', '金华', '台州', '湖州'],
-  '安徽省': ['合肥', '芜湖', '蚌埠', '马鞍山', '安庆', '阜阳', '宿州', '滁州'],
-  '福建省': ['福州', '厦门', '泉州', '漳州', '莆田', '三明', '龙岩', '宁德'],
-  '江西省': ['南昌', '九江', '赣州', '景德镇', '上饶', '宜春', '吉安'],
-  '山东省': ['济南', '青岛', '烟台', '潍坊', '淄博', '临沂', '济宁', '泰安', '威海', '德州'],
-  '河南省': ['郑州', '洛阳', '开封', '南阳', '新乡', '安阳', '焦作', '许昌', '商丘'],
-  '湖北省': ['武汉', '宜昌', '襄阳', '荆州', '十堰', '黄石', '孝感', '黄冈', '荆门', '咸宁'],
-  '湖南省': ['长沙', '株洲', '湘潭', '衡阳', '岳阳', '常德', '邵阳', '永州'],
-  '广东省': ['广州', '深圳', '东莞', '佛山', '珠海', '惠州', '中山', '汕头', '湛江', '茂名'],
-  '广西': ['南宁', '桂林', '柳州', '北海', '玉林', '梧州', '百色'],
-  '海南省': ['海口', '三亚', '儋州', '琼海'],
-  '四川省': ['成都', '绵阳', '德阳', '宜宾', '泸州', '达州', '南充', '乐山', '自贡'],
-  '贵州省': ['贵阳', '遵义', '毕节', '六盘水', '安顺', '铜仁'],
-  '云南省': ['昆明', '曲靖', '大理', '玉溪', '红河', '楚雄', '文山'],
-  '西藏': ['拉萨', '日喀则', '昌都', '林芝'],
-  '陕西省': ['西安', '咸阳', '宝鸡', '渭南', '汉中', '延安', '榆林', '安康'],
-  '甘肃省': ['兰州', '天水', '白银', '酒泉', '张掖', '武威', '庆阳'],
-  '青海省': ['西宁', '海东', '海西'],
-  '宁夏': ['银川', '石嘴山', '吴忠', '中卫', '固原'],
-  '新疆': ['乌鲁木齐', '克拉玛依', '喀什', '伊犁', '阿克苏', '昌吉'],
-};
-
-const PROVINCES = Object.keys(PROVINCE_CITIES);
 
 const CORE_SUBJECTS: Array<{ name: keyof DiagnosisFormData; label: string; max: number }> = [
   { name: 'chinese', label: '语文', max: 150 },
@@ -302,7 +274,13 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   const [selectedCity, setSelectedCity] = useState('');
   const [county, setCounty] = useState('');
   const [isCustomRegion, setIsCustomRegion] = useState(false);
+  const [regionLoading, setRegionLoading] = useState(false);
+  const [provinceOptions, setProvinceOptions] = useState<RegionOption[]>([]);
+  const [cityOptions, setCityOptions] = useState<RegionOption[]>([]);
+  const [countyOptions, setCountyOptions] = useState<RegionOption[]>([]);
   const [provinceSearch, setProvinceSearch] = useState('');
+  const [citySearch, setCitySearch] = useState('');
+  const [countySearch, setCountySearch] = useState('');
   const [schoolSearch, setSchoolSearch] = useState('');
   const [schoolOpen, setSchoolOpen] = useState(false);
   const [scoreSuggesting, setScoreSuggesting] = useState(false);
@@ -417,6 +395,88 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     });
     return () => sub.unsubscribe();
   }, [form, onProfileFieldsChange, onFormSnapshotChange]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchProvinces = async () => {
+      setRegionLoading(true);
+      try {
+        const items = await loadProvinces();
+        if (cancelled) return;
+        setProvinceOptions(items);
+      } catch {
+        if (!cancelled) {
+          setProvinceOptions([]);
+          toast.error('地区列表联网加载失败，请稍后重试');
+        }
+      } finally {
+        if (!cancelled) setRegionLoading(false);
+      }
+    };
+    fetchProvinces();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProvince || isCustomRegion) {
+      setCityOptions([]);
+      setCountyOptions([]);
+      return;
+    }
+    const province = findOptionByName(provinceOptions, selectedProvince);
+    if (!province) return;
+    let cancelled = false;
+    const fetchCities = async () => {
+      setRegionLoading(true);
+      try {
+        const items = await loadCities(province);
+        if (cancelled) return;
+        setCityOptions(items);
+      } catch {
+        if (!cancelled) {
+          setCityOptions([]);
+          toast.error('城市列表联网加载失败，请稍后重试');
+        }
+      } finally {
+        if (!cancelled) setRegionLoading(false);
+      }
+    };
+    fetchCities();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProvince, provinceOptions, isCustomRegion]);
+
+  useEffect(() => {
+    if (!selectedCity || isCustomRegion) {
+      setCountyOptions([]);
+      return;
+    }
+    const city = findOptionByName(cityOptions, selectedCity);
+    if (!city) return;
+    let cancelled = false;
+    const fetchCounties = async () => {
+      setRegionLoading(true);
+      try {
+        const items = await loadCounties(city);
+        if (cancelled) return;
+        setCountyOptions(items);
+      } catch {
+        if (!cancelled) {
+          setCountyOptions([]);
+          toast.error('区县列表联网加载失败，请稍后重试');
+        }
+      } finally {
+        if (!cancelled) setRegionLoading(false);
+      }
+    };
+    fetchCounties();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCity, cityOptions, isCustomRegion]);
 
   const watchedGrade = form.watch('grade');
   const watchedMode = form.watch('examMode');
@@ -672,16 +732,22 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     return () => { cancelled = true; clearTimeout(timer); };
   }, [isHighSchool, watchedRegion, watchedSchool, watchedMajor, watchedMode, watchedPhysics, watchedHistory, form]);
 
-  const cities = PROVINCE_CITIES[selectedProvince] || [];
+  const filteredProvinces = filterRegionOptions(provinceOptions, provinceSearch);
+  const filteredCities = filterRegionOptions(cityOptions, citySearch);
+  const filteredCounties = filterRegionOptions(countyOptions, countySearch);
 
   const handleProvinceChange = useCallback((val: string) => {
     markProfileDirty();
     setSelectedProvince(val);
     setSelectedCity('');
     setCounty('');
+    setCitySearch('');
+    setCountySearch('');
     if (val === '__custom__') {
       setIsCustomRegion(true);
       form.setValue('region', customRegionRef.current || '');
+      setCityOptions([]);
+      setCountyOptions([]);
       onRegionPartsChange?.({ province: '', city: '', county: '' });
     } else {
       setIsCustomRegion(false);
@@ -694,6 +760,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     markProfileDirty();
     setSelectedCity(val);
     setCounty('');
+    setCountySearch('');
     form.setValue('region', buildRegionText(selectedProvince, val, ''));
     onRegionPartsChange?.({ province: selectedProvince, city: val, county: '' });
   }, [form, selectedProvince, markProfileDirty, onRegionPartsChange]);
@@ -863,7 +930,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
                 <Select onValueChange={handleProvinceChange} value={isCustomRegion ? '__custom__' : selectedProvince}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="省/直辖市" />
+                      <SelectValue placeholder={regionLoading ? '联网加载中...' : '省/直辖市'} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -875,10 +942,8 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
                         className="h-8 text-xs"
                       />
                     </div>
-                    {PROVINCES
-                      .filter((p) => !provinceSearch || p.includes(provinceSearch))
-                      .map((p) => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                    {filteredProvinces.map((p) => (
+                        <SelectItem key={p.adcode} value={p.name}>{p.name}</SelectItem>
                       ))}
                     <SelectItem value="__custom__">手动输入...</SelectItem>
                   </SelectContent>
@@ -887,12 +952,20 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
                   <Select onValueChange={handleCityChange} value={selectedCity}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="市/区" />
+                        <SelectValue placeholder={regionLoading ? '联网加载中...' : '市/区'} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {cities.map((c: string) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
+                        <Input
+                          placeholder="模糊/拼音/别名（如 wulanhaote）"
+                          value={citySearch}
+                          onChange={(e) => setCitySearch(e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      {filteredCities.map((c) => (
+                        <SelectItem key={c.adcode} value={c.name}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -910,12 +983,26 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
                 />
               )}
               {!isCustomRegion && selectedCity && (
-                <Input
-                  placeholder="区/县（选填）"
-                  value={county}
-                  onChange={(e) => handleCountyChange(e.target.value)}
-                  className="mt-2"
-                />
+                <Select onValueChange={handleCountyChange} value={county}>
+                  <FormControl>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder={regionLoading ? '联网加载中...' : '区/县（选填）'} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
+                      <Input
+                        placeholder="模糊/拼音/别名"
+                        value={countySearch}
+                        onChange={(e) => setCountySearch(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    {filteredCounties.map((item) => (
+                      <SelectItem key={item.adcode} value={item.name}>{item.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
               <FormMessage />
             </FormItem>

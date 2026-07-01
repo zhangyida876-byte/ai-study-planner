@@ -27,7 +27,7 @@ import {
 import PlanTimeline from './PlanTimeline';
 import PlanScoreInput, { type ExamType } from './PlanScoreInput';
 import PlanSchoolRecommend from './PlanSchoolRecommend';
-import { PROVINCE_CITIES, PROVINCES, EXAM_TYPE_CONFIG } from './regionData';
+import { EXAM_TYPE_CONFIG } from './regionData';
 import type { AdmissionPolicy, AdmissionLine } from '@shared/api.interface';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
@@ -40,6 +40,14 @@ import { policy as policyApi } from '@client/src/api';
 import { clearModuleSession, loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
 import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
 import { getInternalScriptAnchor } from '@client/src/config/internal-resource-library';
+import {
+  filterRegionOptions,
+  findOptionByName,
+  loadCities,
+  loadCounties,
+  loadProvinces,
+  type RegionOption,
+} from '@client/src/utils/region-network';
 
 const HS_MODES = [
   { value: '3+1+2', label: '3+1+2（物理/历史 二选一）' },
@@ -625,7 +633,13 @@ const Plan: React.FC = () => {
   const [county, setCounty] = useState('');
   const [region, setRegion] = useState('');
   const [isCustomRegion, setIsCustomRegion] = useState(false);
+  const [regionLoading, setRegionLoading] = useState(false);
+  const [provinceOptions, setProvinceOptions] = useState<RegionOption[]>([]);
+  const [cityOptions, setCityOptions] = useState<RegionOption[]>([]);
+  const [countyOptions, setCountyOptions] = useState<RegionOption[]>([]);
   const [provinceSearch, setProvinceSearch] = useState('');
+  const [citySearch, setCitySearch] = useState('');
+  const [countySearch, setCountySearch] = useState('');
   const [customRegionText, setCustomRegionText] = useState('');
 
   const [scores, setScores] = useState<Record<string, number>>({});
@@ -650,7 +664,91 @@ const Plan: React.FC = () => {
     return ['三年级', '四年级', '五年级', '六年级'].includes(grade);
   }, [stageConfig.slug, examType, grade]);
 
-  const cities = PROVINCE_CITIES[selectedProvince] || [];
+  useEffect(() => {
+    let cancelled = false;
+    const fetchProvinces = async () => {
+      setRegionLoading(true);
+      try {
+        const items = await loadProvinces();
+        if (cancelled) return;
+        setProvinceOptions(items);
+      } catch {
+        if (!cancelled) {
+          setProvinceOptions([]);
+          toast.error('地区列表联网加载失败，请稍后重试');
+        }
+      } finally {
+        if (!cancelled) setRegionLoading(false);
+      }
+    };
+    fetchProvinces();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProvince || isCustomRegion) {
+      setCityOptions([]);
+      setCountyOptions([]);
+      return;
+    }
+    const province = findOptionByName(provinceOptions, selectedProvince);
+    if (!province) return;
+    let cancelled = false;
+    const fetchCities = async () => {
+      setRegionLoading(true);
+      try {
+        const items = await loadCities(province);
+        if (cancelled) return;
+        setCityOptions(items);
+      } catch {
+        if (!cancelled) {
+          setCityOptions([]);
+          toast.error('城市列表联网加载失败，请稍后重试');
+        }
+      } finally {
+        if (!cancelled) setRegionLoading(false);
+      }
+    };
+    fetchCities();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProvince, provinceOptions, isCustomRegion]);
+
+  useEffect(() => {
+    if (!selectedCity || isCustomRegion) {
+      setCountyOptions([]);
+      return;
+    }
+    const city = findOptionByName(cityOptions, selectedCity);
+    if (!city) return;
+    let cancelled = false;
+    const fetchCounties = async () => {
+      setRegionLoading(true);
+      try {
+        const items = await loadCounties(city);
+        if (cancelled) return;
+        setCountyOptions(items);
+      } catch {
+        if (!cancelled) {
+          setCountyOptions([]);
+          toast.error('区县列表联网加载失败，请稍后重试');
+        }
+      } finally {
+        if (!cancelled) setRegionLoading(false);
+      }
+    };
+    fetchCounties();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCity, cityOptions, isCustomRegion]);
+
+  const filteredProvinces = filterRegionOptions(provinceOptions, provinceSearch);
+  const filteredCities = filterRegionOptions(cityOptions, citySearch);
+  const filteredCounties = filterRegionOptions(countyOptions, countySearch);
   const filteredPolicies = useMemo(() => {
     if (examType === '小升初') return [];
     return policies.filter((item) => {
@@ -959,41 +1057,44 @@ const Plan: React.FC = () => {
     setSubjectMaxHints({});
     try {
       const currentY = new Date().getFullYear();
-      const searchYears = [String(currentY), String(currentY - 1), String(currentY - 2)];
+      const searchYears = [String(currentY), String(currentY - 1)];
       let full = '';
-      const keyword =
+      const keywords =
         stageConfig.slug === 'elementary'
-          ? '小升初 划片 摇号 对口直升 公民同招 入学政策'
+          ? ['小升初 考试科目 满分分值', '教育局 入学政策 划片 摇号', '小升初 总分构成 体育 实验']
           : stageConfig.slug === 'middle'
-            ? '中考录取分数线 政策'
-            : '高考录取分数线 政策';
+            ? ['中考 考试科目 满分分值', '教育局 中考政策 考试大纲', '中考总分 各科分数 最新']
+            : ['高考 考试科目 满分分值', '教育考试院 高考政策 考试大纲', '高考总分 各科分值 最新'];
       for (const y of searchYears) {
-        for await (const chunk of streamPolicySearch({ region: r, year: y, keyword })) {
-          full += chunk;
-          setPolicySearchContent(sanitizePolicyContentByStage(full, stageConfig.slug));
-          const parsedHints = extractSubjectMaxHintsFromPolicyText(full);
-          if (stageConfig.slug === 'elementary') {
-            setSubjectMaxHints({
-              语文: parsedHints['语文'] || 100,
-              数学: parsedHints['数学'] || 100,
-              英语: parsedHints['英语'] || 100,
-              ...parsedHints,
-            });
-          } else {
-            setSubjectMaxHints(parsedHints);
+        for (const keyword of keywords) {
+          for await (const chunk of streamPolicySearch({ region: r, year: y, keyword })) {
+            full += chunk;
+            setPolicySearchContent(sanitizePolicyContentByStage(full, stageConfig.slug));
+            const parsedHints = extractSubjectMaxHintsFromPolicyText(full);
+            if (Object.keys(parsedHints).length > 0) {
+              setSubjectMaxHints(parsedHints);
+            }
           }
         }
       }
-      if (stageConfig.slug === 'elementary' && !sanitizePolicyContentByStage(full, stageConfig.slug).trim()) {
+      const cleaned = sanitizePolicyContentByStage(full, stageConfig.slug).trim();
+      const hasHints = Object.keys(extractSubjectMaxHintsFromPolicyText(full)).length > 0;
+      const sourceCount = (full.match(/https?:\/\/[^\s)]+/g) || []).length;
+      if (!cleaned || !hasHints) {
         setPolicySearchContent(
           [
             `地区：${r}`,
-            '联网检索未返回可用的小升初结构化结果，请按以下双来源核验：',
-            '1) 当地教育局官网：核对公民同招、划片/摇号、对口直升、入学材料与时间。',
-            '2) 当地招考部门公告：核对报名入口、报名时间、录取确认时间。',
-            '说明：在拿到两来源一致信息前，系统只展示“待核实”结论。',
+            '暂无该地区最新考情数据，请选择其他地区或手动输入。',
+            '核验建议：至少使用 2 个权威来源（教育局官网 + 教育考试院/政府公开文件）后再确认分值。',
           ].join('\n'),
         );
+        setSubjectMaxHints({});
+      } else if (sourceCount < 2) {
+        setPolicySearchContent(
+          `${cleaned}\n\n⚠️ 当前联网结果权威来源不足 2 条，请补充教育局官网/教育考试院文件后再确认当年分值。`,
+        );
+      } else {
+        setPolicySearchContent(cleaned);
       }
     } catch {
       toast.error('网络政策搜索失败');
@@ -1007,11 +1108,18 @@ const Plan: React.FC = () => {
     if (val === '__custom__') {
       setIsCustomRegion(true);
       setRegion(customRegionText);
+      setSelectedProvince('');
+      setSelectedCity('');
+      setCounty('');
+      setCityOptions([]);
+      setCountyOptions([]);
     } else {
       setIsCustomRegion(false);
       setSelectedProvince(val);
       setSelectedCity('');
       setCounty('');
+      setCitySearch('');
+      setCountySearch('');
       setRegion(val);
       setReportContent('');
       setTimelineContent('');
@@ -1024,6 +1132,7 @@ const Plan: React.FC = () => {
     setProfileDirty(true);
     setSelectedCity(val);
     setCounty('');
+    setCountySearch('');
     const r = [selectedProvince, val].filter(Boolean).join(' ');
     setRegion(r);
     setReportContent('');
@@ -1249,14 +1358,14 @@ const Plan: React.FC = () => {
                   <label className="mb-1 block text-sm font-bold text-ink">省份</label>
                   <Select value={isCustomRegion ? '__custom__' : toSelectValue(selectedProvince)} onValueChange={handleProvinceChange}>
                     <SelectTrigger className="font-hand">
-                      <SelectValue placeholder="省/直辖市" />
+                      <SelectValue placeholder={regionLoading ? '联网加载中...' : '省/直辖市'} />
                     </SelectTrigger>
                     <SelectContent>
                       <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
                         <Input placeholder="搜索..." value={provinceSearch} onChange={(e) => setProvinceSearch(e.target.value)} className="h-8 text-xs" />
                       </div>
-                      {PROVINCES.filter((p) => !provinceSearch || p.includes(provinceSearch)).map((p) => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      {filteredProvinces.map((p) => (
+                        <SelectItem key={p.adcode} value={p.name}>{p.name}</SelectItem>
                       ))}
                       <SelectItem value="__custom__">手动输入...</SelectItem>
                     </SelectContent>
@@ -1267,10 +1376,18 @@ const Plan: React.FC = () => {
                     <label className="mb-1 block text-sm font-bold text-ink">市/区</label>
                     <Select value={toSelectValue(selectedCity)} onValueChange={handleCityChange}>
                       <SelectTrigger className="font-hand">
-                        <SelectValue placeholder="市/区" />
+                        <SelectValue placeholder={regionLoading ? '联网加载中...' : '市/区'} />
                       </SelectTrigger>
                       <SelectContent>
-                        {cities.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}
+                        <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
+                          <Input
+                            placeholder="模糊/拼音/别名（如 wulanhaote）"
+                            value={citySearch}
+                            onChange={(e) => setCitySearch(e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        {filteredCities.map((c) => (<SelectItem key={c.adcode} value={c.name}>{c.name}</SelectItem>))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1278,7 +1395,24 @@ const Plan: React.FC = () => {
                 {!isCustomRegion && selectedCity && (
                   <div className="w-28">
                     <label className="mb-1 block text-sm font-bold text-ink">区/县</label>
-                    <Input value={county} onChange={(e) => handleCountyChange(e.target.value)} placeholder="选填" className="font-hand" />
+                    <Select value={toSelectValue(county)} onValueChange={handleCountyChange}>
+                      <SelectTrigger className="font-hand">
+                        <SelectValue placeholder={regionLoading ? '联网加载中...' : '区/县'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
+                          <Input
+                            placeholder="模糊/拼音/别名"
+                            value={countySearch}
+                            onChange={(e) => setCountySearch(e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        {filteredCounties.map((item) => (
+                          <SelectItem key={item.adcode} value={item.name}>{item.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
               </div>
