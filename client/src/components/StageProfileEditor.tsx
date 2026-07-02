@@ -16,8 +16,10 @@ import type { StageConfig } from '@client/src/config/stages';
 import type { StageProfile } from '@client/src/types/stage-profile';
 import { toSelectValue } from '@client/src/lib/utils';
 import {
+  extractSubjectMaxHintsFromPolicyText,
   fetchSchoolScoreByName,
   searchSchoolCandidates,
+  streamPolicySearch,
   type SchoolCandidate,
 } from '@client/src/api/plugins';
 import { policy as policyApi } from '@client/src/api';
@@ -56,6 +58,20 @@ function parseCurrentTotalScore(scoresOverview: string): number | null {
   return sum > 0 ? sum : null;
 }
 
+function extractExamTotalScore(text: string): number | null {
+  const normalized = text.replace(/\s+/g, ' ');
+  const patterns = [
+    /(?:总分|满分|总成绩|总分值)[^0-9]{0,12}(\d{3,4})\s*分/,
+    /(\d{3,4})\s*分[^。；，,]{0,12}(?:总分|满分|总成绩|总分值)/,
+  ];
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    const value = match ? Number.parseInt(match[1], 10) : NaN;
+    if (Number.isFinite(value) && value >= 100 && value <= 1000) return value;
+  }
+  return null;
+}
+
 const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   stageConfig,
   profile,
@@ -75,15 +91,17 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   const [cityLoadFailed, setCityLoadFailed] = useState(false);
   const [countyLoadFailed, setCountyLoadFailed] = useState(false);
   const [customProvinceMode, setCustomProvinceMode] = useState(false);
-  const [customCityMode, setCustomCityMode] = useState(false);
   const [customCountyMode, setCustomCountyMode] = useState(false);
   const [provinceSearch, setProvinceSearch] = useState('');
   const [citySearch, setCitySearch] = useState('');
   const [countySearch, setCountySearch] = useState('');
+  const [scoreSummary, setScoreSummary] = useState('');
+  const [scoreSummaryLoading, setScoreSummaryLoading] = useState(false);
 
   useEffect(() => {
     setDraft(profile);
     setSchoolKeyword(profile.targetSchool || '');
+    setCitySearch(profile.city || '');
   }, [profile.updatedAt]);
 
   useEffect(() => {
@@ -191,12 +209,11 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     countySearch,
   );
   const isCustomProvince = Boolean(draft.province) && !findOptionByName(provinceOptions, draft.province);
-  const isCustomCity = Boolean(draft.city) && !findOptionByName(cityOptions, draft.city);
   const isCustomCounty = Boolean(draft.county) && !findOptionByName(countyOptions, draft.county);
   const selectedProvinceValue = customProvinceMode || isCustomProvince ? '__custom_province__' : toSelectValue(draft.province);
-  const selectedCityValue = customCityMode || isCustomCity ? '__custom_city__' : toSelectValue(draft.city);
   const selectedCountyValue = customCountyMode || isCustomCounty ? '__custom_county__' : toSelectValue(draft.county);
   const safeGrade = stageConfig.grades.includes(draft.grade) ? draft.grade : '';
+  const quickCityOptions = (citySearch.trim() ? filteredCities : cityOptions).slice(0, 10);
 
   const patch = (partial: Partial<StageProfile>) => {
     setDraft((prev) => ({ ...prev, ...partial }));
@@ -219,6 +236,48 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     () => [draft.province, draft.city, draft.county].filter(Boolean).join(' '),
     [draft.province, draft.city, draft.county],
   );
+
+  useEffect(() => {
+    if (!draft.province || !draft.city) {
+      setScoreSummary('');
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setScoreSummaryLoading(true);
+      try {
+        const region = [draft.province, draft.city, draft.county].filter(Boolean).join(' ');
+        const year = String(new Date().getFullYear());
+        const keyword = `${stageConfig.examType} 考试科目 满分分值 总分构成`;
+        let full = '';
+        for await (const chunk of streamPolicySearch({ region, year, keyword })) {
+          if (cancelled) return;
+          full += chunk;
+        }
+        if (cancelled) return;
+        const hints = extractSubjectMaxHintsFromPolicyText(full);
+        const entries = Object.entries(hints)
+          .filter(([, value]) => Number.isFinite(value) && value > 0)
+          .slice(0, 10);
+        if (entries.length === 0) {
+          setScoreSummary('本地区满分：暂无明确数据，需人工核验');
+          return;
+        }
+        const explicitTotal = extractExamTotalScore(full);
+        const total = explicitTotal ?? entries.reduce((sum, [, value]) => sum + value, 0);
+        const detail = entries.map(([subject, value]) => `${subject}${value}`).join('、');
+        setScoreSummary(`本地区满分：已识别${total}分（${detail}，以官方当年政策为准）`);
+      } catch {
+        if (!cancelled) setScoreSummary('本地区满分：联网查询失败，可稍后重试或手动核验');
+      } finally {
+        if (!cancelled) setScoreSummaryLoading(false);
+      }
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [draft.province, draft.city, draft.county, stageConfig.examType]);
   const currentTotalScore = useMemo(
     () => parseCurrentTotalScore(draft.scoresOverview),
     [draft.scoresOverview],
@@ -362,6 +421,8 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       <div className="mb-4 rounded-lg border-2 border-dashed border-pen-blue/30 bg-pen-blue/5 px-3 py-2 text-sm text-ink/75">
         当前地区：{regionSummary || '未选择'}
         {regionLoading && <span className="ml-2 text-pen-blue">正在加载地区列表...</span>}
+        {scoreSummaryLoading && <span className="ml-2 text-pen-blue">正在查询本地满分...</span>}
+        {!scoreSummaryLoading && scoreSummary && <span className="ml-2 text-marker-red">{scoreSummary}</span>}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -385,7 +446,6 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               setCityLoadFailed(false);
               setCountyLoadFailed(false);
               setCustomProvinceMode(v === '__custom_province__');
-              setCustomCityMode(false);
               setCustomCountyMode(false);
               patch({ province: v === '__custom_province__' ? '' : v, city: '', county: '' });
             }}
@@ -419,43 +479,49 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         </div>
         <div>
           <Label className="font-hand">城市 *</Label>
-          <Select
-            value={selectedCityValue}
-            onValueChange={(v) => {
-              setCitySearch('');
+          <Input
+            className="font-hand mt-1"
+            value={citySearch}
+            onChange={(e) => {
+              const next = e.target.value;
+              setCitySearch(next);
               setCountySearch('');
               setCountyLoadFailed(false);
-              setCustomCityMode(v === '__custom_city__');
               setCustomCountyMode(false);
-              patch({ city: v === '__custom_city__' ? '' : v, county: '' });
+              patch({ city: next.trim(), county: '' });
             }}
             disabled={!draft.province}
-          >
-            <SelectTrigger className="font-hand mt-1">
-              <SelectValue placeholder={regionLoading ? '联网加载中...' : '选择城市'} />
-            </SelectTrigger>
-            <SelectContent>
-              <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
-                <Input
-                  placeholder="筛选/拼音/别名（如 wulanhaote）"
-                  value={citySearch}
-                  onChange={(e) => setCitySearch(e.target.value)}
-                  className="h-8 text-xs"
-                />
+            placeholder={cityLoadFailed ? '城市联网失败，可直接输入城市' : '搜索或输入城市/盟/州'}
+          />
+          {draft.province && (
+            <div className="mt-2 rounded-md border border-ink/15 bg-background/80 p-2">
+              <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+                <span>优先匹配 10 个主要城市，可直接点选；也可在上方自定义搜索</span>
+                {cityLoadFailed && <span className="text-marker-red">联网失败，可手动输入</span>}
               </div>
-              {filteredCities.map((c) => (
-                <SelectItem key={c.adcode} value={c.name}>{c.name}</SelectItem>
-              ))}
-              <SelectItem value="__custom_city__">自定义城市/盟/州...</SelectItem>
-            </SelectContent>
-          </Select>
-          {(isCustomCity || selectedCityValue === '__custom_city__' || cityLoadFailed) && (
-            <Input
-              className="font-hand mt-2"
-              value={draft.city}
-              onChange={(e) => patch({ city: e.target.value, county: '' })}
-              placeholder={cityLoadFailed ? '城市联网失败，可直接输入城市' : '输入城市/盟/州'}
-            />
+              {quickCityOptions.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {quickCityOptions.map((city) => (
+                    <button
+                      key={city.adcode}
+                      type="button"
+                      className="rounded-full border border-ink/20 bg-accent px-2 py-1 text-xs hover:bg-postit-yellow"
+                      onClick={() => {
+                        setCitySearch(city.name);
+                        setCountySearch('');
+                        setCountyLoadFailed(false);
+                        setCustomCountyMode(false);
+                        patch({ city: city.name, county: '' });
+                      }}
+                    >
+                      {city.name}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">暂无城市候选，可在上方直接输入城市名称。</p>
+              )}
+            </div>
           )}
         </div>
         <div>
