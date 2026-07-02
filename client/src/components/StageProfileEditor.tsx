@@ -434,14 +434,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         <p className="font-hand text-xs text-muted-foreground">只需先填地区和目标学校，下面模块都会自动复用</p>
       </div>
 
-      <div className="mb-4 rounded-lg border-2 border-dashed border-pen-blue/30 bg-pen-blue/5 px-3 py-2 text-sm text-ink/75">
-        当前地区：{regionSummary || '未选择'}
-        {regionLoading && <span className="ml-2 text-pen-blue">正在加载地区列表...</span>}
-        {scoreSummaryLoading && <span className="ml-2 text-pen-blue">正在查询本地满分...</span>}
-        {!scoreSummaryLoading && scoreSummary && <span className="ml-2 text-marker-red">{scoreSummary}</span>}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <div>
           <Label className="font-hand">学生姓名</Label>
           <Input
@@ -450,130 +443,6 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
             onChange={(e) => patch({ studentName: e.target.value })}
             placeholder="如：张三"
           />
-        </div>
-        <div>
-          <Label className="font-hand">省份 *</Label>
-          <Select
-            value={selectedProvinceValue}
-            onValueChange={(v) => {
-              setProvinceSearch('');
-              setCitySearch('');
-              setCountySearch('');
-              setCityLoadFailed(false);
-              setCountyLoadFailed(false);
-              setCustomProvinceMode(v === '__custom_province__');
-              setCustomCountyMode(false);
-              patch({ province: v === '__custom_province__' ? '' : v, city: '', county: '' });
-            }}
-          >
-            <SelectTrigger className="font-hand mt-1">
-              <SelectValue placeholder={regionLoading ? '联网加载中...' : '选择省份'} />
-            </SelectTrigger>
-            <SelectContent>
-              <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
-                <Input
-                  placeholder="搜索省份..."
-                  value={provinceSearch}
-                  onChange={(e) => setProvinceSearch(e.target.value)}
-                  className="h-8 text-xs"
-                />
-              </div>
-              {filteredProvinces.map((p) => (
-                <SelectItem key={p.adcode} value={p.name}>{p.name}</SelectItem>
-              ))}
-              <SelectItem value="__custom_province__">自定义省份/地区...</SelectItem>
-            </SelectContent>
-          </Select>
-          {(isCustomProvince || selectedProvinceValue === '__custom_province__') && (
-            <Input
-              className="font-hand mt-2"
-              value={draft.province}
-              onChange={(e) => patch({ province: e.target.value, city: '', county: '' })}
-              placeholder="输入省份/自治区/直辖市"
-            />
-          )}
-        </div>
-        <div>
-          <Label className="font-hand">城市 *</Label>
-          <Input
-            className="font-hand mt-1"
-            value={citySearch}
-            onChange={(e) => {
-              const next = e.target.value;
-              setCitySearch(next);
-              setCountySearch('');
-              setCountyLoadFailed(false);
-              setCustomCountyMode(false);
-              patch({ city: next.trim(), county: '' });
-            }}
-            disabled={!draft.province}
-            placeholder={cityLoadFailed ? '城市联网失败，可直接输入城市' : '搜索或输入城市/盟/州'}
-          />
-          {draft.province && (
-            <div className="mt-2 rounded-md border border-ink/15 bg-background/80 p-2">
-              <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                <span>优先匹配 10 个主要城市，可直接点选；也可在上方自定义搜索</span>
-                {cityLoadFailed && <span className="text-marker-red">联网失败，可手动输入</span>}
-              </div>
-              {quickCityOptions.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {quickCityOptions.map((city) => (
-                    <button
-                      key={city.adcode}
-                      type="button"
-                      className="rounded-full border border-ink/20 bg-accent px-2 py-1 text-xs hover:bg-postit-yellow"
-                      onClick={() => {
-                        setCitySearch(city.name);
-                        setCountySearch('');
-                        setCountyLoadFailed(false);
-                        setCustomCountyMode(false);
-                        patch({ city: city.name, county: '' });
-                      }}
-                    >
-                      {city.name}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">暂无城市候选，可在上方直接输入城市名称。</p>
-              )}
-            </div>
-          )}
-        </div>
-        <div>
-          <Label className="font-hand">区县（选填）</Label>
-          <Select
-            value={selectedCountyValue}
-            onValueChange={(v) => {
-              setCustomCountyMode(v === '__custom_county__');
-              patch({ county: v === '__custom_county__' ? '' : v });
-            }}
-            disabled={!draft.city}
-          >
-            <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择区县" /></SelectTrigger>
-            <SelectContent>
-              <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
-                <Input
-                  placeholder="筛选/拼音/别名"
-                  value={countySearch}
-                  onChange={(e) => setCountySearch(e.target.value)}
-                  className="h-8 text-xs"
-                />
-              </div>
-              {filteredCounties.map((item) => (
-                <SelectItem key={item.adcode} value={item.name}>{item.name}</SelectItem>
-              ))}
-              <SelectItem value="__custom_county__">手动输入区县...</SelectItem>
-            </SelectContent>
-          </Select>
-          {(isCustomCounty || selectedCountyValue === '__custom_county__' || countyLoadFailed) && (
-            <Input
-              className="font-hand mt-2"
-              value={draft.county}
-              onChange={(e) => patch({ county: e.target.value })}
-              placeholder={countyLoadFailed ? '区县联网失败，可选填手输' : '输入区/县/旗/县级市（选填）'}
-            />
-          )}
         </div>
         <div>
           <Label className="font-hand">当前年级（选填）</Label>
@@ -586,7 +455,173 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
             </SelectContent>
           </Select>
         </div>
-        <div className="sm:col-span-2">
+      </div>
+
+      <div className="mt-4 rounded-xl border border-ink/10 bg-background/80 p-4 shadow-sm">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h3 className="font-marker text-base font-bold text-ink">地区选择</h3>
+            <span className="font-hand text-xs text-ink/60">当前地区：{regionSummary || '未选择'}</span>
+            {regionLoading && <span className="font-hand text-xs text-pen-blue">正在加载地区列表...</span>}
+            {scoreSummaryLoading && <span className="font-hand text-xs text-pen-blue">正在查询本地满分...</span>}
+            {!scoreSummaryLoading && scoreSummary && (
+              <span className="font-hand text-xs text-marker-red">{scoreSummary}</span>
+            )}
+          </div>
+          <span className="font-hand text-xs text-muted-foreground">省份、城市必填，区县选填</span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div>
+            <Label className="font-hand">省份 *</Label>
+            <Select
+              value={selectedProvinceValue}
+              onValueChange={(v) => {
+                setProvinceSearch('');
+                setCitySearch('');
+                setCountySearch('');
+                setCityLoadFailed(false);
+                setCountyLoadFailed(false);
+                setCustomProvinceMode(v === '__custom_province__');
+                setCustomCountyMode(false);
+                patch({ province: v === '__custom_province__' ? '' : v, city: '', county: '' });
+              }}
+            >
+              <SelectTrigger className="font-hand mt-1">
+                <SelectValue placeholder={regionLoading ? '联网加载中...' : '选择省份'} />
+              </SelectTrigger>
+              <SelectContent>
+                <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
+                  <Input
+                    placeholder="搜索省份..."
+                    value={provinceSearch}
+                    onChange={(e) => setProvinceSearch(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                {filteredProvinces.map((p) => (
+                  <SelectItem key={p.adcode} value={p.name}>{p.name}</SelectItem>
+                ))}
+                <SelectItem value="__custom_province__">自定义省份/地区...</SelectItem>
+              </SelectContent>
+            </Select>
+            {(isCustomProvince || selectedProvinceValue === '__custom_province__') && (
+              <Input
+                className="font-hand mt-2"
+                value={draft.province}
+                onChange={(e) => patch({ province: e.target.value, city: '', county: '' })}
+                placeholder="输入省份/自治区/直辖市"
+              />
+            )}
+          </div>
+          <div>
+            <Label className="font-hand">城市 *</Label>
+            <Input
+              className="font-hand mt-1"
+              value={citySearch}
+              onChange={(e) => {
+                const next = e.target.value;
+                setCitySearch(next);
+                setCountySearch('');
+                setCountyLoadFailed(false);
+                setCustomCountyMode(false);
+                patch({ city: next.trim(), county: '' });
+              }}
+              disabled={!draft.province}
+              placeholder={cityLoadFailed ? '城市联网失败，可直接输入城市' : '搜索或输入城市/盟/州'}
+            />
+            {draft.province && (
+              <div className="mt-2 rounded-lg border border-ink/15 bg-card/70 p-2">
+                <div className="mb-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>常用城市可直接点选</span>
+                  {cityLoadFailed && <span className="text-marker-red">联网失败，可手动输入</span>}
+                </div>
+                {quickCityOptions.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {quickCityOptions.map((city) => (
+                      <button
+                        key={city.adcode}
+                        type="button"
+                        className="rounded-full border border-ink/20 bg-accent px-2 py-1 text-xs hover:bg-postit-yellow"
+                        onClick={() => {
+                          setCitySearch(city.name);
+                          setCountySearch('');
+                          setCountyLoadFailed(false);
+                          setCustomCountyMode(false);
+                          patch({ city: city.name, county: '' });
+                        }}
+                      >
+                        {city.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">暂无城市候选，可在上方直接输入城市名称。</p>
+                )}
+              </div>
+            )}
+          </div>
+          <div>
+            <Label className="font-hand">区县（选填）</Label>
+            <Select
+              value={selectedCountyValue}
+              onValueChange={(v) => {
+                setCustomCountyMode(v === '__custom_county__');
+                patch({ county: v === '__custom_county__' ? '' : v });
+              }}
+              disabled={!draft.city}
+            >
+              <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择区县" /></SelectTrigger>
+              <SelectContent>
+                <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
+                  <Input
+                    placeholder="筛选/拼音/别名"
+                    value={countySearch}
+                    onChange={(e) => setCountySearch(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                {filteredCounties.map((item) => (
+                  <SelectItem key={item.adcode} value={item.name}>{item.name}</SelectItem>
+                ))}
+                <SelectItem value="__custom_county__">手动输入区县...</SelectItem>
+              </SelectContent>
+            </Select>
+            {(isCustomCounty || selectedCountyValue === '__custom_county__' || countyLoadFailed) && (
+              <Input
+                className="font-hand mt-2"
+                value={draft.county}
+                onChange={(e) => patch({ county: e.target.value })}
+                placeholder={countyLoadFailed ? '区县联网失败，可选填手输' : '输入区/县/旗/县级市（选填）'}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <Label className="font-hand">当前成绩概览（选填）</Label>
+        <Input
+          className="font-hand mt-1"
+          value={draft.scoresOverview}
+          onChange={(e) => patch({ scoresOverview: e.target.value })}
+          placeholder="如：语92 数78 英85 物70"
+        />
+      </div>
+
+      {stageConfig.slug === 'high' && (
+        <div className="mt-4">
+          <Label className="font-hand">想做的事情 / 职业方向（选填）</Label>
+          <Input
+            className="font-hand mt-1"
+            value={draft.careerIntent}
+            onChange={(e) => patch({ careerIntent: e.target.value })}
+            placeholder="如：人工智能、医生、金融分析、设计、法律"
+          />
+        </div>
+      )}
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[2fr_1fr]">
+        <div>
           <Label className="font-hand">{stageConfig.targetLabel}（支持自定义搜索）</Label>
           <div className="mt-1 flex gap-2">
             <Input
@@ -648,26 +683,6 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
             </p>
           )}
         </div>
-        <div className="sm:col-span-2">
-          <Label className="font-hand">当前成绩概览（选填）</Label>
-          <Input
-            className="font-hand mt-1"
-            value={draft.scoresOverview}
-            onChange={(e) => patch({ scoresOverview: e.target.value })}
-            placeholder="如：语92 数78 英85 物70"
-          />
-        </div>
-        {stageConfig.slug === 'high' && (
-          <div className="sm:col-span-2">
-            <Label className="font-hand">想做的事情 / 职业方向（选填）</Label>
-            <Input
-              className="font-hand mt-1"
-              value={draft.careerIntent}
-              onChange={(e) => patch({ careerIntent: e.target.value })}
-              placeholder="如：人工智能、医生、金融分析、设计、法律"
-            />
-          </div>
-        )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t-2 border-dashed border-ink/10 pt-4">
