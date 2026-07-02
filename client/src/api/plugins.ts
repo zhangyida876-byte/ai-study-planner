@@ -8,6 +8,7 @@ import type { StageProfile } from '@client/src/types/stage-profile';
 export const PLUGIN_IDS = {
   DIAGNOSIS_REPORT: 'academic_diagnosis_report_generator_1',
   PLAN_REPORT: 'study_plan_report_generate_1',
+  PERSONALIZED_LEARNING_SCHEDULE: 'personalized_learning_schedule_1',
   TIMELINE: 'exam_schedule_timeline_generator_1',
   POLICY_SEARCH: 'exam_policy_search_1',
   KNOWLEDGE_ANALYSIS: 'knowledge_point_deep_analysis_1',
@@ -180,10 +181,16 @@ export function buildPersonalizedLearningPlanPrompt(
 【内部资源库素材（优先使用）】
 ${internalMaterial}
 
+【本模块边界】
+1. 你生成的是“个性化课表学习执行方案”，不是学情诊断报告，也不是升学规划报告。
+2. 禁止输出“# 学情诊断报告”“# 升学规划报告”等标题。
+3. 不要重复分析成绩水平定位、知识漏洞溯源、升学风险；这些内容只作为课表安排依据。
+4. 必须围绕课表、时间段、任务安排、完成标准、复盘清单输出。
+
 【融合要求】
 1. 话术、产品能力、服务表达先采用内部资源库口径。
-2. 政策、时间节点、分数线再融合最新公开信息；若冲突，政策类以公开最新为准。
-3. 输出必须体现“内部经验 + 公开信息”双来源，不得只写单一来源。
+2. 时间安排必须优先服从用户填写的课表、晚自习、课外班、走读/住读信息。
+3. 未提供的课表时段标注“待补充”，禁止编造具体到校课表。
 
 【生成规则】
 1. 按${input.stage}学段特点制定，禁止泛泛而谈。
@@ -194,15 +201,13 @@ ${internalMaterial}
 6. 若为高中学段，必须以“大学-专业-就业能力”主线输出，禁止套用中考提分模板；可回溯初中知识点仅用于定位成因。
 
 【输出结构】必须 Markdown，且包含以下章节与表格：
-## 学习目标总览
-## 本周学习计划表（表格：日期|科目|时间段|任务|时长|优先级|知识点|完成标准|检测方式）
-## 每日学习时间安排表
-## 科目任务拆解表
-## 知识点补强路径
-## 阶段检测安排
-## 家长监督建议
-## 风险提醒
-## 下周调整建议（含完成率<70%与正确率<80%的调整机制）`;
+# 个性化课表学习执行方案
+## 一、可用时间盘点
+## 二、本周课表学习安排（表格：日期|可用时段|优先科目|具体任务|预计时长|完成标准|检查方式）
+## 三、每日固定执行模板
+## 四、薄弱科目专项安排
+## 五、课表冲突与调整规则（保底版/标准版/加量版）
+## 六、下周复盘清单`;
 
   const slug = options?.stageSlug ?? input.stageSlug;
   return appendProfileAndStageRules(base, slug, options?.profile ?? null);
@@ -214,12 +219,9 @@ export async function* streamPersonalizedLearningPlan(
 ) {
   const prompt = buildPersonalizedLearningPlanPrompt(input, options);
   const stream = capabilityClient
-    .load(PLUGIN_IDS.DIAGNOSIS_REPORT)
+    .load(PLUGIN_IDS.PERSONALIZED_LEARNING_SCHEDULE)
     .callStream('textGenerate', {
-      student_grade: input.grade,
-      student_region: input.region,
-      subject_scores: input.currentScore || buildScoresText({}),
-      learning_problems: prompt,
+      student_context: prompt,
     } as Record<string, unknown>);
 
   for await (const chunk of stream) {

@@ -23,7 +23,6 @@ import { getStudyPlanAutofillFromProfile } from '@client/src/utils/stage-profile
 import { stagePath } from '@client/src/config/stages';
 import {
   streamPersonalizedLearningPlan,
-  buildScoresText,
   type PersonalizedLearningPlanInput,
 } from '@client/src/api/plugins';
 import { toSelectValue } from '@client/src/lib/utils';
@@ -466,7 +465,7 @@ const StudyPlan: React.FC = () => {
               </div>
             </div>
             <Button className="font-hand w-full" disabled={loading} onClick={handleGenerate}>
-              {loading ? <><Loader2 className="mr-2 size-4 animate-spin" />生成中...</> : '生成个性化学习规划'}
+              {loading ? <><Loader2 className="mr-2 size-4 animate-spin" />生成中...</> : '生成课表学习执行方案'}
             </Button>
           </WobblyCard>
         </div>
@@ -474,7 +473,7 @@ const StudyPlan: React.FC = () => {
         <div className="space-y-4">
           <WobblyCard variant="white" decoration="tape" wobblyIndex={2} hoverable={false} className="p-4 lg:min-h-[480px]">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-marker font-bold">学习计划报告</h2>
+              <h2 className="font-marker font-bold">课表学习执行方案</h2>
               {report && (
                 <Button variant="outline" size="sm" onClick={handleCopy}>
                   {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
@@ -484,7 +483,7 @@ const StudyPlan: React.FC = () => {
             {loading && !report && (
               <div className="flex items-center gap-2 py-12 font-hand text-muted-foreground">
                 <Loader2 className="size-5 animate-spin" />
-                正在生成结构化学习计划...
+                正在生成课表与每日执行安排...
               </div>
             )}
             {!loading && !report && (

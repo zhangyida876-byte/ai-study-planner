@@ -316,13 +316,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     setSearchingSchool(true);
     try {
       const region = [draft.province, draft.city].join(' ');
-      let candidates = await searchSchoolCandidates({
-        stage: stageConfig.stage,
-        region,
-        keyword: keyword || undefined,
-        examYear: new Date().getFullYear(),
-        limit: 10,
-      });
+      let candidates: SchoolCandidate[] = [];
 
       // 初中学段优先用本地政策库补齐学校+分数线，保证可选结果稳定。
       if (stageConfig.slug === 'middle' || stageConfig.slug === 'high') {
@@ -343,6 +337,24 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         } catch {
           // ignore db fallback error
         }
+      }
+
+      try {
+        const internetCandidates = await searchSchoolCandidates({
+          stage: stageConfig.stage,
+          region,
+          keyword: keyword || undefined,
+          examYear: new Date().getFullYear(),
+          limit: 10,
+        });
+        const merged = [...candidates, ...internetCandidates];
+        const dedup = new Map<string, SchoolCandidate>();
+        for (const school of merged) {
+          if (!dedup.has(school.name)) dedup.set(school.name, school);
+        }
+        candidates = Array.from(dedup.values()).slice(0, 10);
+      } catch {
+        toast.info('联网学校库暂时不可用，已保留手动输入，可直接保存目标学校');
       }
 
       setSchoolCandidates(candidates.slice(0, 10));
@@ -373,7 +385,11 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         toast.info('未查到匹配学校，可直接输入学校名称');
       }
     } catch {
-      toast.error('联网搜索学校失败，请稍后重试');
+      if (keyword) {
+        patch({ school: keyword, targetSchool: keyword });
+      }
+      setSchoolCandidates([]);
+      toast.info('暂未查到学校库结果，可直接输入学校名称并保存');
     } finally {
       setSearchingSchool(false);
     }
