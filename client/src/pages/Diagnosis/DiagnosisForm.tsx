@@ -286,17 +286,12 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   const [countyLoadFailed, setCountyLoadFailed] = useState(false);
   const [customCityMode, setCustomCityMode] = useState(false);
   const [customCountyMode, setCustomCountyMode] = useState(false);
-  const [schoolSearch, setSchoolSearch] = useState('');
-  const [schoolOpen, setSchoolOpen] = useState(false);
   const [scoreSuggesting, setScoreSuggesting] = useState(false);
   const [scoreSuggested, setScoreSuggested] = useState(false);
-  const [fetchedSchools, setFetchedSchools] = useState<string[]>([]);
-  const [schoolsLoading, setSchoolsLoading] = useState(false);
   const [majorInfoContent, setMajorInfoContent] = useState('');
   const [majorInfoLoading, setMajorInfoLoading] = useState(false);
   const [internetSubjectMaxHints, setInternetSubjectMaxHints] = useState<Record<string, number>>({});
   const customRegionRef = useRef('');
-  const schoolCacheRef = useRef<Record<string, string[]>>({});
   const applyingProfileRef = useRef(false);
   const lastAppliedProfileKeyRef = useRef('');
 
@@ -318,6 +313,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
       county: stageProfile.county,
       grade: stageProfile.grade,
       targetSchool: stageProfile.targetSchool,
+      targetScore: stageProfile.targetScore,
       targetMajor: stageProfile.targetMajor,
       examDate: stageProfile.examDate,
       boardingType: stageProfile.boardingType,
@@ -352,7 +348,9 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
         county: stageProfile.county || '',
       });
     }
-    if (stageProfile.targetSchool) form.setValue('targetSchool', stageProfile.targetSchool);
+    form.setValue('targetSchool', stageProfile.targetSchool || '');
+    form.setValue('targetScore', stageProfile.targetScore);
+    setScoreSuggested(stageProfile.targetScore != null);
     if (stageProfile.targetMajor) form.setValue('targetMajor', stageProfile.targetMajor);
     if (stageProfile.examDate) form.setValue('examDate', stageProfile.examDate);
     if (stageProfile.boardingType) form.setValue('boardingType', stageProfile.boardingType);
@@ -390,7 +388,9 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     if (!onProfileFieldsChange) return;
     const tracked = new Set([
       'studentName', 'grade', 'region', 'targetSchool', 'targetMajor',
-      'examDate', 'boardingType', 'examMode', 'problemDesc',
+      'targetScore', 'examDate', 'boardingType', 'examMode', 'problemDesc',
+      'chinese', 'math', 'english', 'physics', 'chemistry', 'biology',
+      'history', 'geography', 'politics',
     ]);
     const sub = form.watch((_value, info) => {
       if (info.type === 'change' && info.name && tracked.has(info.name) && !applyingProfileRef.current) {
@@ -497,83 +497,6 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   const isHighSchool = ['高一', '高二', '高三'].includes(watchedGrade);
   const isMiddleSchool = ['初一', '初二', '初三'].includes(watchedGrade);
   const isElementary = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'].includes(watchedGrade);
-
-  const displaySchools = fetchedSchools.length > 0 ? fetchedSchools : [];
-  const filteredSchools = schoolSearch
-    ? displaySchools.filter((s) => s.includes(schoolSearch))
-    : displaySchools;
-
-  useEffect(() => {
-    if (!watchedRegion || isCustomRegion) return;
-    const stage = getEducationStage(watchedGrade);
-    const cacheKey = `${watchedRegion}_${stage}`;
-    if (schoolCacheRef.current[cacheKey]) {
-      setFetchedSchools(schoolCacheRef.current[cacheKey]);
-      return;
-    }
-    let cancelled = false;
-    const schoolType = stage === 'elementary' ? '初中' : stage === 'high' ? '大学' : '高中';
-    const fetchSchools = async () => {
-      setSchoolsLoading(true);
-      try {
-        if (stage === 'middle') {
-          const result = await policyApi.searchSchools(watchedRegion);
-          if (cancelled) return;
-          const names = result.schools.map((s) => s.name);
-          const unique = [...new Set(names)];
-          schoolCacheRef.current[cacheKey] = unique;
-          setFetchedSchools(unique);
-        } else if (stage === 'high') {
-          const streamResult = capabilityClient
-            .load(PLUGIN_IDS.HIGH_SCHOOL_REGION_SEARCH)
-            .callStream('searchSummary', { region: watchedRegion } as Record<string, unknown>);
-          let fullContent = '';
-          for await (const chunk of streamResult as AsyncIterable<Record<string, unknown>>) {
-            if (cancelled) break;
-            const delta = typeof chunk?.summary === 'string' ? chunk.summary : '';
-            if (delta) fullContent += delta;
-          }
-          if (cancelled) return;
-          const lines = fullContent.split('\n').map((l: string) => l.trim()).filter(Boolean);
-          const names = lines
-            .filter((l: string) => !l.startsWith('#') && !l.startsWith('|') && !l.startsWith('\u6570\u636e') && !l.startsWith('\u4fe1\u606f') && !l.startsWith('\u5907\u6ce8'))
-            .map((l: string) => l.replace(/^[\d.\-\s]+/, '').replace(/^[-*]\s*/, '').replace(/\uff08.*\uff09$/, '').replace(/\(.*\)$/, '').trim())
-            .filter((l: string) => l.length >= 2 && l.length <= 30);
-          const unique = [...new Set(names)];
-          schoolCacheRef.current[cacheKey] = unique;
-          setFetchedSchools(unique);
-        } else {
-          const streamResult = capabilityClient
-            .load(PLUGIN_IDS.JUNIOR_HIGH_SEARCH)
-            .callStream('searchSummary', { region: watchedRegion } as Record<string, unknown>);
-          let fullContent = '';
-          for await (const chunk of streamResult as AsyncIterable<Record<string, unknown>>) {
-            if (cancelled) break;
-            const delta = typeof chunk?.summary === 'string' ? chunk.summary : '';
-            if (delta) fullContent += delta;
-          }
-          if (cancelled) return;
-          const lines = fullContent.split('\n').map((l: string) => l.trim()).filter(Boolean);
-          const names = lines
-            .filter((l: string) => !l.startsWith('#') && !l.startsWith('-') && !l.startsWith('*') && !l.startsWith('|') && !l.startsWith('\u6570\u636e') && !l.startsWith('\u4fe1\u606f') && !l.startsWith('\u5907\u6ce8'))
-            .map((l: string) => l.replace(/^[\d.\-\s]+/, '').replace(/\uff08.*\uff09$/, '').trim())
-            .filter((l: string) => l.length >= 2 && l.length <= 30);
-          const unique = [...new Set(names)];
-          schoolCacheRef.current[cacheKey] = unique;
-          setFetchedSchools(unique);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          logger.error(`搜索${schoolType}失败`, String(err));
-          setFetchedSchools([]);
-        }
-      } finally {
-        if (!cancelled) setSchoolsLoading(false);
-      }
-    };
-    fetchSchools();
-    return () => { cancelled = true; };
-  }, [watchedRegion, isCustomRegion, watchedGrade]);
 
   const watchedSchool = form.watch('targetSchool');
 
@@ -1167,59 +1090,20 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
               <FormItem className="relative">
                 <FormLabel>
                   {isElementary ? '目标初中' : isHighSchool ? '目标大学' : '目标院校'}
-                  {schoolsLoading && (
-                    <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-pen-blue">
-                      <Loader2 className="size-3 animate-spin" />
-                      搜索中
-                    </span>
-                  )}
                 </FormLabel>
                 <FormControl>
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder={isElementary ? '搜索或输入初中名称' : isHighSchool ? '搜索或输入大学名称' : '搜索或输入院校名称'}
+                      placeholder={isElementary ? '输入目标初中名称' : isHighSchool ? '输入目标大学名称' : '输入目标院校名称'}
                       className="pl-8"
                       {...field}
                       value={field.value ?? ''}
-                      onFocus={() => setSchoolOpen(true)}
-                      onBlur={() => setTimeout(() => setSchoolOpen(false), 200)}
                       onChange={(e) => {
                         field.onChange(e);
-                        setSchoolSearch(e.target.value);
+                        setScoreSuggested(false);
                       }}
                     />
-                    {schoolOpen && (
-                      <div className="absolute top-full z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border-2 border-ink/20 bg-card shadow-md">
-                        {schoolsLoading ? (
-                          <div className="flex items-center gap-2 px-3 py-3 text-xs text-muted-foreground">
-                            <Loader2 className="size-3 animate-spin" />
-                            正在查询{isElementary ? '初中' : isHighSchool ? '大学' : '学校'}数据...
-                          </div>
-                        ) : filteredSchools.length > 0 ? (
-                          filteredSchools.map((school) => (
-                            <button
-                              key={school}
-                              type="button"
-                              className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent"
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                field.onChange(school);
-                                setSchoolSearch('');
-                                setSchoolOpen(false);
-                                setScoreSuggested(false);
-                              }}
-                            >
-                              {school}
-                            </button>
-                          ))
-                        ) : (
-                          <div className="px-3 py-3 text-xs text-muted-foreground">
-                            暂无匹配学校，请直接输入
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </FormControl>
                 <FormMessage />

@@ -272,6 +272,7 @@ const Diagnosis: React.FC = () => {
       grade: snapshot.grade,
       targetSchool: snapshot.targetSchool || '',
       targetMajor: snapshot.targetMajor || '',
+      targetScore: snapshot.targetScore,
       examDate: snapshot.examDate || '',
       boardingType: (snapshot.boardingType as '' | 'day' | 'boarding') || '',
       examMode: snapshot.examMode || '',
