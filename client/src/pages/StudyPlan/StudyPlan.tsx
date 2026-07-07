@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, Copy, Check, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, Copy, Check, AlertCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Streamdown } from '@client/src/components/ui/streamdown';
@@ -37,6 +37,43 @@ function parseTargetScore(value: string): number | undefined {
   if (!trimmed) return undefined;
   const parsed = Number(trimmed);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function buildExportFileName(prefix: string, grade: string, region: string, extension: string): string {
+  const safe = [prefix, grade, region]
+    .filter(Boolean)
+    .join('-')
+    .replace(/[\\/:*?"<>|\s]+/g, '-')
+    .replace(/-+/g, '-');
+  return `${safe || prefix}.${extension}`;
+}
+
+function downloadTextFile(content: string, filename: string, mimeType: string): void {
+  const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function markdownTablesToCsv(markdown: string): string {
+  const rows: string[] = [];
+  const lines = markdown.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('|') || !trimmed.endsWith('|')) continue;
+    if (/^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?$/.test(trimmed)) continue;
+    const cells = trimmed
+      .slice(1, -1)
+      .split('|')
+      .map((cell) => `"${cell.trim().replace(/"/g, '""')}"`);
+    rows.push(cells.join(','));
+  }
+  return rows.join('\n');
 }
 
 interface StudyPlanSessionState {
@@ -88,6 +125,7 @@ const StudyPlan: React.FC = () => {
   const [profileDirty, setProfileDirty] = useState(false);
   const applyingProfileRef = useRef(false);
   const hydratedRef = useRef(false);
+  const reportRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const cached = loadModuleSession<StudyPlanSessionState>(stageSlug, 'study-plan');
@@ -285,6 +323,7 @@ const StudyPlan: React.FC = () => {
         full += chunk;
         setReport(full);
       }
+      setTimeout(() => reportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
     } catch {
       toast.error('学习计划生成失败，请稍后重试');
     } finally {
@@ -306,6 +345,41 @@ const StudyPlan: React.FC = () => {
     } catch {
       toast.error('复制失败');
     }
+  };
+
+  const handleJumpToReport = () => {
+    reportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleExportDocument = () => {
+    if (!report.trim()) {
+      toast.error('请先生成课表执行方案');
+      return;
+    }
+    downloadTextFile(
+      report,
+      buildExportFileName('课表学习执行方案', grade, region, 'md'),
+      'text/markdown',
+    );
+    toast.success('已导出文档');
+  };
+
+  const handleExportTable = () => {
+    if (!report.trim()) {
+      toast.error('请先生成课表执行方案');
+      return;
+    }
+    const csv = markdownTablesToCsv(report);
+    if (!csv.trim()) {
+      toast.error('当前方案里没有可导出的表格');
+      return;
+    }
+    downloadTextFile(
+      csv,
+      buildExportFileName('课表执行表', grade, region, 'csv'),
+      'text/csv',
+    );
+    toast.success('已导出表格');
   };
 
   const buildStudyPlanReferenceScript = useCallback(() => {
@@ -478,17 +552,34 @@ const StudyPlan: React.FC = () => {
             <Button className="font-hand w-full" disabled={loading} onClick={handleGenerate}>
               {loading ? <><Loader2 className="mr-2 size-4 animate-spin" />生成中...</> : '生成课表学习执行方案'}
             </Button>
+            {report && (
+              <Button type="button" variant="outline" className="font-hand w-full" onClick={handleJumpToReport}>
+                直接跳到已生成方案
+              </Button>
+            )}
           </WobblyCard>
         </div>
 
         <div className="space-y-4">
+          <div ref={reportRef}>
           <WobblyCard variant="white" decoration="tape" wobblyIndex={2} hoverable={false} className="p-4 lg:min-h-[480px]">
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-marker font-bold">课表学习执行方案</h2>
               {report && (
-                <Button variant="outline" size="sm" onClick={handleCopy}>
-                  {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={handleCopy}>
+                    {copied ? <Check className="mr-1 size-3.5" /> : <Copy className="mr-1 size-3.5" />}
+                    复制全文
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleExportDocument}>
+                    <Download className="mr-1 size-3.5" />
+                    导出文档
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleExportTable}>
+                    <Download className="mr-1 size-3.5" />
+                    导出表格
+                  </Button>
+                </div>
               )}
             </div>
             {loading && !report && (
@@ -510,6 +601,7 @@ const StudyPlan: React.FC = () => {
               </div>
             )}
           </WobblyCard>
+          </div>
 
           <ReferenceScriptCard
             onGenerate={buildStudyPlanReferenceScript}
