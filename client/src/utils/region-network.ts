@@ -116,14 +116,14 @@ function parseRegionItems(raw: any[]): RegionOption[] {
     .sort((a, b) => a.adcode.localeCompare(b.adcode, 'zh-Hans-CN'));
 }
 
-function readStorage(key: string): RegionOption[] | null {
+function readStorage(key: string, allowExpired = false): RegionOption[] | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(`${STORAGE_PREFIX}${key}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CachedPayload;
     if (!parsed?.timestamp || !Array.isArray(parsed.items)) return null;
-    if (Date.now() - parsed.timestamp > STORAGE_TTL_MS) return null;
+    if (!allowExpired && Date.now() - parsed.timestamp > STORAGE_TTL_MS) return null;
     return parsed.items;
   } catch {
     return null;
@@ -148,15 +148,24 @@ async function fetchRegionChildren(adcode: string): Promise<RegionOption[]> {
     return fromStorage;
   }
   const url = `https://geo.datav.aliyun.com/areas_v3/bound/${adcode}_full.json`;
-  const response = await fetch(url, { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error(`区域数据获取失败: ${response.status}`);
+  try {
+    const response = await fetch(url, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`区域数据获取失败: ${response.status}`);
+    }
+    const payload = (await response.json()) as { features?: any[] };
+    const items = parseRegionItems(payload.features || []);
+    memoryCache.set(adcode, items);
+    writeStorage(adcode, items);
+    return items;
+  } catch (error) {
+    const staleStorage = readStorage(adcode, true);
+    if (staleStorage) {
+      memoryCache.set(adcode, staleStorage);
+      return staleStorage;
+    }
+    throw error;
   }
-  const payload = (await response.json()) as { features?: any[] };
-  const items = parseRegionItems(payload.features || []);
-  memoryCache.set(adcode, items);
-  writeStorage(adcode, items);
-  return items;
 }
 
 export async function loadProvinces(): Promise<RegionOption[]> {

@@ -159,6 +159,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         const items = await loadCities(province);
         if (cancelled) return;
         setCityOptions(items);
+        setCityLoadFailed(items.length === 0);
       } catch {
         if (!cancelled) {
           setCityOptions([]);
@@ -220,12 +221,14 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       : countyOptions,
     countySearch,
   );
+  const citySearchMatchesCurrentOption = Boolean(findOptionByName(cityOptions, citySearch.trim()));
   const isCustomProvince = Boolean(draft.province) && !findOptionByName(provinceOptions, draft.province);
   const isCustomCounty = Boolean(draft.county) && !findOptionByName(countyOptions, draft.county);
   const selectedProvinceValue = customProvinceMode || isCustomProvince ? '__custom_province__' : toSelectValue(draft.province);
   const selectedCountyValue = customCountyMode || isCustomCounty ? '__custom_county__' : toSelectValue(draft.county);
   const safeGrade = stageConfig.grades.includes(draft.grade) ? draft.grade : '';
-  const quickCityOptions = (citySearch.trim() ? filteredCities : cityOptions).slice(0, 10);
+  const quickCityOptions = (citySearch.trim() && !citySearchMatchesCurrentOption ? filteredCities : cityOptions).slice(0, 10);
+  const showCityLoadFailed = cityLoadFailed && quickCityOptions.length === 0;
 
   const patch = (partial: Partial<StageProfile>) => {
     setDraft((prev) => ({ ...prev, ...partial }));
@@ -243,9 +246,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     try {
       const items = await loadCounties(city);
       setCountyOptions(items);
-      if (items.length === 0) {
-        setCountyLoadFailed(true);
-      }
+      setCountyLoadFailed(items.length === 0);
     } catch {
       setCountyOptions([]);
       setCountyLoadFailed(true);
@@ -530,7 +531,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           <div>
-            <Label className="font-hand">省份 *</Label>
+            <Label className="font-hand">省份 *（可搜索）</Label>
             <Select
               value={selectedProvinceValue}
               onValueChange={(v) => {
@@ -553,12 +554,12 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               }}
             >
               <SelectTrigger className="font-hand mt-1">
-                <SelectValue placeholder={regionLoading ? '联网加载中...' : '选择省份'} />
+                <SelectValue placeholder={regionLoading ? '联网加载中...' : '选择/搜索省份'} />
               </SelectTrigger>
               <SelectContent>
                 <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
                   <Input
-                    placeholder="搜索省份..."
+                    placeholder="输入省份/拼音/首字母，如湖北/hubei/hb"
                     value={provinceSearch}
                     onChange={(e) => setProvinceSearch(e.target.value)}
                     className="h-8 text-xs"
@@ -570,6 +571,9 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
                 <SelectItem value="__custom_province__">自定义省份/地区...</SelectItem>
               </SelectContent>
             </Select>
+            <p className="font-hand mt-1 text-[11px] text-muted-foreground">
+              打开下拉后可直接搜索省份，也支持自定义输入。
+            </p>
             {(isCustomProvince || selectedProvinceValue === '__custom_province__') && (
               <Input
                 className="font-hand mt-2"
@@ -606,13 +610,13 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               }}
               onBlur={handleCityInputBlur}
               disabled={!draft.province}
-              placeholder={cityLoadFailed ? '城市联网失败，可直接输入城市' : '搜索或输入城市/盟/州'}
+              placeholder={showCityLoadFailed ? '城市联网失败，可直接输入城市' : '搜索或输入城市/盟/州'}
             />
             {draft.province && (
               <div className="mt-2 rounded-lg border border-ink/15 bg-card/70 p-2">
                 <div className="mb-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span>常用城市可直接点选</span>
-                  {cityLoadFailed && <span className="text-marker-red">联网失败，可手动输入</span>}
+                  <span>该省至少展示前10个城市，可直接点选，也可在上方自定义输入</span>
+                  {showCityLoadFailed && <span className="text-marker-red">联网失败，可手动输入</span>}
                 </div>
                 {quickCityOptions.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
@@ -637,7 +641,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
             )}
           </div>
           <div>
-            <Label className="font-hand">区县（选填）</Label>
+            <Label className="font-hand">区县（选填，可不选）</Label>
             <Select
               value={selectedCountyValue}
               onValueChange={(v) => {
