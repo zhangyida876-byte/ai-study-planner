@@ -643,24 +643,31 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       )}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <div>
-          <Label className="font-hand">{stageConfig.targetLabel}（支持自定义搜索）</Label>
+        <div className="rounded-xl border-2 border-dashed border-postit-yellow bg-postit-yellow/20 p-3">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <Label className="font-hand font-bold text-ink">{stageConfig.targetLabel}</Label>
+            <span className="rounded-full border border-marker-red/30 bg-white px-2 py-0.5 text-xs font-bold text-marker-red">
+              当地学校可搜索，也支持自定义输入
+            </span>
+          </div>
+          <p className="font-hand mb-2 text-xs text-ink/70">
+            先输入学校关键词，点击“搜索本地学校并匹配分数线”；若没有搜到，也可以直接手动填写学校名称保存。
+          </p>
           <div className="mt-1 flex gap-2">
             <Input
               className="font-hand"
               value={schoolKeyword}
               onChange={(e) => setSchoolKeyword(e.target.value)}
-              placeholder={stageConfig.slug === 'high' ? '输入大学名称' : '输入学校名称'}
+              placeholder={stageConfig.slug === 'high' ? '如：清华大学 / 本地大学名称' : '如：华师一附中 / 当地学校名称'}
             />
             <Button
               type="button"
-              variant="outline"
-              className="font-hand"
+              className="min-w-[132px] border-2 border-ink bg-marker-red font-hand text-white hover:bg-marker-red/90"
               onClick={handleSearchSchools}
               disabled={searchingSchool}
             >
               {searchingSchool ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-              搜索
+              搜索并匹配
             </Button>
           </div>
           {schoolCandidates.length > 0 && (
@@ -683,8 +690,8 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               ))}
             </div>
           )}
-          <p className="font-hand mt-1 text-xs text-muted-foreground">
-            最多展示 10 个候选学校，并按“冲刺/匹配/保底”分层；点击即可自动填入。
+          <p className="font-hand mt-2 text-xs text-ink/70">
+            搜索后最多展示 10 个本地候选学校，并按“冲刺/匹配/保底”分层；点击学校即可自动填入并尝试匹配分数线。
           </p>
         </div>
         <div>
