@@ -897,6 +897,29 @@ const Plan: React.FC = () => {
   }, [hideElementaryPlanBlocks, stageSlug]);
 
   useEffect(() => {
+    const cached = loadModuleSession<PlanSessionState>(stageSlug, 'plan');
+    if (!cached) return;
+    setExamType(stageConfig.examType);
+    setGrade(normalizeStageGrade(cached.grade, stageConfig.grades));
+    setExamMode(cached.examMode);
+    setExamYear(cached.examYear);
+    setSelectedProvince(cached.selectedProvince);
+    setSelectedCity(cached.selectedCity);
+    setCounty(cached.county);
+    setRegion(cached.region);
+    setIsCustomRegion(cached.isCustomRegion);
+    setCustomRegionText(cached.customRegionText);
+    setScores(cached.scores || {});
+    setTargetSchool(cached.targetSchool || '');
+    setTargetScore(cached.targetScore);
+    setCareerIntent(cached.careerIntent || '');
+    setBoardingType(cached.boardingType || '');
+    setReportContent(cached.reportContent || '');
+    setTimelineContent(cached.timelineContent || '');
+    hydratedRef.current = true;
+  }, [stageSlug, stageConfig.examType, stageConfig.grades]);
+
+  useEffect(() => {
     if (!profile.updatedAt) return;
     applyingProfileRef.current = true;
     const fill = getPlanAutofillFromProfile(profile);
@@ -919,31 +942,8 @@ const Plan: React.FC = () => {
       applyingProfileRef.current = false;
       hydratedRef.current = true;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在档案保存时回填
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- 先恢复模块缓存，再用首页档案覆盖关键字段
   }, [profile.updatedAt, stageConfig.grades]);
-
-  useEffect(() => {
-    const cached = loadModuleSession<PlanSessionState>(stageSlug, 'plan');
-    if (!cached) return;
-    setExamType(stageConfig.examType);
-    setGrade(normalizeStageGrade(cached.grade, stageConfig.grades));
-    setExamMode(cached.examMode);
-    setExamYear(cached.examYear);
-    setSelectedProvince(cached.selectedProvince);
-    setSelectedCity(cached.selectedCity);
-    setCounty(cached.county);
-    setRegion(cached.region);
-    setIsCustomRegion(cached.isCustomRegion);
-    setCustomRegionText(cached.customRegionText);
-    setScores(cached.scores || {});
-    setTargetSchool(cached.targetSchool || '');
-    setTargetScore(cached.targetScore);
-    setCareerIntent(cached.careerIntent || '');
-    setBoardingType(cached.boardingType || '');
-    setReportContent(cached.reportContent || '');
-    setTimelineContent(cached.timelineContent || '');
-    hydratedRef.current = true;
-  }, [stageSlug, stageConfig.examType, stageConfig.grades]);
 
   useEffect(() => {
     saveModuleSession<PlanSessionState>(stageSlug, 'plan', {

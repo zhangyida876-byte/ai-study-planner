@@ -176,16 +176,6 @@ const Knowledge: React.FC = () => {
   }, [items.length, hasQueried, loading, effectiveVersion, effectiveSubject, grade]);
 
   useEffect(() => {
-    if (!profile.updatedAt) return;
-    const fill = getKnowledgeAutofillFromProfile(profile);
-    if (fill.province) setProvince(fill.province);
-    if (fill.city) setCity(fill.city);
-    if (fill.region) setRegion(fill.region);
-    if (fill.grade) setGrade(fill.grade);
-    hydratedRef.current = true;
-  }, [profile.updatedAt, profile]);
-
-  useEffect(() => {
     const cached = loadModuleSession<KnowledgeSessionState>(stageSlug, 'knowledge');
     if (!cached) return;
     setProvince(cached.province || '');
@@ -202,6 +192,20 @@ const Knowledge: React.FC = () => {
     setSelectedChapter(cached.selectedChapter || '');
     hydratedRef.current = true;
   }, [stageSlug]);
+
+  useEffect(() => {
+    if (!profile.updatedAt) return;
+    const fill = getKnowledgeAutofillFromProfile(profile);
+    if (fill.province) setProvince(fill.province);
+    if (fill.city) setCity(fill.city);
+    if (fill.region) {
+      setRegion(fill.region);
+      setIsCustomRegion(false);
+      setCustomRegionText('');
+    }
+    if (fill.grade) setGrade(fill.grade);
+    hydratedRef.current = true;
+  }, [profile.updatedAt, profile]);
 
   useEffect(() => {
     saveModuleSession<KnowledgeSessionState>(stageSlug, 'knowledge', {

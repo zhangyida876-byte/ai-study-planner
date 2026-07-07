@@ -42,6 +42,7 @@ export function getStudyPlanAutofillFromProfile(profile: StageProfile) {
     region: formatProfileRegion(profile),
     school: profile.school,
     targetSchool: profile.targetSchool,
+    targetScore: profile.targetScore != null ? String(profile.targetScore) : '',
     careerIntent: profile.careerIntent,
     examDate: profile.examDate,
     currentScore: profile.scoresOverview,

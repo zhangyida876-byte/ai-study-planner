@@ -32,6 +32,13 @@ import { getInternalScriptAnchor } from '@client/src/config/internal-resource-li
 
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
+function parseTargetScore(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 interface StudyPlanSessionState {
   grade: string;
   region: string;
@@ -83,27 +90,6 @@ const StudyPlan: React.FC = () => {
   const hydratedRef = useRef(false);
 
   useEffect(() => {
-    if (!profile.updatedAt) return;
-    applyingProfileRef.current = true;
-    const fill = getStudyPlanAutofillFromProfile(profile);
-    if (fill.grade) setGrade(fill.grade);
-    if (fill.region) setRegion(fill.region);
-    if (fill.school) setSchool(fill.school);
-    if (fill.targetSchool) setTargetSchool(fill.targetSchool);
-    if (fill.careerIntent) setCareerIntent(fill.careerIntent);
-    if (fill.examDate) setExamDate(fill.examDate);
-    if (fill.currentScore) setCurrentScore(fill.currentScore);
-    if (fill.weakSubjects) setWeakSubjects(fill.weakSubjects);
-    if (fill.strongSubjects) setStrongSubjects(fill.strongSubjects);
-    if (fill.weeklyHours) setWeeklyHours(fill.weeklyHours);
-    if (fill.boardingType) setBoardingType(fill.boardingType);
-    queueMicrotask(() => {
-      applyingProfileRef.current = false;
-      hydratedRef.current = true;
-    });
-  }, [profile.updatedAt, profile]);
-
-  useEffect(() => {
     const cached = loadModuleSession<StudyPlanSessionState>(stageSlug, 'study-plan');
     if (!cached) return;
     setGrade(cached.grade || '');
@@ -127,6 +113,28 @@ const StudyPlan: React.FC = () => {
     setReport(cached.report || '');
     hydratedRef.current = true;
   }, [stageSlug]);
+
+  useEffect(() => {
+    if (!profile.updatedAt) return;
+    applyingProfileRef.current = true;
+    const fill = getStudyPlanAutofillFromProfile(profile);
+    if (fill.grade) setGrade(fill.grade);
+    if (fill.region) setRegion(fill.region);
+    if (fill.school) setSchool(fill.school);
+    if (fill.targetSchool) setTargetSchool(fill.targetSchool);
+    if (fill.targetScore) setTargetScore(fill.targetScore);
+    if (fill.careerIntent) setCareerIntent(fill.careerIntent);
+    if (fill.examDate) setExamDate(fill.examDate);
+    if (fill.currentScore) setCurrentScore(fill.currentScore);
+    if (fill.weakSubjects) setWeakSubjects(fill.weakSubjects);
+    if (fill.strongSubjects) setStrongSubjects(fill.strongSubjects);
+    if (fill.weeklyHours) setWeeklyHours(fill.weeklyHours);
+    if (fill.boardingType) setBoardingType(fill.boardingType);
+    queueMicrotask(() => {
+      applyingProfileRef.current = false;
+      hydratedRef.current = true;
+    });
+  }, [profile.updatedAt, profile]);
 
   useEffect(() => {
     saveModuleSession<StudyPlanSessionState>(stageSlug, 'study-plan', {
@@ -181,6 +189,7 @@ const StudyPlan: React.FC = () => {
         grade,
         school,
         targetSchool,
+        targetScore: parseTargetScore(targetScore),
         examDate,
         scoresOverview: currentScore,
         careerIntent,
@@ -197,6 +206,7 @@ const StudyPlan: React.FC = () => {
     grade,
     school,
     targetSchool,
+    targetScore,
     examDate,
     currentScore,
     careerIntent,
@@ -215,6 +225,7 @@ const StudyPlan: React.FC = () => {
       grade,
       school,
       targetSchool,
+      targetScore: parseTargetScore(targetScore),
       examDate,
       scoresOverview: currentScore,
       careerIntent,
@@ -225,7 +236,7 @@ const StudyPlan: React.FC = () => {
     });
     toast.success('已同步回学段主页档案');
     setProfileDirty(false);
-  }, [updateProfile, grade, school, targetSchool, examDate, currentScore, careerIntent, weakSubjects, strongSubjects, weeklyHours, boardingType]);
+  }, [updateProfile, grade, school, targetSchool, targetScore, examDate, currentScore, careerIntent, weakSubjects, strongSubjects, weeklyHours, boardingType]);
 
   const validate = (): string | null => {
     if (!grade) return '请选择年级';
