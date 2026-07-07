@@ -663,6 +663,7 @@ const Plan: React.FC = () => {
   const [boardingType, setBoardingType] = useState('');
   const applyingProfileRef = useRef(false);
   const hydratedRef = useRef(false);
+  const targetSchoolFromProfileRef = useRef(false);
   const hideElementaryPlanBlocks = useMemo(() => {
     if (stageConfig.slug === 'elementary') return true;
     if (examType === '小升初') return true;
@@ -931,7 +932,10 @@ const Plan: React.FC = () => {
       fetchPolicies(fill.region);
     }
     if (fill.grade) setGrade(normalizeStageGrade(fill.grade, stageConfig.grades));
-    if (fill.targetSchool) setTargetSchool(fill.targetSchool);
+    if (fill.targetSchool) {
+      setTargetSchool(fill.targetSchool);
+      targetSchoolFromProfileRef.current = true;
+    }
     if (fill.targetScore != null) setTargetScore(fill.targetScore);
     if (fill.careerIntent) setCareerIntent(fill.careerIntent);
     if (fill.boardingType) setBoardingType(fill.boardingType);
@@ -944,6 +948,37 @@ const Plan: React.FC = () => {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps -- 先恢复模块缓存，再用首页档案覆盖关键字段
   }, [profile.updatedAt, stageConfig.grades]);
+
+  useEffect(() => {
+    if (stageConfig.slug !== 'middle') return;
+    if (!region || !targetSchool || !targetSchoolFromProfileRef.current) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const result = await policyApi.searchSchools(region);
+        if (cancelled || result.schools.length === 0) return;
+        const matched = result.schools.some(
+          (school) =>
+            school.name === targetSchool ||
+            school.name.includes(targetSchool) ||
+            targetSchool.includes(school.name),
+        );
+        if (!matched) {
+          setTargetSchool('');
+          setTargetScore(undefined);
+          targetSchoolFromProfileRef.current = false;
+          setProfileDirty(true);
+          toast.warning('目标学校与当前地区不匹配，已清空，请重新选择本地目标学校');
+        }
+      } catch {
+        // 本地库不可用时不强制清空，避免误删老师手动输入。
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [region, targetSchool, stageConfig.slug]);
 
   useEffect(() => {
     saveModuleSession<PlanSessionState>(stageSlug, 'plan', {
@@ -1131,6 +1166,9 @@ const Plan: React.FC = () => {
 
   const handleProvinceChange = useCallback((val: string): void => {
     setProfileDirty(true);
+    targetSchoolFromProfileRef.current = false;
+    setTargetSchool('');
+    setTargetScore(undefined);
     if (val === '__custom__') {
       setIsCustomRegion(true);
       setRegion(customRegionText);
@@ -1162,6 +1200,9 @@ const Plan: React.FC = () => {
 
   const handleCityChange = useCallback((val: string): void => {
     setProfileDirty(true);
+    targetSchoolFromProfileRef.current = false;
+    setTargetSchool('');
+    setTargetScore(undefined);
     const next = val === '__custom_city__' ? '' : val;
     setSelectedCity(next);
     setCounty('');
@@ -1192,6 +1233,9 @@ const Plan: React.FC = () => {
   const handleCustomRegionSubmit = useCallback((): void => {
     const trimmed = customRegionText.trim();
     if (!trimmed) return;
+    targetSchoolFromProfileRef.current = false;
+    setTargetSchool('');
+    setTargetScore(undefined);
     setRegion(trimmed);
     setReportContent('');
     setTimelineContent('');
@@ -1392,11 +1436,13 @@ const Plan: React.FC = () => {
               {regionLoading && <span className="ml-2 text-pen-blue">正在加载地区列表...</span>}
               {policySearchContent && <span className="ml-2 text-emerald-700">已获取联网考情/政策信息</span>}
             </div>
-            {/* Row 1: Region + Exam Date + Gaokao Mode */}
-            <div className="flex flex-wrap items-end gap-4">
-              {/* Region cascade */}
-              <div className="flex gap-2">
-                <div className="w-32">
+            <div className="rounded-xl border border-ink/10 bg-background/80 p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-marker text-base font-bold text-ink">地区与考试信息</h3>
+                <span className="font-hand text-xs text-muted-foreground">换地区后会清空旧目标学校，避免跨城市误匹配</span>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+                <div>
                   <label className="mb-1 block text-sm font-bold text-ink">省份</label>
                   <Select value={isCustomRegion ? '__custom__' : toSelectValue(selectedProvince)} onValueChange={handleProvinceChange}>
                     <SelectTrigger className="font-hand">
@@ -1414,7 +1460,7 @@ const Plan: React.FC = () => {
                   </Select>
                 </div>
                 {!isCustomRegion && selectedProvince && (
-                  <div className="w-28">
+                  <div>
                     <label className="mb-1 block text-sm font-bold text-ink">市/区</label>
                     <Select value={selectedCityValue} onValueChange={handleCityChange}>
                       <SelectTrigger className="font-hand">
@@ -1423,7 +1469,7 @@ const Plan: React.FC = () => {
                       <SelectContent>
                         <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
                           <Input
-                            placeholder="模糊/拼音/别名（如 wulanhaote）"
+                            placeholder="模糊/拼音/别名"
                             value={citySearch}
                             onChange={(e) => setCitySearch(e.target.value)}
                             className="h-8 text-xs"
@@ -1450,7 +1496,7 @@ const Plan: React.FC = () => {
                   </div>
                 )}
                 {!isCustomRegion && selectedCity && (
-                  <div className="w-28">
+                  <div>
                     <label className="mb-1 block text-sm font-bold text-ink">区/县</label>
                     <Select value={selectedCountyValue} onValueChange={handleCountyChange}>
                       <SelectTrigger className="font-hand">
@@ -1486,122 +1532,126 @@ const Plan: React.FC = () => {
                     )}
                   </div>
                 )}
-              </div>
-              {isCustomRegion && (
-                <div className="flex items-end gap-2">
-                  <Input
-                    value={customRegionText}
-                    onChange={(e) => setCustomRegionText(e.target.value)}
-                    placeholder="输入地区名称"
-                    className="w-40 font-hand"
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleCustomRegionSubmit(); }}
-                  />
-                  <Button size="sm" variant="secondary" onClick={handleCustomRegionSubmit} className="border-2 border-ink font-hand">
-                    <Search className="size-3.5" />
-                    查询
-                  </Button>
-                </div>
-              )}
-
-               {/* Grade Selector */}
-              <div className="w-28">
-                <label className="mb-1 block text-sm font-bold text-ink">年级</label>
-                <Select value={toSelectValue(grade)} onValueChange={(v) => { setProfileDirty(true); setGrade(v); }}>
-                  <SelectTrigger className="font-hand">
-                    <SelectValue placeholder="选择年级" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {gradeOptions.map((g) => (
-                      <SelectItem key={g} value={g}>{g}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Exam Year */}
-              <div className="w-36">
-                <label className="mb-1 block text-sm font-bold text-ink">
-                  {examYear}年{stageConfig.examType}
-                </label>
-                <Select value={String(examYear)} onValueChange={(v) => setExamYear(Number(v))}>
-                  <SelectTrigger className="font-hand">
-                    <SelectValue placeholder="选择年份" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {YEAR_OPTIONS.map((y) => (
-                      <SelectItem key={y} value={String(y)}>{y}年</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Gaokao Mode */}
-              {isGaokao && (
-                <div className="w-52">
-                  <label className="mb-1 block text-sm font-bold text-ink">选科模式</label>
-                  <Select value={toSelectValue(examMode)} onValueChange={(v) => { setProfileDirty(true); setExamMode(v); }}>
+                {isCustomRegion && (
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-sm font-bold text-ink">自定义地区</label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={customRegionText}
+                        onChange={(e) => setCustomRegionText(e.target.value)}
+                        placeholder="输入地区名称"
+                        className="font-hand"
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleCustomRegionSubmit(); }}
+                      />
+                      <Button size="sm" variant="secondary" onClick={handleCustomRegionSubmit} className="border-2 border-ink font-hand">
+                        <Search className="size-3.5" />
+                        查询
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-ink">年级</label>
+                  <Select value={toSelectValue(grade)} onValueChange={(v) => { setProfileDirty(true); setGrade(v); }}>
                     <SelectTrigger className="font-hand">
-                      <SelectValue placeholder="选择模式" />
+                      <SelectValue placeholder="选择年级" />
                     </SelectTrigger>
                     <SelectContent>
-                      {HS_MODES.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
+                      {gradeOptions.map((g) => (
+                        <SelectItem key={g} value={g}>{g}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-
-              <div className="min-w-[160px] flex-1">
-                <label className="mb-1 block text-sm font-bold text-ink">{stageConfig.targetLabel}</label>
-                <Input
-                  value={targetSchool}
-                  onChange={(e) => { setProfileDirty(true); setTargetSchool(e.target.value); }}
-                  placeholder={stageConfig.slug === 'elementary' ? '目标初中' : stageConfig.slug === 'middle' ? '目标高中' : '目标院校'}
-                  className="font-hand"
-                />
-              </div>
-              {isGaokao && (
-                <div className="min-w-[180px] flex-1">
-                  <label className="mb-1 block text-sm font-bold text-ink">想做的事情 / 职业方向</label>
-                  <Input
-                    value={careerIntent}
-                    onChange={(e) => { setProfileDirty(true); setCareerIntent(e.target.value); }}
-                    placeholder="如：人工智能、医生、金融、法律"
-                    className="font-hand"
-                  />
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-ink">
+                    {examYear}年{stageConfig.examType}
+                  </label>
+                  <Select value={String(examYear)} onValueChange={(v) => setExamYear(Number(v))}>
+                    <SelectTrigger className="font-hand">
+                      <SelectValue placeholder="选择年份" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {YEAR_OPTIONS.map((y) => (
+                        <SelectItem key={y} value={String(y)}>{y}年</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
-              {stageConfig.slug !== 'elementary' && (
-                <div className="w-36">
-                  <label className="mb-1 block text-sm font-bold text-ink">匹配分数线</label>
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-ink">走读/住读</label>
+                  <Select
+                    value={boardingType || '__none__'}
+                    onValueChange={(v) => {
+                      setProfileDirty(true);
+                      setBoardingType(v === '__none__' ? '' : v);
+                    }}
+                  >
+                    <SelectTrigger className="font-hand"><SelectValue placeholder="请选择" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">未选</SelectItem>
+                      <SelectItem value="day">走读</SelectItem>
+                      <SelectItem value="boarding">住读</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {isGaokao && (
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-ink">选科模式</label>
+                    <Select value={toSelectValue(examMode)} onValueChange={(v) => { setProfileDirty(true); setExamMode(v); }}>
+                      <SelectTrigger className="font-hand">
+                        <SelectValue placeholder="选择模式" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HS_MODES.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-ink/10 bg-background/80 p-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className={isGaokao ? '' : 'md:col-span-2'}>
+                  <label className="mb-1 block text-sm font-bold text-ink">{stageConfig.targetLabel}</label>
                   <Input
-                    value={targetScore != null ? String(targetScore) : ''}
+                    value={targetSchool}
                     onChange={(e) => {
                       setProfileDirty(true);
-                      const value = e.target.value.trim();
-                      setTargetScore(value ? Number(value) : undefined);
+                      targetSchoolFromProfileRef.current = false;
+                      setTargetSchool(e.target.value);
                     }}
-                    placeholder="自动匹配"
+                    placeholder={stageConfig.slug === 'elementary' ? '目标初中' : stageConfig.slug === 'middle' ? '目标高中' : '目标院校'}
                     className="font-hand"
                   />
                 </div>
-              )}
-
-              <div className="w-28">
-                <label className="mb-1 block text-sm font-bold text-ink">走读/住读</label>
-                <Select
-                  value={boardingType || '__none__'}
-                  onValueChange={(v) => {
-                    setProfileDirty(true);
-                    setBoardingType(v === '__none__' ? '' : v);
-                  }}
-                >
-                  <SelectTrigger className="font-hand"><SelectValue placeholder="请选择" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">未选</SelectItem>
-                    <SelectItem value="day">走读</SelectItem>
-                    <SelectItem value="boarding">住读</SelectItem>
-                  </SelectContent>
-                </Select>
+                {isGaokao && (
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-ink">想做的事情 / 职业方向</label>
+                    <Input
+                      value={careerIntent}
+                      onChange={(e) => { setProfileDirty(true); setCareerIntent(e.target.value); }}
+                      placeholder="如：人工智能、医生、金融、法律"
+                      className="font-hand"
+                    />
+                  </div>
+                )}
+                {stageConfig.slug !== 'elementary' && (
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-ink">匹配分数线</label>
+                    <Input
+                      value={targetScore != null ? String(targetScore) : ''}
+                      onChange={(e) => {
+                        setProfileDirty(true);
+                        const value = e.target.value.trim();
+                        setTargetScore(value ? Number(value) : undefined);
+                      }}
+                      placeholder="自动匹配"
+                      className="font-hand"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

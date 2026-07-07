@@ -483,7 +483,15 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
                 setCountyLoadFailed(false);
                 setCustomProvinceMode(v === '__custom_province__');
                 setCustomCountyMode(false);
-                patch({ province: v === '__custom_province__' ? '' : v, city: '', county: '' });
+                setSchoolKeyword('');
+                setSchoolCandidates([]);
+                patch({
+                  province: v === '__custom_province__' ? '' : v,
+                  city: '',
+                  county: '',
+                  targetSchool: '',
+                  targetScore: undefined,
+                });
               }}
             >
               <SelectTrigger className="font-hand mt-1">
@@ -508,7 +516,17 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               <Input
                 className="font-hand mt-2"
                 value={draft.province}
-                onChange={(e) => patch({ province: e.target.value, city: '', county: '' })}
+                onChange={(e) => {
+                  setSchoolKeyword('');
+                  setSchoolCandidates([]);
+                  patch({
+                    province: e.target.value,
+                    city: '',
+                    county: '',
+                    targetSchool: '',
+                    targetScore: undefined,
+                  });
+                }}
                 placeholder="输入省份/自治区/直辖市"
               />
             )}
@@ -524,7 +542,9 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
                 setCountySearch('');
                 setCountyLoadFailed(false);
                 setCustomCountyMode(false);
-                patch({ city: next.trim(), county: '' });
+                setSchoolKeyword('');
+                setSchoolCandidates([]);
+                patch({ city: next.trim(), county: '', targetSchool: '', targetScore: undefined });
               }}
               disabled={!draft.province}
               placeholder={cityLoadFailed ? '城市联网失败，可直接输入城市' : '搜索或输入城市/盟/州'}
@@ -547,7 +567,9 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
                           setCountySearch('');
                           setCountyLoadFailed(false);
                           setCustomCountyMode(false);
-                          patch({ city: city.name, county: '' });
+                          setSchoolKeyword('');
+                          setSchoolCandidates([]);
+                          patch({ city: city.name, county: '', targetSchool: '', targetScore: undefined });
                         }}
                       >
                         {city.name}
