@@ -100,7 +100,6 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   const [regionLoading, setRegionLoading] = useState(false);
   const [cityLoadFailed, setCityLoadFailed] = useState(false);
   const [countyLoadFailed, setCountyLoadFailed] = useState(false);
-  const [customProvinceMode, setCustomProvinceMode] = useState(false);
   const [customCountyMode, setCustomCountyMode] = useState(false);
   const [provinceSearch, setProvinceSearch] = useState('');
   const [citySearch, setCitySearch] = useState('');
@@ -113,6 +112,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   useEffect(() => {
     setDraft(profile);
     setSchoolKeyword(profile.targetSchool || '');
+    setProvinceSearch(profile.province || '');
     setCitySearch(profile.city || '');
   }, [profile.updatedAt]);
 
@@ -222,16 +222,59 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     countySearch,
   );
   const citySearchMatchesCurrentOption = Boolean(findOptionByName(cityOptions, citySearch.trim()));
-  const isCustomProvince = Boolean(draft.province) && !findOptionByName(provinceOptions, draft.province);
   const isCustomCounty = Boolean(draft.county) && !findOptionByName(countyOptions, draft.county);
-  const selectedProvinceValue = customProvinceMode || isCustomProvince ? '__custom_province__' : toSelectValue(draft.province);
+  const provinceSearchMatchesCurrentOption = Boolean(findOptionByName(provinceOptions, provinceSearch.trim()));
   const selectedCountyValue = customCountyMode || isCustomCounty ? '__custom_county__' : toSelectValue(draft.county);
   const safeGrade = stageConfig.grades.includes(draft.grade) ? draft.grade : '';
+  const quickProvinceOptions = (provinceSearch.trim() && !provinceSearchMatchesCurrentOption ? filteredProvinces : provinceOptions).slice(0, 10);
   const quickCityOptions = (citySearch.trim() && !citySearchMatchesCurrentOption ? filteredCities : cityOptions).slice(0, 10);
   const showCityLoadFailed = cityLoadFailed && quickCityOptions.length === 0;
 
   const patch = (partial: Partial<StageProfile>) => {
     setDraft((prev) => ({ ...prev, ...partial }));
+  };
+
+  const clearSchoolAndLowerRegion = () => {
+    setCitySearch('');
+    setCountySearch('');
+    setCityLoadFailed(false);
+    setCountyLoadFailed(false);
+    setCustomCountyMode(false);
+    setSchoolKeyword('');
+    setSchoolCandidates([]);
+  };
+
+  const applyProvinceOption = (province: RegionOption) => {
+    setProvinceSearch(province.name);
+    clearSchoolAndLowerRegion();
+    patch({
+      province: province.name,
+      city: '',
+      county: '',
+      targetSchool: '',
+      targetScore: undefined,
+    });
+  };
+
+  const handleProvinceInputBlur = () => {
+    const text = provinceSearch.trim();
+    if (!text) {
+      if (draft.province) {
+        clearSchoolAndLowerRegion();
+        patch({ province: '', city: '', county: '', targetSchool: '', targetScore: undefined });
+      }
+      return;
+    }
+    const matched = findOptionByName(provinceOptions, text);
+    if (matched) {
+      if (matched.name !== draft.province) applyProvinceOption(matched);
+      else setProvinceSearch(matched.name);
+      return;
+    }
+    if (text !== draft.province) {
+      clearSchoolAndLowerRegion();
+      patch({ province: text, city: '', county: '', targetSchool: '', targetScore: undefined });
+    }
   };
 
   const applyCityOption = async (city: RegionOption) => {
@@ -532,65 +575,45 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         <div className="grid gap-3 md:grid-cols-3">
           <div>
             <Label className="font-hand">省份 *（可搜索）</Label>
-            <Select
-              value={selectedProvinceValue}
-              onValueChange={(v) => {
-                setProvinceSearch('');
-                setCitySearch('');
-                setCountySearch('');
-                setCityLoadFailed(false);
-                setCountyLoadFailed(false);
-                setCustomProvinceMode(v === '__custom_province__');
-                setCustomCountyMode(false);
-                setSchoolKeyword('');
-                setSchoolCandidates([]);
-                patch({
-                  province: v === '__custom_province__' ? '' : v,
-                  city: '',
-                  county: '',
-                  targetSchool: '',
-                  targetScore: undefined,
-                });
-              }}
-            >
-              <SelectTrigger className="font-hand mt-1">
-                <SelectValue placeholder={regionLoading ? '联网加载中...' : '选择/搜索省份'} />
-              </SelectTrigger>
-              <SelectContent>
-                <div className="p-1" onKeyDown={(e) => e.stopPropagation()}>
-                  <Input
-                    placeholder="输入省份/拼音/首字母，如湖北/hubei/hb"
-                    value={provinceSearch}
-                    onChange={(e) => setProvinceSearch(e.target.value)}
-                    className="h-8 text-xs"
-                  />
-                </div>
-                {filteredProvinces.map((p) => (
-                  <SelectItem key={p.adcode} value={p.name}>{p.name}</SelectItem>
-                ))}
-                <SelectItem value="__custom_province__">自定义省份/地区...</SelectItem>
-              </SelectContent>
-            </Select>
+            <Input
+              className="font-hand mt-1"
+              value={provinceSearch}
+              onChange={(e) => setProvinceSearch(e.target.value)}
+              onBlur={handleProvinceInputBlur}
+              placeholder={regionLoading ? '联网加载中...' : '输入省份/拼音/首字母，如湖北/hubei/hb'}
+            />
             <p className="font-hand mt-1 text-[11px] text-muted-foreground">
-              打开下拉后可直接搜索省份，也支持自定义输入。
+              支持直接搜索省份，也支持自定义输入；选省后下方会加载城市候选。
             </p>
-            {(isCustomProvince || selectedProvinceValue === '__custom_province__') && (
-              <Input
-                className="font-hand mt-2"
-                value={draft.province}
-                onChange={(e) => {
-                  setSchoolKeyword('');
-                  setSchoolCandidates([]);
-                  patch({
-                    province: e.target.value,
-                    city: '',
-                    county: '',
-                    targetSchool: '',
-                    targetScore: undefined,
-                  });
-                }}
-                placeholder="输入省份/自治区/直辖市"
-              />
+            <div className="mt-2 rounded-lg border border-ink/15 bg-card/70 p-2">
+              <div className="mb-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>省份候选可直接点选</span>
+                {quickProvinceOptions.length === 0 && <span className="text-marker-red">无候选，可直接自定义输入</span>}
+              </div>
+              {quickProvinceOptions.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {quickProvinceOptions.map((province) => (
+                    <button
+                      key={province.adcode}
+                      type="button"
+                      className="cursor-pointer rounded-full border border-ink/20 bg-accent px-2 py-1 text-xs hover:bg-postit-yellow"
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        applyProvinceOption(province);
+                      }}
+                    >
+                      {province.name}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">暂无省份候选，可在上方直接输入省份/地区名称。</p>
+              )}
+            </div>
+            {draft.province && !findOptionByName(provinceOptions, draft.province) && (
+              <p className="font-hand mt-1 text-[11px] text-marker-red">
+                当前使用自定义省份：{draft.province}
+              </p>
             )}
           </div>
           <div>
