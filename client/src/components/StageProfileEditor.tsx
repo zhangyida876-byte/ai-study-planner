@@ -32,6 +32,7 @@ import {
   loadProvinces,
   type RegionOption,
 } from '@client/src/utils/region-network';
+import { ALL_SUBJECTS, getVersionForProvinceSubject } from '@client/src/pages/Knowledge/KnowledgeFilterPanel';
 
 interface StageProfileEditorProps {
   stageConfig: StageConfig;
@@ -42,6 +43,15 @@ interface StageProfileEditorProps {
 }
 
 type CandidateTier = '冲刺' | '匹配' | '保底';
+
+function resolveSubjectMaxForDisplay(subject: string, hints: Record<string, number>): number | undefined {
+  if (hints[subject]) return hints[subject];
+  if (subject === '政治') return hints['道法'] || hints['政治&道法'];
+  if (subject === '语文') return hints['语'];
+  if (subject === '数学') return hints['数'];
+  if (subject === '英语') return hints['英'];
+  return undefined;
+}
 
 function parseCurrentTotalScore(scoresOverview: string): number | null {
   const text = scoresOverview.trim();
@@ -97,6 +107,8 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   const [countySearch, setCountySearch] = useState('');
   const [scoreSummary, setScoreSummary] = useState('');
   const [scoreSummaryLoading, setScoreSummaryLoading] = useState(false);
+  const [subjectMaxHints, setSubjectMaxHints] = useState<Record<string, number>>({});
+  const [selectedTextbookSubject, setSelectedTextbookSubject] = useState('数学');
 
   useEffect(() => {
     setDraft(profile);
@@ -240,6 +252,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   useEffect(() => {
     if (!draft.province || !draft.city) {
       setScoreSummary('');
+      setSubjectMaxHints({});
       return;
     }
     let cancelled = false;
@@ -256,6 +269,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         }
         if (cancelled) return;
         const hints = extractSubjectMaxHintsFromPolicyText(full);
+        setSubjectMaxHints(hints);
         const entries = Object.entries(hints)
           .filter(([, value]) => Number.isFinite(value) && value > 0)
           .slice(0, 10);
@@ -268,7 +282,10 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         const detail = entries.map(([subject, value]) => `${subject}${value}`).join('、');
         setScoreSummary(`本地区满分：已识别${total}分（${detail}，以官方当年政策为准）`);
       } catch {
-        if (!cancelled) setScoreSummary('本地区满分：联网查询失败，可稍后重试或手动核验');
+        if (!cancelled) {
+          setSubjectMaxHints({});
+          setScoreSummary('本地区满分：联网查询失败，可稍后重试或手动核验');
+        }
       } finally {
         if (!cancelled) setScoreSummaryLoading(false);
       }
@@ -278,6 +295,16 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       clearTimeout(timer);
     };
   }, [draft.province, draft.city, draft.county, stageConfig.examType]);
+
+  const textbookVersion = useMemo(
+    () => getVersionForProvinceSubject(draft.province, selectedTextbookSubject),
+    [draft.province, selectedTextbookSubject],
+  );
+  const selectedSubjectMax = useMemo(
+    () => resolveSubjectMaxForDisplay(selectedTextbookSubject, subjectMaxHints),
+    [selectedTextbookSubject, subjectMaxHints],
+  );
+  const shouldShowTextbookHint = Boolean(draft.province && draft.city && safeGrade);
   const currentTotalScore = useMemo(
     () => parseCurrentTotalScore(draft.scoresOverview),
     [draft.scoresOverview],
@@ -619,6 +646,61 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
           </div>
         </div>
       </div>
+
+      {shouldShowTextbookHint && (
+        <div className="mt-4 rounded-xl border-2 border-dashed border-pen-blue/30 bg-pen-blue/5 p-3">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="font-marker text-base font-bold text-ink">当地教材版本与单科满分</h3>
+              <p className="font-hand text-xs text-ink/60">
+                已根据地区和年级自动匹配，默认展示数学；可切换科目，便于顾问沟通。
+              </p>
+            </div>
+            {scoreSummaryLoading && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-xs text-pen-blue">
+                <Loader2 className="size-3 animate-spin" />
+                正在联网核验满分
+              </span>
+            )}
+          </div>
+          <div className="grid gap-3 md:grid-cols-[160px_1fr_1fr]">
+            <div>
+              <Label className="font-hand">查询科目</Label>
+              <Select value={selectedTextbookSubject} onValueChange={setSelectedTextbookSubject}>
+                <SelectTrigger className="font-hand mt-1 bg-white">
+                  <SelectValue placeholder="选择科目" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_SUBJECTS.map((subject) => (
+                    <SelectItem key={subject} value={subject}>{subject}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="rounded-lg border border-ink/10 bg-white px-3 py-2">
+              <div className="font-hand text-xs text-muted-foreground">自动匹配教材版本</div>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="font-marker text-lg font-bold text-pen-blue">
+                  {selectedTextbookSubject} · {textbookVersion}
+                </span>
+                <span className="rounded-full bg-pen-blue/10 px-2 py-0.5 text-xs text-pen-blue">自动匹配</span>
+              </div>
+              <p className="font-hand mt-1 text-xs text-ink/60">
+                以当地教育局与学校实际使用版本为准，顾问沟通前可二次确认。
+              </p>
+            </div>
+            <div className="rounded-lg border border-ink/10 bg-white px-3 py-2">
+              <div className="font-hand text-xs text-muted-foreground">单科满分提示</div>
+              <div className="mt-1 font-marker text-lg font-bold text-marker-red">
+                {selectedSubjectMax ? `${selectedTextbookSubject}满分 ${selectedSubjectMax} 分` : '暂无明确满分，需人工核验'}
+              </div>
+              <p className="font-hand mt-1 text-xs text-ink/60">
+                来源于当前地区考情联网查询，若当年政策更新，请以官方最新文件为准。
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mt-4">
         <Label className="font-hand">当前成绩概览（选填）</Label>
