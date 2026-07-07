@@ -231,6 +231,37 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     setDraft((prev) => ({ ...prev, ...partial }));
   };
 
+  const applyCityOption = async (city: RegionOption) => {
+    setCitySearch(city.name);
+    setCountySearch('');
+    setCountyLoadFailed(false);
+    setCustomCountyMode(false);
+    setSchoolKeyword('');
+    setSchoolCandidates([]);
+    patch({ city: city.name, county: '', targetSchool: '', targetScore: undefined });
+    setRegionLoading(true);
+    try {
+      const items = await loadCounties(city);
+      setCountyOptions(items);
+      if (items.length === 0) {
+        setCountyLoadFailed(true);
+      }
+    } catch {
+      setCountyOptions([]);
+      setCountyLoadFailed(true);
+      toast.info('区县联网加载失败，可直接手动输入区县');
+    } finally {
+      setRegionLoading(false);
+    }
+  };
+
+  const handleCityInputBlur = () => {
+    const matched = findOptionByName(cityOptions, citySearch.trim());
+    if (matched && matched.name !== draft.city) {
+      void applyCityOption(matched);
+    }
+  };
+
   const handleSave = () => {
     if (!draft.province) {
       toast.error('请选择省份');
@@ -334,12 +365,12 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     return map;
   }, [schoolCandidates, currentTotalScore]);
 
-  const handleSearchSchools = async () => {
+  const handleSearchSchools = async (keywordOverride?: string) => {
     if (!draft.province || !draft.city) {
       toast.error('请先选择省份和城市');
       return;
     }
-    const keyword = schoolKeyword.trim();
+    const keyword = (keywordOverride ?? schoolKeyword).trim();
     setSearchingSchool(true);
     try {
       const region = [draft.province, draft.city].join(' ');
@@ -573,6 +604,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
                 setSchoolCandidates([]);
                 patch({ city: next.trim(), county: '', targetSchool: '', targetScore: undefined });
               }}
+              onBlur={handleCityInputBlur}
               disabled={!draft.province}
               placeholder={cityLoadFailed ? '城市联网失败，可直接输入城市' : '搜索或输入城市/盟/州'}
             />
@@ -588,15 +620,10 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
                       <button
                         key={city.adcode}
                         type="button"
-                        className="rounded-full border border-ink/20 bg-accent px-2 py-1 text-xs hover:bg-postit-yellow"
-                        onClick={() => {
-                          setCitySearch(city.name);
-                          setCountySearch('');
-                          setCountyLoadFailed(false);
-                          setCustomCountyMode(false);
-                          setSchoolKeyword('');
-                          setSchoolCandidates([]);
-                          patch({ city: city.name, county: '', targetSchool: '', targetScore: undefined });
+                        className="cursor-pointer rounded-full border border-ink/20 bg-accent px-2 py-1 text-xs hover:bg-postit-yellow"
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          void applyCityOption(city);
                         }}
                       >
                         {city.name}
@@ -733,7 +760,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
             </span>
           </div>
           <p className="font-hand mb-2 text-xs text-ink/70">
-            先输入学校关键词，点击“搜索本地学校并匹配分数线”；若没有搜到，也可以直接手动填写学校名称保存。
+            不知道当地有哪些学校，先点“显示当地重点校”；知道学校名称，可输入关键词后点“搜索并匹配”。
           </p>
           <div className="mt-1 flex gap-2">
             <Input
@@ -744,8 +771,20 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
             />
             <Button
               type="button"
+              variant="outline"
+              className="min-w-[132px] border-2 border-ink bg-white font-hand"
+              onClick={() => {
+                setSchoolKeyword('');
+                handleSearchSchools('');
+              }}
+              disabled={searchingSchool}
+            >
+              显示当地重点校
+            </Button>
+            <Button
+              type="button"
               className="min-w-[132px] border-2 border-ink bg-marker-red font-hand text-white hover:bg-marker-red/90"
-              onClick={handleSearchSchools}
+              onClick={() => handleSearchSchools()}
               disabled={searchingSchool}
             >
               {searchingSchool ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
