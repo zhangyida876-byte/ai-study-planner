@@ -18,7 +18,6 @@ import {
 import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
-import ReferenceScriptCard from '@client/src/components/ReferenceScriptCard';
 import { getStudyPlanAutofillFromProfile } from '@client/src/utils/stage-profile-sync';
 import { stagePath } from '@client/src/config/stages';
 import {
@@ -27,8 +26,6 @@ import {
 } from '@client/src/api/plugins';
 import { toSelectValue } from '@client/src/lib/utils';
 import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
-import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
-import { getInternalScriptAnchor } from '@client/src/config/internal-resource-library';
 
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
@@ -89,7 +86,6 @@ interface StudyPlanSessionState {
   weakSubjects: string;
   strongSubjects: string;
   weeklyHours: string;
-  dailyHours: string;
   boardingType: string;
   eveningStudy: string;
   extracurricular: string;
@@ -98,11 +94,6 @@ interface StudyPlanSessionState {
   customNotes: string;
   report: string;
 }
-
-const HS_MODES = [
-  { value: '3+1+2', label: '3+1+2（物理/历史 二选一）' },
-  { value: '3+3', label: '3+3（六选三）' },
-];
 
 const StudyPlan: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
@@ -119,7 +110,6 @@ const StudyPlan: React.FC = () => {
   const [weakSubjects, setWeakSubjects] = useState('');
   const [strongSubjects, setStrongSubjects] = useState('');
   const [weeklyHours, setWeeklyHours] = useState('');
-  const [dailyHours, setDailyHours] = useState('');
   const [boardingType, setBoardingType] = useState('');
   const [eveningStudy, setEveningStudy] = useState('');
   const [extracurricular, setExtracurricular] = useState('');
@@ -149,7 +139,6 @@ const StudyPlan: React.FC = () => {
     setWeakSubjects(cached.weakSubjects || '');
     setStrongSubjects(cached.strongSubjects || '');
     setWeeklyHours(cached.weeklyHours || '');
-    setDailyHours(cached.dailyHours || '');
     setBoardingType(cached.boardingType || '');
     setEveningStudy(cached.eveningStudy || '');
     setExtracurricular(cached.extracurricular || '');
@@ -197,7 +186,6 @@ const StudyPlan: React.FC = () => {
       weakSubjects,
       strongSubjects,
       weeklyHours,
-      dailyHours,
       boardingType,
       eveningStudy,
       extracurricular,
@@ -220,7 +208,6 @@ const StudyPlan: React.FC = () => {
     weakSubjects,
     strongSubjects,
     weeklyHours,
-    dailyHours,
     boardingType,
     eveningStudy,
     extracurricular,
@@ -294,7 +281,7 @@ const StudyPlan: React.FC = () => {
     if (!grade) return '请选择年级';
     if (!region.trim()) return '请填写所在地区';
     if (!weakSubjects.trim() && !currentScore.trim()) return '请填写薄弱科目或当前成绩';
-    if (!weeklyHours.trim() && !dailyHours.trim()) return '请填写每周或每天可支配学习时长';
+    if (!weeklyHours.trim()) return '请填写每周可支配学习时长';
     if (!boardingType) return '请选择走读或住读';
     return null;
   };
@@ -324,7 +311,7 @@ const StudyPlan: React.FC = () => {
         weakSubjects: weakSubjects.trim(),
         strongSubjects: strongSubjects.trim(),
         weeklyHours: weeklyHours.trim(),
-        dailyHours: dailyHours.trim(),
+        dailyHours: '',
         boardingType,
         eveningStudy,
         extracurricular,
@@ -345,7 +332,7 @@ const StudyPlan: React.FC = () => {
       setLoading(false);
     }
   }, [
-    boardingType, currentScore, customNotes, dailyHours, eveningStudy, examDate,
+    boardingType, currentScore, customNotes, eveningStudy, examDate,
     extracurricular, grade, region, school, stageConfig.label, stageSlug,
     strongSubjects, targetSchool, targetScore, careerIntent, examMode, timetableNotes, weakSubjects,
     weeklyHours, weeklySchedule, profile,
@@ -397,21 +384,6 @@ const StudyPlan: React.FC = () => {
     toast.success('已导出表格');
   };
 
-  const buildStudyPlanReferenceScript = useCallback(() => {
-    if (!grade || !region) return '';
-    const reportPoint = pickFirstSentence(report);
-    const internalAnchor = getInternalScriptAnchor(stageSlug, 'study-plan');
-    return buildReferenceScript([
-      `先按一个原则：${internalAnchor}`,
-      `我们这周先按${grade}当前节奏来，不求一下子全改完`,
-      weakSubjects ? `先把${weakSubjects}放在第一优先级` : '',
-      weeklyHours ? `每周可用${weeklyHours}小时，就按固定时段执行` : '',
-      targetSchool ? `目标先盯住${targetSchool}` : '',
-      reportPoint ? `先说一句最实在的：${reportPoint}` : '',
-      '每天做完就打勾，没完成也没关系，周末一起复盘改下一周。',
-    ]);
-  }, [grade, region, weakSubjects, weeklyHours, targetSchool, report]);
-
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
@@ -437,164 +409,117 @@ const StudyPlan: React.FC = () => {
         onSyncBack={handleSyncProfileBack}
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-4">
-          <WobblyCard variant="white" wobblyIndex={0} hoverable={false} className="p-4 space-y-4">
-            <h2 className="font-marker font-bold">基础信息</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label className="font-hand">学段</Label>
-                <Input value={stageConfig.label} disabled className="font-hand mt-1" />
+      <div className="space-y-6">
+        <WobblyCard variant="white" wobblyIndex={0} hoverable={false} className="p-4 space-y-4">
+          <div>
+            <h2 className="font-marker font-bold">个人信息（首页档案自动带入）</h2>
+            <p className="font-hand mt-1 text-sm text-muted-foreground">
+              此处只展示档案信息，不再重复设置；如需修改，请回到学段首页编辑档案。
+            </p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            {[
+              ['学生姓名', profile.studentName || '未填写'],
+              ['学段/年级', `${stageConfig.label} · ${grade || profile.grade || '未填写'}`],
+              ['所在地区', regionText || region || '未填写'],
+              ['学校', school || profile.school || '未填写'],
+              [stageConfig.targetLabel, targetSchool || profile.targetSchool || '未填写'],
+              ['目标考试时间', examDate || profile.examDate || '未填写'],
+              ['当前成绩概览', currentScore || profile.scoresOverview || '未填写'],
+              ['薄弱/优势科目', [weakSubjects || profile.weakSubjects, strongSubjects || profile.strongSubjects].filter(Boolean).join(' / ') || '未填写'],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-lg border-2 border-dashed border-ink/15 bg-accent/50 px-3 py-2">
+                <p className="text-xs text-ink/55">{label}</p>
+                <p className="font-marker mt-1 text-base font-bold text-ink">{value}</p>
               </div>
-              <div>
-                <Label className="font-hand">年级 *</Label>
-                <Select value={toSelectValue(grade)} onValueChange={(v) => { markDirty(); setGrade(v); }}>
-                  <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择年级" /></SelectTrigger>
-                  <SelectContent>
-                    {stageConfig.grades.map((g) => (
-                      <SelectItem key={g} value={g}>{g}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="sm:col-span-2">
-                <Label className="font-hand">所在地区 *</Label>
-                <Input value={region} onChange={(e) => { markDirty(); setRegion(e.target.value); }} placeholder="省/市/区" className="font-hand mt-1" />
-              </div>
-              <div>
-                <Label className="font-hand">学校</Label>
-                <Input value={school} onChange={(e) => { markDirty(); setSchool(e.target.value); }} className="font-hand mt-1" />
-              </div>
-              <div>
-                <Label className="font-hand">{stageConfig.targetLabel}</Label>
-                <Input value={targetSchool} onChange={(e) => { markDirty(); setTargetSchool(e.target.value); }} className="font-hand mt-1" />
-              </div>
-              <div>
-                <Label className="font-hand">目标考试时间</Label>
-                <Input type="date" value={examDate} onChange={(e) => { markDirty(); setExamDate(e.target.value); }} className="font-hand mt-1" />
-              </div>
-              <div>
-                <Label className="font-hand">当前成绩概览</Label>
-                <Input value={currentScore} onChange={(e) => { markDirty(); setCurrentScore(e.target.value); }} placeholder="如：语92 数78 英85" className="font-hand mt-1" />
-              </div>
-              <div>
-                <Label className="font-hand">目标成绩</Label>
-                <Input value={targetScore} onChange={(e) => setTargetScore(e.target.value)} className="font-hand mt-1" />
-              </div>
-              {stageSlug === 'high' && (
-                <>
-                  <div>
-                    <Label className="font-hand">高考学科模式</Label>
-                    <Select value={toSelectValue(examMode)} onValueChange={(v) => { markDirty(); setExamMode(v); }}>
-                      <SelectTrigger className="font-hand mt-1">
-                        <SelectValue placeholder="选择高考模式" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {HS_MODES.map((mode) => (
-                          <SelectItem key={mode.value} value={mode.value}>{mode.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="font-hand">想做的事情 / 职业方向</Label>
-                    <Input
-                      value={careerIntent}
-                      onChange={(e) => { markDirty(); setCareerIntent(e.target.value); }}
-                      placeholder="如：人工智能、医学、金融、法律"
-                      className="font-hand mt-1"
-                    />
-                  </div>
-                </>
-              )}
-              <div>
-                <Label className="font-hand">薄弱科目 *</Label>
-                <Input value={weakSubjects} onChange={(e) => { markDirty(); setWeakSubjects(e.target.value); }} placeholder="如：数学、英语" className="font-hand mt-1" />
-              </div>
-              <div>
-                <Label className="font-hand">优势科目</Label>
-                <Input value={strongSubjects} onChange={(e) => { markDirty(); setStrongSubjects(e.target.value); }} className="font-hand mt-1" />
-              </div>
+            ))}
+          </div>
+          {stageSlug === 'high' && (
+            <div className="rounded-lg border-2 border-dashed border-pen-blue/25 bg-pen-blue/5 px-3 py-2 text-sm text-ink/75">
+              高中附加信息：{examMode || '选科模式未填写'}{careerIntent ? `；职业方向：${careerIntent}` : ''}
             </div>
-          </WobblyCard>
+          )}
+        </WobblyCard>
 
-          <WobblyCard variant="yellow" wobblyIndex={1} hoverable={false} className="p-4 space-y-4">
-            <h2 className="font-marker font-bold">时间与课表</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label className="font-hand">每周可支配时长(小时) *</Label>
-                <Input value={weeklyHours} onChange={(e) => { markDirty(); setWeeklyHours(e.target.value); }} className="font-hand mt-1" />
-              </div>
-              <div>
-                <Label className="font-hand">每天可学习时长(小时)</Label>
-                <Input value={dailyHours} onChange={(e) => setDailyHours(e.target.value)} className="font-hand mt-1" />
-              </div>
-              <div>
-                <Label className="font-hand">走读/住读 *</Label>
-                <Select value={toSelectValue(boardingType)} onValueChange={(v) => { markDirty(); setBoardingType(v); }}>
-                  <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="请选择" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="day">走读</SelectItem>
-                    <SelectItem value="boarding">住读</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="font-hand">是否有晚自习</Label>
-                <Select value={toSelectValue(eveningStudy)} onValueChange={setEveningStudy}>
-                  <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="请选择" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="yes">有</SelectItem>
-                    <SelectItem value="no">无</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="sm:col-span-2">
-                <Label className="font-hand">课外班/固定占用时间</Label>
-                <Input value={extracurricular} onChange={(e) => setExtracurricular(e.target.value)} className="font-hand mt-1" />
-              </div>
-              <div className="sm:col-span-2">
-                <Label className="font-hand">周一~周日可学习时间段</Label>
-                <Textarea
-                  value={weeklySchedule}
-                  onChange={(e) => setWeeklySchedule(e.target.value)}
-                  placeholder={WEEKDAYS.map((d) => `${d}：19:00-21:00`).join('\n')}
-                  className="font-hand mt-1 min-h-[80px]"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <Label className="font-hand">每日课表与作业量（如：周二只有语数外）</Label>
-                <Textarea
-                  value={timetableNotes}
-                  onChange={(e) => setTimetableNotes(e.target.value)}
-                  className="font-hand mt-1 min-h-[80px]"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <Label className="font-hand">个性化说明（注意力、通勤、周末安排等）</Label>
-                <Textarea
-                  value={customNotes}
-                  onChange={(e) => setCustomNotes(e.target.value)}
-                  className="font-hand mt-1 min-h-[100px]"
-                />
-              </div>
+        <WobblyCard variant="yellow" wobblyIndex={1} hoverable={false} className="p-4 space-y-4">
+          <h2 className="font-marker font-bold">时间与课表</h2>
+          <p className="font-hand text-sm text-ink/70">
+            这里只保留会影响课表安排的自定义信息；生成前请补充每周可用时间、走读/住读和具体课表约束。
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="font-hand">每周可支配时长(小时) *</Label>
+              <Input value={weeklyHours} onChange={(e) => { markDirty(); setWeeklyHours(e.target.value); }} className="font-hand mt-1" />
             </div>
-            <Button className="font-hand w-full" disabled={loading} onClick={handleGenerate}>
-              {loading ? <><Loader2 className="mr-2 size-4 animate-spin" />生成中...</> : '生成课表学习执行方案'}
+            <div>
+              <Label className="font-hand">走读/住读 *</Label>
+              <Select value={toSelectValue(boardingType)} onValueChange={(v) => { markDirty(); setBoardingType(v); }}>
+                <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="请选择" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="day">走读</SelectItem>
+                  <SelectItem value="boarding">住读</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="font-hand">是否有晚自习</Label>
+              <Select value={toSelectValue(eveningStudy)} onValueChange={setEveningStudy}>
+                <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="请选择" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="yes">有</SelectItem>
+                  <SelectItem value="no">无</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="font-hand">课外班/固定占用时间</Label>
+              <Input value={extracurricular} onChange={(e) => setExtracurricular(e.target.value)} className="font-hand mt-1" />
+            </div>
+            <div className="sm:col-span-2">
+              <Label className="font-hand">周一~周日可学习时间段</Label>
+              <Textarea
+                value={weeklySchedule}
+                onChange={(e) => setWeeklySchedule(e.target.value)}
+                placeholder={WEEKDAYS.map((d) => `${d}：19:00-21:00`).join('\n')}
+                className="font-hand mt-1 min-h-[90px]"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <Label className="font-hand">每日课表与作业量（如：周二只有语数外）</Label>
+              <Textarea
+                value={timetableNotes}
+                onChange={(e) => setTimetableNotes(e.target.value)}
+                className="font-hand mt-1 min-h-[90px]"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <Label className="font-hand">个性化说明（注意力、通勤、周末安排等）</Label>
+              <Textarea
+                value={customNotes}
+                onChange={(e) => setCustomNotes(e.target.value)}
+                className="font-hand mt-1 min-h-[110px]"
+              />
+            </div>
+          </div>
+          <Button className="font-hand w-full" disabled={loading} onClick={handleGenerate}>
+            {loading ? <><Loader2 className="mr-2 size-4 animate-spin" />生成中...</> : '生成课表学习执行方案'}
+          </Button>
+          {report && (
+            <Button type="button" variant="outline" className="font-hand w-full" onClick={handleJumpToReport}>
+              直接跳到已生成方案
             </Button>
-            {report && (
-              <Button type="button" variant="outline" className="font-hand w-full" onClick={handleJumpToReport}>
-                直接跳到已生成方案
-              </Button>
-            )}
-          </WobblyCard>
-        </div>
+          )}
+        </WobblyCard>
 
-        <div className="space-y-4">
-          <div ref={reportRef}>
-          <WobblyCard variant="white" decoration="tape" wobblyIndex={2} hoverable={false} className="p-4 lg:min-h-[480px]">
+        <div ref={reportRef}>
+          <WobblyCard variant="white" decoration="tape" wobblyIndex={2} hoverable={false} className="p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-marker font-bold">课表学习执行方案</h2>
+              <div>
+                <h2 className="font-marker font-bold">学习规划方案</h2>
+                <p className="font-hand mt-1 text-sm text-muted-foreground">
+                  生成后会完整展示个性化执行方案，重点包含周课表、每日任务、检查标准和复盘安排。
+                </p>
+              </div>
               {report && (
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={handleCopy}>
@@ -621,23 +546,16 @@ const StudyPlan: React.FC = () => {
             {!loading && !report && (
               <div className="flex flex-col items-center py-12 text-center text-muted-foreground">
                 <AlertCircle className="mb-2 size-8 opacity-40" />
-                <p className="font-hand text-sm">填写左侧信息后生成</p>
-                <p className="font-hand mt-1 text-xs">将包含周计划表、日安排、科目拆解与检测标准</p>
+                <p className="font-hand text-sm">填写上方时间与课表后生成</p>
+                <p className="font-hand mt-1 text-xs">将包含完整周计划表、日安排、科目拆解与检测标准</p>
               </div>
             )}
             {report && (
-              <div className="font-hand prose-headings:font-marker max-h-[70vh] overflow-auto">
+              <div className="font-hand prose-headings:font-marker max-w-none">
                 <Streamdown>{report}</Streamdown>
               </div>
             )}
           </WobblyCard>
-          </div>
-
-          <ReferenceScriptCard
-            onGenerate={buildStudyPlanReferenceScript}
-            hint="基于当前学习计划生成可直接沟通的话术（300字内）。"
-            wobblyIndex={33}
-          />
         </div>
       </div>
     </div>
