@@ -76,6 +76,7 @@ interface ObjectionHandlingScript {
   sourceUrl: string;
   keywords: string[];
   content: string;
+  materialHints?: string[];
 }
 
 const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
@@ -98,6 +99,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     keywords: ['住校', '回家晚', '没时间', '晚自习', '放假少'],
     content:
       '第一咱们洋葱的同学本身70％都是住校的，很多都是两周一个月回来一次。咱们是属于学习工具，不是报了之后每天盯在上面学，而是专门针对孩子薄弱点。考试之前针对当地考试题型学专项课，一周下来各个学科加起来花1-2个小时就可以了。第二这样是针对性最强的，反而提升了孩子学习效率，孩子每周把堆积的问题解决了，成绩自然而然就提升了。第三越是时间少越适合学洋葱的课程，因为这样的方式学习效率最高。',
+    materialHints: ['可配发住校生利用周末/放假集中查漏补缺的成交截图或学习安排截图，降低“没时间用”的顾虑。'],
   },
   {
     id: 'effect-doubt',
@@ -146,7 +148,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
   },
   {
     id: 'single-subject-core-general',
-    title: '只想单科/同步课/只买一年等',
+    title: '只想报单科：认可数学后引导全科权益',
     stageLabel: '通用',
     source: '洋葱异议处理话术库【2025正式版】',
     sourceUrl: 'https://guanghe.feishu.cn/docx/Csn4d6brBo1nS6xoTdjcm8wznQe',
@@ -163,7 +165,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
       '单科',
     ],
     content:
-      '只想学数学单科、只认可培优课、只想要基础课、只想买同步课、微信购买就可以了、只想看同步课微课下练习、一直线下补1对1、感觉只买一年足够等，核心沟通方向都是：先认可家长想聚焦一科的想法，再说明洋葱是学习工具，孩子在整个学习阶段不是只会遇到一个学科的问题；考试看的是总分，不是单科。全科同步+专项课不是让孩子每科每天都学，而是哪里有问题就解决哪里，既更划算，也更能避免偏科和问题堆积。',
+      '孩子妈妈，看得出您对孩子的学习是非常非常关注的，老师跟您聊了这么多其实第一是希望能通过洋葱帮助您解决孩子的学习问题，第二也是希望您能买到最佳性价比的产品，不让您花一份冤枉钱；\n我们都知道，数学是最难的学科，您也非常认可洋葱数学这一科对吧？如果洋葱能把数学都给孩子提升上去，那其他学科更不用多说了；\n洋葱的最大特色就是动画ai形式，说明这种形式确实能解决学校课堂或者是其他地方解决不了的复杂问题，您其他学科有报说明家长也有意识想让孩子全方位提升，在洋葱可以花最少的钱，全科都解决，比您其他地方省钱多了，而且孩子也不用换来换去。\n您要是在APP单独报是1600一科，三年下来就1万多了，单报不划算。咱们现在是12周年和暑期大促特惠活动史无前例，现在只需要花XXXX可以学X年还能送平板，无论是中考还是高考，考试都是看全科总分，别的科目也要均衡发展，您这次帮孩子定下来，就能开通全部权限了；\n您把APP打开，我带您看下价格···',
   },
   {
     id: 'single-subject-core-middle-1',
@@ -174,6 +176,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     keywords: ['只想学数学', '单科', '不报全科', '只要一科', '只报单科', '想报单科', '报单科', '同步课', '培优课'],
     content:
       '家长我理解你的想法的，但我们最终是为了提升成绩让同学越学越轻松才去报课的，不是为了报课而报课，应付我们作为家长的责任。数理化生地都是理科，理科不分家，光学数学提个20分也难对总分不明显，没有成就感积极性。现在初中都是五五分流，竞争都比较大，孩子想上高中甚至更好的高中，是一定不能有偏科的，而且多科一起学比单科提分会快很多。孩子单独补一科数学，就算数学补起来了，其他科目要是不理想，总分还是不高，排名一样上不去。现在中考改革，学科关联性非常强，数学里面会涉及到物理甚至化学的内容，如果其他科目掌握不好，数学知识点学得再好，考试数学题涉及到其他科目的知识点时，孩子一样做不出来，最终考试也出不了好成绩。单科也不划算，同步课498+培优课1098=1596，报3年也要4800，其他学科学不了，其他权益也享受不了。我们想报单科无非是怕同学有压力、没时间去学习，洋葱5-8分钟能帮同学解决校内30-40分的学习问题，提前预习知识点后再学会运用，才能提升效率。我们花单科不到的费用学全科，不仅课程权益最多，后续效果也能保证。你完全可以相信老师，我们就选择优惠活动课包好的吧？',
+    materialHints: ['可配发“单报数学后其他科目仍需补强”的聊天截图案例，辅助说明考试看总分、不能只盯单科。'],
   },
   {
     id: 'single-subject-core-middle-2',
@@ -220,6 +223,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     ],
     content:
       '其实我跟你说哈，现实里有多少孩子是自觉的呀，没几个吧。这时候咱们肯定得给孩子做规划、做选择。孩子在这个年纪，很多都不懂啥叫坚持。我见过好多成功培养孩子的家长，都是在后面一直鼓励孩子学习的。并且洋葱课程5到8分钟讲一个知识点，孩子哪没学会就学哪，不会给孩子造成学习负担。孩子排斥的是很多补课类辅导班，洋葱更像一个工具，哪个知识点不会就直接定位课程，5-8分钟解决一个知识点。',
+    materialHints: ['可配发孩子主动学习、助教跟进、家长中心反馈或好评截图，证明不是单靠家长盯。'],
   },
   {
     id: 'compare-learning-machine',
@@ -358,6 +362,7 @@ export function matchObjectionHandlingScript(query: string): string {
       title: script.title,
       stageLabel: script.stageLabel || '通用',
       source: script.source,
+      materialHints: script.materialHints || [],
       content: script.content.trim(),
       score: scoreScriptMatch(query, script),
     }))
@@ -366,7 +371,12 @@ export function matchObjectionHandlingScript(query: string): string {
 
   if (matched.length > 0) {
     return matched
-      .map((item, index) => `【话术选项${index + 1}｜${item.stageLabel}｜${item.title}】\n来源：${item.source}\n${item.content}`)
+      .map((item, index) => {
+        const materialText = item.materialHints.length
+          ? `\n可配发物料：${item.materialHints.join('；')}`
+          : '';
+        return `【话术选项${index + 1}｜${item.stageLabel}｜${item.title}】\n来源：${item.source}\n${item.content}${materialText}`;
+      })
       .join('\n\n');
   }
   return '未匹配到相关异议话术，请更换关键词重试（例如：学习主动性差、英语版本不同步、住校没时间、价格太贵）。';

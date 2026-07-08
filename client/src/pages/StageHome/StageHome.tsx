@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
 import StageProfileEditor from '@client/src/components/StageProfileEditor';
+import ObjectionHandlingPanel from '@client/src/components/ObjectionHandlingPanel';
 import { Button } from '@/components/ui/button';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
@@ -62,6 +63,8 @@ const StageHome: React.FC = () => {
         countdownDays={countdownDays}
         regionText={regionText}
       />
+
+      <ObjectionHandlingPanel compact />
 
       <div>
         <h2 className="font-marker mb-4 text-xl font-bold">选择功能模块</h2>

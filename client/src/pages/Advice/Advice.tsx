@@ -4,7 +4,6 @@ import { ArrowLeft, Copy, Loader2, MessageCircleMore } from 'lucide-react';
 import { toast } from 'sonner';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
@@ -14,7 +13,6 @@ import { loadModuleSession } from '@client/src/utils/module-session';
 import {
   getInternalMaterialContext,
   getInternalScriptAnchor,
-  matchObjectionHandlingScript,
 } from '@client/src/config/internal-resource-library';
 import { streamDiagnosisReport, streamPolicySearch } from '@client/src/api/plugins';
 import { buildPromptTemplate } from '@client/src/utils/advice-engine';
@@ -49,9 +47,6 @@ const Advice: React.FC = () => {
   const { profile } = useStageProfile(stageSlug);
   const [comprehensiveAdvice, setComprehensiveAdvice] = useState('');
   const [loadingComprehensive, setLoadingComprehensive] = useState(false);
-  const [objectionQuery, setObjectionQuery] = useState('');
-  const [objectionAnswer, setObjectionAnswer] = useState('');
-  const [loadingObjection, setLoadingObjection] = useState(false);
   const [customQuery, setCustomQuery] = useState('');
   const [customAnswer, setCustomAnswer] = useState('');
   const [loadingCustom, setLoadingCustom] = useState(false);
@@ -195,23 +190,6 @@ const Advice: React.FC = () => {
     }
   }, [generateAdviceByQuery, internalMaterial, stageConfig.label]);
 
-  const handleGenerateObjection = useCallback(async () => {
-    if (!objectionQuery.trim()) {
-      toast.error('请先输入异议问题');
-      return;
-    }
-    setLoadingObjection(true);
-    setObjectionAnswer('');
-    try {
-      const matched = matchObjectionHandlingScript(objectionQuery.trim());
-      setObjectionAnswer(matched);
-    } catch {
-      toast.error('异议处理话术生成失败，请重试');
-    } finally {
-      setLoadingObjection(false);
-    }
-  }, [objectionQuery]);
-
   const handleGenerateCustom = useCallback(async () => {
     if (!customQuery.trim()) {
       toast.error('请先输入自定义问题');
@@ -257,7 +235,7 @@ const Advice: React.FC = () => {
         </Button>
         <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 建议话术</h1>
         <p className="font-hand mt-1 text-sm text-muted-foreground">
-          仅保留总话术、异议处理、自定义问题查询三块，支持直接口播。
+          保留总话术和自定义问题查询；异议处理已前移到本学段主页档案下方，方便电话中随查随打。
         </p>
       </div>
 
@@ -286,32 +264,6 @@ const Advice: React.FC = () => {
             <p className="font-hand text-sm text-muted-foreground">
               点击“生成话术”，系统会结合当前模块结果与内部素材输出总话术。
             </p>
-          )}
-        </div>
-      </WobblyCard>
-
-      <WobblyCard variant="white" decoration="tape" wobblyIndex={6} hoverable={false} className="p-5">
-        <h3 className="font-marker mb-3 text-lg font-bold">异议处理</h3>
-        <p className="mb-2 text-xs text-ink/70">
-          仅按已上传异议文档做关键词匹配直出：不联网、不分析、不关联学情，仅输出文档话术。
-        </p>
-        <div className="flex gap-2">
-          <Input
-            value={objectionQuery}
-            onChange={(e) => setObjectionQuery(e.target.value)}
-            placeholder="输入异议，例如：价格太贵、担心孩子坚持不下来"
-            className="font-hand"
-          />
-          <Button onClick={handleGenerateObjection} disabled={loadingObjection}>
-            {loadingObjection ? <Loader2 className="mr-1 size-4 animate-spin" /> : null}
-            查询
-          </Button>
-        </div>
-        <div className="mt-3 rounded-md border border-ink/20 bg-accent/40 p-3 min-h-[120px]">
-          {objectionAnswer ? (
-            <Streamdown>{objectionAnswer}</Streamdown>
-          ) : (
-            <p className="font-hand text-sm text-muted-foreground">先输入异议问题，再点击查询。</p>
           )}
         </div>
       </WobblyCard>
