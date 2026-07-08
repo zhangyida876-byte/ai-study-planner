@@ -798,9 +798,25 @@ function scoreDirectKeywordSearch(query: string, script: ObjectionHandlingScript
   return score;
 }
 
+function isTitleOrKeywordHit(query: string, script: ObjectionHandlingScript): boolean {
+  const normalized = normalizeObjectionQuery(query);
+  if (!normalized) return false;
+  const normalizedTitle = normalizeObjectionQuery(script.title);
+  const normalizedKeywords = script.keywords.map(normalizeObjectionQuery);
+
+  return normalizedTitle.includes(normalized)
+    || normalizedKeywords.some((keyword) => keyword.includes(normalized) || normalized.includes(keyword));
+}
+
 export function matchObjectionHandlingScript(query: string): string {
   const intentGroup = inferObjectionIntentGroup(query);
   const rawMatched = OBJECTION_HANDLING_SCRIPTS.filter((script) => isScriptMatched(query, script));
+  const titleOrKeywordMatched = OBJECTION_HANDLING_SCRIPTS
+    .filter((script) => isTitleOrKeywordHit(query, script))
+    .sort((a, b) => scoreDirectKeywordSearch(query, b) - scoreDirectKeywordSearch(query, a));
+  const titleOrKeywordIntentMatched = intentGroup
+    ? titleOrKeywordMatched.filter((script) => script.intentGroup === intentGroup)
+    : [];
   const directMatched = OBJECTION_HANDLING_SCRIPTS
     .map((script) => ({
       script,
@@ -812,7 +828,14 @@ export function matchObjectionHandlingScript(query: string): string {
   const intentMatched = intentGroup
     ? rawMatched.filter((script) => script.intentGroup === intentGroup)
     : rawMatched;
-  const sourceScripts = directMatched.length > 0 ? directMatched : (intentMatched.length > 0 ? intentMatched : rawMatched);
+  const directIntentMatched = intentGroup
+    ? directMatched.filter((script) => script.intentGroup === intentGroup)
+    : [];
+  const sourceScripts = titleOrKeywordIntentMatched.length > 0
+    ? titleOrKeywordIntentMatched
+    : (titleOrKeywordMatched.length > 0
+      ? titleOrKeywordMatched
+      : (directIntentMatched.length > 0 ? directIntentMatched : (directMatched.length > 0 ? directMatched : (intentMatched.length > 0 ? intentMatched : rawMatched))));
   const matched = sourceScripts
     .map((script) => ({
       title: script.title,
