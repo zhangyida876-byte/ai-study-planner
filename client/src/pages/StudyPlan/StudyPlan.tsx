@@ -27,8 +27,6 @@ import {
 import { toSelectValue } from '@client/src/lib/utils';
 import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
 
-const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-
 function parseTargetScore(value: string): number | undefined {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
@@ -89,8 +87,6 @@ interface StudyPlanSessionState {
   boardingType: string;
   eveningStudy: string;
   extracurricular: string;
-  weeklySchedule: string;
-  timetableNotes: string;
   customNotes: string;
   report: string;
 }
@@ -113,8 +109,6 @@ const StudyPlan: React.FC = () => {
   const [boardingType, setBoardingType] = useState('');
   const [eveningStudy, setEveningStudy] = useState('');
   const [extracurricular, setExtracurricular] = useState('');
-  const [weeklySchedule, setWeeklySchedule] = useState('');
-  const [timetableNotes, setTimetableNotes] = useState('');
   const [customNotes, setCustomNotes] = useState('');
   const [report, setReport] = useState('');
   const [loading, setLoading] = useState(false);
@@ -142,8 +136,6 @@ const StudyPlan: React.FC = () => {
     setBoardingType(cached.boardingType || '');
     setEveningStudy(cached.eveningStudy || '');
     setExtracurricular(cached.extracurricular || '');
-    setWeeklySchedule(cached.weeklySchedule || '');
-    setTimetableNotes(cached.timetableNotes || '');
     setCustomNotes(cached.customNotes || '');
     setReport(cached.report || '');
     hydratedRef.current = true;
@@ -189,8 +181,6 @@ const StudyPlan: React.FC = () => {
       boardingType,
       eveningStudy,
       extracurricular,
-      weeklySchedule,
-      timetableNotes,
       customNotes,
       report,
     });
@@ -211,8 +201,6 @@ const StudyPlan: React.FC = () => {
     boardingType,
     eveningStudy,
     extracurricular,
-    weeklySchedule,
-    timetableNotes,
     customNotes,
     report,
   ]);
@@ -315,8 +303,8 @@ const StudyPlan: React.FC = () => {
         boardingType,
         eveningStudy,
         extracurricular,
-        weeklySchedule: weeklySchedule.trim(),
-        timetableNotes: timetableNotes.trim(),
+        weeklySchedule: '',
+        timetableNotes: '',
         customNotes: customNotes.trim(),
       };
 
@@ -334,8 +322,8 @@ const StudyPlan: React.FC = () => {
   }, [
     boardingType, currentScore, customNotes, eveningStudy, examDate,
     extracurricular, grade, region, school, stageConfig.label, stageSlug,
-    strongSubjects, targetSchool, targetScore, careerIntent, examMode, timetableNotes, weakSubjects,
-    weeklyHours, weeklySchedule, profile,
+    strongSubjects, targetSchool, targetScore, careerIntent, examMode, weakSubjects,
+    weeklyHours, profile,
   ]);
 
   const handleCopy = async () => {
@@ -444,7 +432,7 @@ const StudyPlan: React.FC = () => {
         <WobblyCard variant="yellow" wobblyIndex={1} hoverable={false} className="p-4 space-y-4">
           <h2 className="font-marker font-bold">时间与课表</h2>
           <p className="font-hand text-sm text-ink/70">
-            这里只保留会影响课表安排的自定义信息；生成前请补充每周可用时间、走读/住读和具体课表约束。
+            这里只保留最关键的时间约束和个性化说明，避免重复填写过细课表。
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
@@ -474,23 +462,6 @@ const StudyPlan: React.FC = () => {
             <div>
               <Label className="font-hand">课外班/固定占用时间</Label>
               <Input value={extracurricular} onChange={(e) => setExtracurricular(e.target.value)} className="font-hand mt-1" />
-            </div>
-            <div className="sm:col-span-2">
-              <Label className="font-hand">周一~周日可学习时间段</Label>
-              <Textarea
-                value={weeklySchedule}
-                onChange={(e) => setWeeklySchedule(e.target.value)}
-                placeholder={WEEKDAYS.map((d) => `${d}：19:00-21:00`).join('\n')}
-                className="font-hand mt-1 min-h-[90px]"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <Label className="font-hand">每日课表与作业量（如：周二只有语数外）</Label>
-              <Textarea
-                value={timetableNotes}
-                onChange={(e) => setTimetableNotes(e.target.value)}
-                className="font-hand mt-1 min-h-[90px]"
-              />
             </div>
             <div className="sm:col-span-2">
               <Label className="font-hand">个性化说明（注意力、通勤、周末安排等）</Label>

@@ -791,6 +791,10 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+        <div className="rounded-xl border-2 border-dashed border-ink/15 bg-accent/40 p-4">
+          <h3 className="font-marker text-base font-bold">基础档案</h3>
+          <p className="font-hand mt-1 text-xs text-ink/60">从首页档案带入，核对姓名、年级、地区和考试节奏。</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
         {/* Student Name */}
         <FormField
           control={form.control}
@@ -880,7 +884,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
           control={form.control}
           name="region"
           render={() => (
-            <FormItem>
+            <FormItem className="md:col-span-2">
               <FormLabel>
                 地区 <span className="text-marker-red">*</span>
               </FormLabel>
@@ -1080,9 +1084,14 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
             )}
           />
         )}
+          </div>
+        </div>
 
         {/* Target School (searchable) & Score */}
-        <div className={isElementary ? '' : 'grid grid-cols-2 gap-3'}>
+        <div className="rounded-xl border-2 border-dashed border-ink/15 bg-white/70 p-4">
+          <h3 className="font-marker text-base font-bold">目标信息</h3>
+          <p className="font-hand mt-1 text-xs text-ink/60">目标院校和分数线用于判断当前成绩有没有拖后腿。</p>
+        <div className={isElementary ? 'mt-3' : 'mt-3 grid grid-cols-2 gap-3'}>
           <FormField
             control={form.control}
             name="targetSchool"
@@ -1191,9 +1200,10 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
             )}
           />
         )}
+        </div>
 
         {/* Subject Scores */}
-        <div>
+        <div className="rounded-xl border-2 border-dashed border-ink/15 bg-accent/40 p-4">
           <FormLabel className="mb-3 block">各科成绩</FormLabel>
 
           {isHighSchool && watchedMode ? (
@@ -1252,6 +1262,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
         </div>
 
         {/* Problem Description */}
+        <div className="rounded-xl border-2 border-dashed border-ink/15 bg-white/70 p-4">
         <FormField
           control={form.control}
           name="problemDesc"
@@ -1272,6 +1283,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
             </FormItem>
           )}
         />
+        </div>
 
         <Button type="submit" className="w-full" disabled={isGenerating}>
           {isGenerating ? (

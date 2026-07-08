@@ -322,7 +322,7 @@ const Diagnosis: React.FC = () => {
   }, [studentInfo, profile.weakSubjects, scoreGap, reportContent]);
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto max-w-7xl space-y-6">
       <div>
         <Button variant="ghost" size="sm" className="font-hand mb-2 -ml-2" asChild>
           <Link to={stagePath(stageSlug)}>
@@ -344,15 +344,17 @@ const Diagnosis: React.FC = () => {
         onSyncBack={handleSyncProfileBack}
       />
 
-    <div className="flex flex-col gap-6 lg:flex-row">
-      {/* Left: Form */}
-      <div className="w-full shrink-0 lg:w-96">
+    <div className="grid gap-6 xl:grid-cols-[460px_minmax(0,1fr)]">
+      <div className="min-w-0">
         <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false}>
-          <div className="p-6">
-            <h2 className="font-marker mb-6 text-2xl font-bold flex items-center gap-2">
-              <span className="text-marker-red">✏️</span>
-              学生信息
-            </h2>
+          <div className="space-y-5 p-5">
+            <div className="border-b-2 border-dashed border-ink/15 pb-4">
+              <p className="font-hand text-xs font-bold text-marker-red">STEP 1</p>
+              <h2 className="font-marker mt-1 text-xl font-bold">填写诊断信息</h2>
+              <p className="font-hand mt-1 text-sm text-ink/60">
+                基础档案会自动带入，只需要核对目标、成绩和学习困扰。
+              </p>
+            </div>
             <div className="space-y-4">
               <DiagnosisForm
                 onSubmit={onSubmit}
@@ -370,17 +372,18 @@ const Diagnosis: React.FC = () => {
         </WobblyCard>
       </div>
 
-      {/* Right: Report */}
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 space-y-4">
         {isGenerating || reportContent ? (
           <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false}>
-            <div className="p-6">
-              {/* Report Header with student info */}
-              <div className="mb-4">
+            <div className="p-5">
+              <div className="mb-5 rounded-lg border-2 border-dashed border-ink/15 bg-white/70 p-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-marker text-2xl font-bold">
-                    {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}诊断报告
-                  </h2>
+                  <div>
+                    <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
+                    <h2 className="font-marker mt-1 text-2xl font-bold">
+                      {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}诊断报告
+                    </h2>
+                  </div>
                   {reportContent && (
                     <Button variant="outline" size="sm" onClick={handleCopy} disabled={isGenerating}>
                       {copied ? (
@@ -394,7 +397,7 @@ const Diagnosis: React.FC = () => {
 
                 {/* Student info strip */}
                 {studentInfo && (
-                  <div className="font-hand mt-3 flex flex-wrap gap-3 text-sm text-ink/70">
+                  <div className="font-hand mt-4 flex flex-wrap gap-2 text-sm text-ink/70">
                     {studentInfo.studentName && (
                       <span className="rounded-full border-2 border-ink/20 bg-card px-3 py-1">
                         {studentInfo.studentName}
@@ -417,7 +420,7 @@ const Diagnosis: React.FC = () => {
 
                 {/* Target school & score */}
                 {(studentInfo?.targetSchool || (studentInfo?.targetScore != null && studentStage !== 'elementary')) && (
-                  <div className="mt-3 rounded-lg border-2 border-dashed border-pen-blue/30 bg-pen-blue/5 p-3">
+                  <div className="mt-4 rounded-lg border-2 border-dashed border-pen-blue/30 bg-pen-blue/5 p-3">
                     <div className="flex flex-wrap items-center gap-4 text-sm">
                       {studentInfo?.targetSchool && (
                         <div className="flex items-center gap-1.5">
@@ -484,18 +487,22 @@ const Diagnosis: React.FC = () => {
               )}
 
               {reportContent && (
-                <div className="font-hand prose-headings:font-marker">
+                <div className="font-hand prose-headings:font-marker rounded-lg bg-white/70 p-4">
                   <Streamdown>{reportContent}</Streamdown>
                 </div>
               )}
             </div>
           </WobblyCard>
         ) : (
-          <div className="flex h-full min-h-[400px] items-center justify-center">
-            <p className="font-hand text-xl text-muted-foreground">
-              填写学生信息，开始诊断
-            </p>
-          </div>
+          <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false}>
+            <div className="flex min-h-[360px] flex-col items-center justify-center p-8 text-center">
+              <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
+              <p className="font-marker mt-2 text-2xl font-bold text-ink">生成学情诊断报告</p>
+              <p className="font-hand mt-2 max-w-md text-sm text-muted-foreground">
+                左侧确认基础信息和各科成绩后，点击“生成诊断报告”，这里会展示完整诊断结果。
+              </p>
+            </div>
+          </WobblyCard>
         )}
         <div className="mt-4">
           <ReferenceScriptCard
