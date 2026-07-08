@@ -11,7 +11,7 @@ interface ObjectionHandlingPanelProps {
   compact?: boolean;
 }
 
-const QUICK_QUERIES = ['只想报单科', '没时间', '学习主动性差', '价格太贵', '版本不同步'];
+const QUICK_QUERIES = ['只想报单科', '只想报同步课', '先看看再说', '文科不划算', '版本不同步'];
 
 const ObjectionHandlingPanel: React.FC<ObjectionHandlingPanelProps> = ({ compact = false }) => {
   const [query, setQuery] = useState('');
@@ -60,7 +60,7 @@ const ObjectionHandlingPanel: React.FC<ObjectionHandlingPanelProps> = ({ compact
           onKeyDown={(event) => {
             if (event.key === 'Enter') handleSearch();
           }}
-          placeholder="输入家长异议，例如：只想报单科、没时间、孩子不主动学"
+          placeholder="输入家长异议，例如：只想报同步课、先看看再说、文科不划算"
           className="font-hand"
         />
         <Button onClick={() => handleSearch()} disabled={loading} className="font-hand md:w-24">

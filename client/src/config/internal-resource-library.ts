@@ -74,7 +74,7 @@ interface ObjectionHandlingScript {
   source: string;
   sourceYear?: number;
   sourceUrl: string;
-  intentGroup?: 'time' | 'single-subject' | 'version' | 'price' | 'initiative' | 'service' | 'other';
+  intentGroup?: 'time' | 'single-subject' | 'version' | 'price' | 'initiative' | 'service' | 'defer' | 'subject-fit' | 'other';
   keywords: string[];
   content: string;
   materialHints?: string[];
@@ -359,6 +359,32 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
       '源于现在的时间段正在上学会遇到问题，最有兴趣、需要帮助、想学的时候，肯定要支持他鼓励他。学起来之后有小的进步会更加愿意学。源于活动截杀，最优惠的时候买我们最好的课程。',
   },
   {
+    id: 'high-school-liberal-arts-package-worth',
+    title: '文科买套餐不划算，只有三门主科',
+    stageLabel: '高中',
+    source: '洋葱异议处理话术库【2025正式版】',
+    sourceUrl: 'https://guanghe.feishu.cn/docx/Csn4d6brBo1nS6xoTdjcm8wznQe',
+    intentGroup: 'subject-fit',
+    keywords: ['高中生报文科觉得亏了', '文科亏', '文科不划算', '文科买套餐不划算', '只有三门主科', '报文科', '选文科', '政史地没有课程', '政史地资料'],
+    content:
+      '文科买套餐不划算，只有三门主科\n\n具体话术：\n同学，老师理解你的想法；\n但是洋葱本身是会员制，会员制也不分文理科，就像你去开腾讯会员，不能只开你爱看电视剧的权限吧？咱们报名课程主要是提分，洋葱最核心的课程就是数学，我们很多的文科生来洋葱主要就是学数学的，报名洋葱不仅仅可以学三大主科，而且政治历史地理我们是有全套划重点多的资料给到咱们这边，政史地三科主要是以背诵和记为主，只要把资料掌握全面了，考到及格线上也是没有问题的；\n老师给你推荐的课包一定是最划算的，我们现在高中全科3年优惠完才4698，平均1年1566，这个价格相当于买数学一轮复习赠送其他全科的，你就算只学语数英，也非常划算，如果单独买语数英1年差不多就需要1万多了，所以你报这个大会员最划算，后面也没有其他任何一分钱的费用，一定是比分开报名划算很多的；\n您觉得呢？咱抓紧时间帮孩子定下来吧···\n\n具体话术：\n家长你好呀！你反应的问题我大概了解了，您其实不用担心这个问题；因为洋葱现有的课程基本上是可以满足绝大部分学生的需求的，像华师一附中衡水中学都有在用洋葱的课件上课，三大主科做的非常好，很多文科生也会选择洋葱来学习提分；\n高中政史地目前确实是没有课程的，所以我们特意准备了高中政史地的学霸笔记资料并且有答题模板给到同学，很多同学都是反馈很有用的，本身这三科是记忆导向性学科，精准的重难点记忆既能节省时间也能考试拿分；\n并且，洋葱的课程我们是周周更新，如果您购买洋葱的大会员课程了，后续课程/功能上新了，都可以直接使用，没有任何的二次收费的哈；\n家长，我先加您一个微信，把洋葱相关资料发给你看看吧···',
+    materialHints: ['可配发高中政史地学霸笔记、答题模板、三大主科课程目录或学校使用案例截图。'],
+    relatedQueries: ['高中选文科买全科亏不亏', '文科生只有语数英能学吗', '政史地没有课程怎么办', '文科报大会员划算吗'],
+  },
+  {
+    id: 'defer-look-later-need',
+    title: '现在不着急，我还想再看看，等开学了/以后再说',
+    stageLabel: '通用/高中',
+    source: '洋葱异议处理话术库【2025正式版】',
+    sourceUrl: 'https://guanghe.feishu.cn/docx/Csn4d6brBo1nS6xoTdjcm8wznQe',
+    intentGroup: 'defer',
+    keywords: ['孩子先看看后面有需要再说', '先看看', '后面有需要再说', '有需要再说', '以后再说', '等开学再说', '现在不着急', '再考虑一下', '先试试', '先体验'],
+    content:
+      '现在不着急，我还想再看看，等开学了/以后再说\n\n沟通思路：\n理解共情\n价值传递+同样的案例讲故事\n品牌外化+课程设计\n\n沟通思路：\n从成绩入手，成绩好-超前学培养优势学科，成绩不好-要及时查漏补缺\n介绍清楚洋葱课程，让其认可课程价值，认为现在学就是最合适的\n最后说暑期活动，全年最优惠的价格，错过不再有\n\n沟通思路：高中\n从成绩入手，成绩好-超前学培养优势学科，成绩不好-要及时查漏补缺\n介绍清楚洋葱课程，让其认可课程价值，认为现在学就是最合适的\n最后说暑期活动，全年最优惠的价格，错过不再有\n\n具体话术：\n理解您的想法家长，就像我之前没做教育之前跟您一样的考虑， 但是我做了教育之后肯定不会这么想，首先您有这个想法肯定是之前对我们了解不多，或者之前买过别的课程孩子效果没达到您的预期，但是我想说的会是咱们课程是做了12年了，经历过市场的检测和洗礼的，目前全国23万所中小学用到校园版 ，400万老师备课，1个多亿学员基本没打过广告，如果效果不好学校一定不会用的，；\n您肯定不是第一个吃螃蟹的人，我的一个妈妈他家孩子成绩跟您基本一致，最开始的时候也是犹豫不敢下手给孩子，开学前他妹妹是新东方的英语老师，她妹妹家孩子就是用的我们课程，家长没有与果断给孩子下单了，现在学习3个月了  这次期中考试数学多考了40多分，家长很开心，给身边人也是都介绍了洋葱，我能说的就是与其说咱们担心犹豫不如给孩子一个尝试的机会，我说的再好不如您带孩子亲身系统化来学，毕竟不交钱孩子也是放松心态想学就学 ，但是交钱后您和孩子心里都有变化  会更用心去学；\n其次也是从年级上来说 时间紧任务重呀家长，早点学早点收获 开学孩子能够更快地进入学习状态跟得上老师的节奏，学习成就感更高，您也是学生时代过来的 您想想是不是这个道理  最主要的一点 我们课程是到期型的 您买2年是到27年6月30号 您现在买也是用到那个时候  以后买也是  那您说不管从学习规划还是性价比来说是不是当下最合适？\n孩子妈妈，咱们就给孩子现在规划上学习好吧？\n\n具体话术：\n孩子妈妈，我非常理解您的意思，但是孩子妈妈，我们孩子的黄金学习时间是有限的，越早学也越早提升，俗话说种一棵树最好的时间是10年前，其次就是现在；\n咱们孩子现在成绩也还算不错，恰好现在就是培养孩子优势学科最好的时间，现在孩子有兴趣而且时间相对比较充裕，就更需要及时给孩子做好规划，不然等到孩子成绩真正开始下滑的时候就是最难的时候。\n另外洋葱课程是5-8分钟的动画短视频，真正能做到入校的学习软件，也是符合当代学生和老师的需求和认可，相信也是值得您的信赖和选择；\n现在也是我们全年最优惠的价格，错过就没有现在这么优惠的活动了，可能您也不是因为优惠给孩子报名的，但是我也更希望您能在最优惠的时候给孩子报名，也能帮您分担一点经济压力\n孩子妈妈，咱们就给孩子现在规划上学习好吧？\n\n具体话术：\n同学，老师非常理解同学可能是想着看成绩,跟不上了再在洋葱补，不过这个想法高中是最忌讳的!\n高中课外时间紧张,二年结束三年的新课,学校讲课节奏快,并且知识点的关联性非常常强,一环扣一环的,一旦课内跟不上,不仅是这个章节这个知识点不会,后面的新课都听不懂\n可能现在同学成绩也还算不错，正因为这样我们要更好的做规划，成绩好可以超前学习，提前预习，让自己的成绩一直保持优势，高考千军万马过独木桥，1分压到一批人\n另外洋葱课程是5-8分钟的动画短视频，真正能做到入校的学习软件，也是符合当代学生和老师的需求和认可，相信也是值得您的信赖和选择；\n现在也是我们全年最优惠的价格，错过就没有现在这么优惠的活动了，可能您也不是因为优惠给孩子报名的，但是我也更希望您能在最优惠的时候给孩子报名，也能帮您分担一点经济压力\n孩子妈妈，咱们就给孩子现在规划上学习好吧？',
+    materialHints: ['可配发品牌背书、学校使用案例、好评截图、优惠活动截止提示或学习3个月提分案例截图。'],
+    relatedQueries: ['孩子先看看再说', '以后有需要再说', '等开学再买', '现在不着急', '再考虑一下'],
+  },
+  {
     id: 'annual-price-gift',
     title: '活动价与赠品口径',
     source: '洋葱异议处理话术库【2025正式版】',
@@ -412,6 +438,23 @@ const OBJECTION_QUERY_CONCEPTS = [
   '寒假再报',
   '暑假再报',
   '先等等',
+  '文科',
+  '报文科',
+  '选文科',
+  '文科亏',
+  '文科不划算',
+  '三门主科',
+  '政史地',
+  '先看看',
+  '先试试',
+  '先体验',
+  '以后再说',
+  '后面再说',
+  '有需要再说',
+  '需要再说',
+  '等开学',
+  '不着急',
+  '考虑一下',
 ];
 
 function extractQueryTerms(query: string): string[] {
@@ -436,7 +479,24 @@ function extractQueryTerms(query: string): string[] {
     /版本|教材|章节|课文|课本|人教版/.test(normalized)
       ? ['版本不同步', '教材版本', '教材不一样', '章节不同步', '章节对不上', '内容不同步', '知识点不同步', '课本不同步']
       : [];
-  return [...new Set([...baseTerms, ...splitTerms, ...conceptTerms, ...combinationTerms, ...singleSubjectSyncTerms, ...versionTerms])];
+  const liberalArtsTerms =
+    /文科|政史地|历史|政治|地理|亏|不划算/.test(normalized)
+      ? ['高中生报文科觉得亏了', '文科买套餐不划算', '文科不划算', '文科亏', '三门主科', '政史地', '政史地资料']
+      : [];
+  const deferTerms =
+    /先看看|先试试|先体验|后面.*再说|以后再说|有需要再说|需要再说|等开学|不着急|考虑一下|再考虑/.test(normalized)
+      ? ['孩子先看看后面有需要再说', '现在不着急', '先看看', '后面有需要再说', '有需要再说', '以后再说', '等开学再说', '再考虑一下']
+      : [];
+  return [...new Set([
+    ...baseTerms,
+    ...splitTerms,
+    ...conceptTerms,
+    ...combinationTerms,
+    ...singleSubjectSyncTerms,
+    ...versionTerms,
+    ...liberalArtsTerms,
+    ...deferTerms,
+  ])];
 }
 
 function inferObjectionIntentGroup(query: string): ObjectionHandlingScript['intentGroup'] | null {
@@ -447,6 +507,8 @@ function inferObjectionIntentGroup(query: string): ObjectionHandlingScript['inte
     return 'single-subject';
   }
   if (/单科|只学一科|只要一科|不报全科/.test(normalized)) return 'single-subject';
+  if (/文科|政史地|历史|政治|地理|亏|不划算/.test(normalized)) return 'subject-fit';
+  if (/先看看|先试试|先体验|后面.*再说|以后再说|有需要再说|需要再说|等开学|不着急|考虑一下|再考虑/.test(normalized)) return 'defer';
   if (/主动性|自驱|不主动|不爱学/.test(normalized)) return 'initiative';
   if (/价格|太贵|便宜|优惠|赠品|平板/.test(normalized)) return 'price';
   if (/没时间|时间不够|住校|晚自习|作业多/.test(normalized)) return 'time';
@@ -457,11 +519,34 @@ function buildScriptHaystack(script: ObjectionHandlingScript): string {
   return normalizeObjectionQuery(`${script.title} ${script.keywords.join(' ')} ${script.content}`);
 }
 
+function scoreDocumentKeywordMatch(query: string, script: ObjectionHandlingScript): number {
+  const normalized = normalizeObjectionQuery(query);
+  if (!normalized) return 0;
+  const normalizedTitle = normalizeObjectionQuery(script.title);
+  const normalizedKeywords = script.keywords.map(normalizeObjectionQuery);
+  const normalizedContent = normalizeObjectionQuery(script.content);
+  const terms = extractQueryTerms(query).map(normalizeObjectionQuery).filter((term) => term.length >= 2);
+  let score = 0;
+
+  if (normalizedTitle.includes(normalized)) score += 80;
+  if (normalizedContent.includes(normalized)) score += 50;
+  if (normalizedKeywords.some((keyword) => keyword.includes(normalized) || normalized.includes(keyword))) score += 40;
+
+  for (const term of terms) {
+    if (normalizedTitle.includes(term)) score += 12;
+    if (normalizedKeywords.some((keyword) => keyword.includes(term) || term.includes(keyword))) score += 10;
+    if (normalizedContent.includes(term)) score += 6;
+  }
+
+  return score;
+}
+
 function isScriptMatched(query: string, script: ObjectionHandlingScript): boolean {
   const normalized = normalizeObjectionQuery(query);
   if (!normalized) return false;
   const haystack = buildScriptHaystack(script);
   if (haystack.includes(normalized)) return true;
+  if (scoreDocumentKeywordMatch(query, script) >= 10) return true;
   const terms = extractQueryTerms(query).map(normalizeObjectionQuery);
   return terms.some((term) => {
     if (term.length < 2) return false;
@@ -478,7 +563,7 @@ function scoreScriptMatch(query: string, script: ObjectionHandlingScript): numbe
   if (!normalized) return 0;
   const haystack = buildScriptHaystack(script);
   const terms = extractQueryTerms(query).map(normalizeObjectionQuery);
-  let score = 0;
+  let score = scoreDocumentKeywordMatch(query, script);
   if (normalizeObjectionQuery(script.title).includes(normalized)) score += 60;
   if (haystack.includes(normalized)) score += 30;
   for (const term of terms) {
