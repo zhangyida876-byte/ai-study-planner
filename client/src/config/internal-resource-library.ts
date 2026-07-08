@@ -77,6 +77,7 @@ interface ObjectionHandlingScript {
   keywords: string[];
   content: string;
   materialHints?: string[];
+  relatedQueries?: string[];
 }
 
 const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
@@ -199,13 +200,93 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
       '理解的，洋葱这边不需要咱们定时定点去上课，就是在遇到学习问题的时候可以通过洋葱及时解决。平时放假、节假日和寒暑假，是完全有时间利用洋葱去学习的，只需要灵活安排自己的课外时间就行了，这已经是最适合高中生的学习模式了。其次，学习肯定是需要未雨绸缪的，学校老师讲课永远是在讲新课、一遍过大纲，知识点关联性强，所以学期内需要在课外及时查漏补缺，学习中遇到或者遗留的问题要及时解决，不然就恶性循环了。高中课外时间紧不是课外不学的理由，而是更应该未雨绸缪提前学、及时有效地学。课外学习的效果和价值，不在于花多少时间，而在于及时性、针对性和有效性。寒暑假预习衔接、复习巩固，学期内利用课外时间有效解决阶段性学习问题。这个洋葱大会员就是最佳选择，像感冒了买一盒感冒药，不是为了把药吃完，而是及时对症下药。课外学习是做减法的，在于及时性、有效性和针对性，不在于花多少时间。正常报单科一年就要3500，三年要一万多，现在只需要一半的费用就可以全科学一年，性价比非常高，趁着有优惠尽快安排吧？',
   },
   {
-    id: 'version-not-match',
-    title: '版本不同步',
+    id: 'version-english-not-match',
+    title: '英语版本问题：不用逐篇同步课文，抓词汇语法和题型',
+    stageLabel: '通用',
+    source: '小学四部培训：异议处理',
+    sourceUrl: 'https://guanghe.feishu.cn/docx/doxcnrnsrjC2R64dozGViJj3rHf',
+    keywords: [
+      '版本不同步',
+      '英语版本',
+      '英语不同步',
+      '小学英语版本',
+      '教材版本',
+      '教材不一样',
+      '内容不同步',
+      '课文不同步',
+      '章节不同步',
+      '知识点不同步',
+      '章节对不上',
+      '知识点对不上',
+      '人教版',
+    ],
+    content:
+      '我们英语的话不是说把每个版本的英语课文同步一遍，那个没有意义，考试不会考这些对吧。第一我们是注重单词短语的积累，词汇量起来了，我们英语成绩肯定不会差对吧。第二，语法时态、从句这些重点难点全部弄懂。第三，完形填空、阅读理解这些做题技巧的学习。我们是分板块的，是最科学的提升方式。我不知道您有没有给孩子报过新东方和VIP英语那样的辅导，他们也不是去注重哪个版本的对吧。所以洋葱的英语您直接学我们人教版即可，是最全面也是效果最好的。',
+    materialHints: ['可配发英语课程目录、单词/语法/阅读理解模块截图，证明不是逐篇讲课文，而是围绕考试能力训练。'],
+    relatedQueries: ['英语课文不一样怎么办', '教材不是人教版能不能学', '英语章节和学校不一致', '内容不同步会不会影响考试'],
+  },
+  {
+    id: 'version-biology-geography-not-match',
+    title: '生物地理版本问题：核心考点一样，章节顺序不同',
+    stageLabel: '初中',
+    source: '小学四部培训：异议处理',
+    sourceUrl: 'https://guanghe.feishu.cn/docx/doxcnrnsrjC2R64dozGViJj3rHf',
+    keywords: [
+      '版本不同步',
+      '生物版本',
+      '地理版本',
+      '生物地理版本',
+      '教材版本',
+      '教材不一样',
+      '章节不同步',
+      '章节顺序',
+      '章节对不上',
+      '内容不同步',
+      '知识点不同步',
+      '知识点不一样',
+      '人教版',
+    ],
+    content:
+      '1.我们选用的是考点和知识点最齐全的人教版，和您所学的版本的核心考点都是一样的。\n\n2.只是章节的顺序不一样，比方说我们的顺序是1234，您的顺序是2143，洋葱本身就是查漏补缺。\n\n直接搜索到对应的章节知识点题型即可，对使用和提升没有任何影响的。',
+    materialHints: ['可配发知识点搜索路径截图、章节目录对照截图，现场演示“按知识点搜”而不是按课本页码找。'],
+    relatedQueries: ['章节顺序不一样怎么办', '学校不是人教版能不能用', '知识点顺序不同会不会学乱', '内容和课本对不上怎么学'],
+  },
+  {
+    id: 'version-elementary-language-not-sync',
+    title: '小学语文/英语不完全同步：语言学科重积累和能力',
+    stageLabel: '小学',
     source: '异议处理',
     sourceUrl: 'https://guanghe.feishu.cn/wiki/VTbdwLAoUiPbigkoedlc2zyPng0',
-    keywords: ['版本不同步', '教材不一样', '章节对不上', '人教版', '英语版本', '小学英语版本', '英语不同步'],
+    keywords: [
+      '版本不同步',
+      '小学英语版本',
+      '语文不同步',
+      '英语不同步',
+      '课本不同步',
+      '内容不同步',
+      '教材版本',
+      '教材不一样',
+      '不是跟课本同步',
+      '章节不同步',
+      '知识点不同步',
+      '没有必要报名全科',
+    ],
     content:
-      '我们英语不是把每个版本课文同步一遍，我们是注重单词短语积累、语法时态从句这些重点难点、完形填空和阅读理解做题技巧学习。生物地理选用的是考点和知识点最齐全的人教版，和所学版本核心考点都是一样的，只是章节顺序不一样，洋葱本身就是查漏补缺，直接搜索到对应章节知识点题型即可。',
+      '孩子妈妈，确实我们语文跟英语不是完全同步的，因为这两个是语言学科，语言学科更注重孩子的积累。\n\n咱们洋葱语文是按照古诗词、作文、名著、人物传记等等让孩子来学习的。古诗词通过生动有趣的动画让孩子直观感受古代文学和现代文学的文化环境差异，让孩子更容易理解。作文版块从初段的看图写话，到中段记叙文、应用文如何记事、写人、写景、状物的写作技能帮助孩子全面提升，名著+人物通过课外文章为载体帮助孩子掌握课内需要掌握的阅读技巧的同时，也能扩大孩子的知识储备，帮助孩子提升文化素养。语文是文科积累型的科目，考试不会给孩子考校内的原文，如果语文课程是和学校完全同步的，孩子在学校已经学习过一遍了，在洋葱又把原文再讲一遍孩子会没有学习的兴趣的。家长洋葱的课程都是根据学科特点研发的学习效果您也可以完全放心的哈，咱们就帮宝贝参与这个活动帮助孩子决定下来吧?\n\n咱们英语是按照人教版给孩子学习的，自然拼读，每一个单元的重点词汇、句型、语法、阅读、写作技巧等等让孩子来学习，而且还有一个搜索单词的功能，跟英汉词典有点类似。比如说孩子有不懂的知识点，可以通过这个功能来搜索，可以教孩子的发音。洋葱的英语设计是可以让孩子学好英文的，记得让孩子每天在洋葱打卡单词，因为英语比较需要积累，孩子的词汇量高，自然在学校上课也跟得上，考试分数自然会比较高。',
+    materialHints: ['可配发语文古诗词/作文/阅读模块截图、英语自然拼读/单词打卡/语法模块截图，帮助家长理解语言学科不是复读课文。'],
+    relatedQueries: ['语文为什么不跟课文一模一样', '英语不是学校版本怎么办', '课文不一样还有没有必要学', '知识点内容和学校不同步怎么办'],
+  },
+  {
+    id: 'version-course-coverage-competitor',
+    title: '教材版本覆盖：课程体系比单纯题库更完整',
+    stageLabel: '通用',
+    source: '异议处理',
+    sourceUrl: 'https://guanghe.feishu.cn/wiki/VTbdwLAoUiPbigkoedlc2zyPng0',
+    keywords: ['版本覆盖', '教材覆盖', '教材版本', '版本不同步', '天天练', '题库', '知识体系', '内容全面'],
+    content:
+      '天天练主要是做题库的，而洋葱的优势是同步校内的动画课程，另外洋葱教材版本的覆盖率、课程普及率都是遥遥领先，内容全面，知识体系更完整。\n\n洋葱是以学生主体视角，激发孩子探索欲和求知欲，这也是为什么学生喜欢洋葱的原因，而天天练是单纯的题库刷题，这个对于孩子长期的学习，尤其是随着年级的增加，知识点更复杂的时候，知识点没懂，仅刷题帮助都是很有限的，毕竟题目是千变万化的。',
+    materialHints: ['可配发教材版本覆盖或课程目录截图，对比“只刷题”和“先学懂知识点再练题”的差异。'],
+    relatedQueries: ['洋葱和题库有什么区别', '教材版本覆盖多不多', '只是刷题能不能解决版本问题', '知识体系是不是完整'],
   },
   {
     id: 'child-initiative-weak',
@@ -290,6 +371,15 @@ const OBJECTION_QUERY_CONCEPTS = [
   '不主动学习',
   '英语版本',
   '版本不同步',
+  '教材版本',
+  '教材不一样',
+  '章节不同步',
+  '章节对不上',
+  '内容不同步',
+  '知识点不同步',
+  '知识点不一样',
+  '课本不同步',
+  '人教版',
   '不要平板',
   '线下',
   '学习机',
@@ -313,7 +403,11 @@ function extractQueryTerms(query: string): string[] {
     normalized.includes('没时间') && normalized.includes('单科')
       ? ['没时间', '时间不够', '单科', '报单科', '想报单科']
       : [];
-  return [...new Set([...baseTerms, ...splitTerms, ...conceptTerms, ...combinationTerms])];
+  const versionTerms =
+    /版本|教材|章节|内容|知识点|课本|人教版/.test(normalized)
+      ? ['版本不同步', '教材版本', '教材不一样', '章节不同步', '章节对不上', '内容不同步', '知识点不同步', '课本不同步']
+      : [];
+  return [...new Set([...baseTerms, ...splitTerms, ...conceptTerms, ...combinationTerms, ...versionTerms])];
 }
 
 function buildScriptHaystack(script: ObjectionHandlingScript): string {
@@ -363,6 +457,7 @@ export function matchObjectionHandlingScript(query: string): string {
       stageLabel: script.stageLabel || '通用',
       source: script.source,
       materialHints: script.materialHints || [],
+      relatedQueries: script.relatedQueries || [],
       content: script.content.trim(),
       score: scoreScriptMatch(query, script),
     }))
@@ -375,7 +470,10 @@ export function matchObjectionHandlingScript(query: string): string {
         const materialText = item.materialHints.length
           ? `\n可配发物料：${item.materialHints.join('；')}`
           : '';
-        return `【话术选项${index + 1}｜${item.stageLabel}｜${item.title}】\n来源：${item.source}\n${item.content}${materialText}`;
+        const relatedText = item.relatedQueries.length
+          ? `\n关联问法：${item.relatedQueries.join(' / ')}`
+          : '';
+        return `【话术选项${index + 1}｜${item.stageLabel}｜${item.title}】\n来源：${item.source}\n${item.content}${materialText}${relatedText}`;
       })
       .join('\n\n');
   }
