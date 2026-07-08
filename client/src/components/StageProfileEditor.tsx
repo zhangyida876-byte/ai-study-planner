@@ -44,6 +44,11 @@ interface StageProfileEditorProps {
 
 type CandidateTier = '冲刺' | '匹配' | '保底';
 
+const HS_MODES = [
+  { value: '3+1+2', label: '3+1+2（物理/历史 二选一）' },
+  { value: '3+3', label: '3+3（六选三）' },
+];
+
 function resolveSubjectMaxForDisplay(subject: string, hints: Record<string, number>): number | undefined {
   if (hints[subject]) return hints[subject];
   if (subject === '政治') return hints['道法'] || hints['政治&道法'];
@@ -420,8 +425,8 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       const region = [draft.province, draft.city].join(' ');
       let candidates: SchoolCandidate[] = [];
 
-      // 初中学段优先用本地政策库补齐学校+分数线，保证可选结果稳定。
-      if (stageConfig.slug === 'middle' || stageConfig.slug === 'high') {
+      // 初中学段优先用本地高中政策库；高中目标是大学/院校，不能混用高中/中学库。
+      if (stageConfig.slug === 'middle') {
         try {
           const db = await policyApi.searchSchools(region);
           const dbCandidates = db.schools
@@ -536,7 +541,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         <p className="font-hand text-xs text-muted-foreground">只需先填地区和目标学校，下面模块都会自动复用</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className={`grid gap-4 ${stageConfig.slug === 'high' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
         <div>
           <Label className="font-hand">学生姓名</Label>
           <Input
@@ -557,6 +562,24 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
             </SelectContent>
           </Select>
         </div>
+        {stageConfig.slug === 'high' && (
+          <div>
+            <Label className="font-hand">高考学科模式（选填）</Label>
+            <Select value={toSelectValue(draft.examMode)} onValueChange={(v) => patch({ examMode: v })}>
+              <SelectTrigger className="font-hand mt-1">
+                <SelectValue placeholder="选择高考模式" />
+              </SelectTrigger>
+              <SelectContent>
+                {HS_MODES.map((mode) => (
+                  <SelectItem key={mode.value} value={mode.value}>{mode.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="font-hand mt-1 text-[11px] text-muted-foreground">
+              保存后会自动带入学情诊断、升学规划和课表学习方案。
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 rounded-xl border border-ink/10 bg-background/80 p-4 shadow-sm">
@@ -783,11 +806,13 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <Label className="font-hand font-bold text-ink">{stageConfig.targetLabel}</Label>
             <span className="rounded-full border border-marker-red/30 bg-white px-2 py-0.5 text-xs font-bold text-marker-red">
-              当地学校可搜索，也支持自定义输入
+              {stageConfig.slug === 'high' ? '大学/院校可搜索，也支持自定义输入' : '当地学校可搜索，也支持自定义输入'}
             </span>
           </div>
           <p className="font-hand mb-2 text-xs text-ink/70">
-            不知道当地有哪些学校，先点“显示当地重点校”；知道学校名称，可输入关键词后点“搜索并匹配”。
+            {stageConfig.slug === 'high'
+              ? '不知道当地有哪些大学，先点“显示当地院校”；知道院校名称，可输入关键词后点“搜索并匹配”。'
+              : '不知道当地有哪些学校，先点“显示当地重点校”；知道学校名称，可输入关键词后点“搜索并匹配”。'}
           </p>
           <div className="mt-1 flex gap-2">
             <Input
@@ -806,7 +831,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               }}
               disabled={searchingSchool}
             >
-              显示当地重点校
+              {stageConfig.slug === 'high' ? '显示当地院校' : '显示当地重点校'}
             </Button>
             <Button
               type="button"
@@ -866,6 +891,9 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         <div className="font-hand text-sm text-ink/70">
           {regionSummary && <span className="mr-3">📍 {regionSummary}</span>}
           {draft.grade && <span className="mr-3">🎓 {draft.grade}</span>}
+          {stageConfig.slug === 'high' && draft.examMode && (
+            <span className="mr-3">🧭 {draft.examMode}</span>
+          )}
           {draft.targetSchool && <span className="mr-3">🏫 {draft.targetSchool}</span>}
           {stageConfig.slug === 'high' && draft.careerIntent && (
             <span className="mr-3">💼 {draft.careerIntent}</span>

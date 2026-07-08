@@ -44,6 +44,7 @@ export function getStudyPlanAutofillFromProfile(profile: StageProfile) {
     targetSchool: profile.targetSchool,
     targetScore: profile.targetScore != null ? String(profile.targetScore) : '',
     careerIntent: profile.careerIntent,
+    examMode: profile.examMode,
     examDate: profile.examDate,
     currentScore: profile.scoresOverview,
     weakSubjects: profile.weakSubjects,

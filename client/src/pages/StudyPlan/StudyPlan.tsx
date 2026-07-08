@@ -81,6 +81,7 @@ interface StudyPlanSessionState {
   region: string;
   school: string;
   targetSchool: string;
+  examMode: string;
   examDate: string;
   currentScore: string;
   targetScore: string;
@@ -98,6 +99,11 @@ interface StudyPlanSessionState {
   report: string;
 }
 
+const HS_MODES = [
+  { value: '3+1+2', label: '3+1+2（物理/历史 二选一）' },
+  { value: '3+3', label: '3+3（六选三）' },
+];
+
 const StudyPlan: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
   const { profile, regionText, updateProfile } = useStageProfile(stageSlug);
@@ -105,6 +111,7 @@ const StudyPlan: React.FC = () => {
   const [region, setRegion] = useState('');
   const [school, setSchool] = useState('');
   const [targetSchool, setTargetSchool] = useState('');
+  const [examMode, setExamMode] = useState('');
   const [examDate, setExamDate] = useState('');
   const [currentScore, setCurrentScore] = useState('');
   const [targetScore, setTargetScore] = useState('');
@@ -134,6 +141,7 @@ const StudyPlan: React.FC = () => {
     setRegion(cached.region || '');
     setSchool(cached.school || '');
     setTargetSchool(cached.targetSchool || '');
+    setExamMode(cached.examMode || '');
     setExamDate(cached.examDate || '');
     setCurrentScore(cached.currentScore || '');
     setTargetScore(cached.targetScore || '');
@@ -162,6 +170,7 @@ const StudyPlan: React.FC = () => {
     if (fill.targetSchool) setTargetSchool(fill.targetSchool);
     if (fill.targetScore) setTargetScore(fill.targetScore);
     if (fill.careerIntent) setCareerIntent(fill.careerIntent);
+    if (fill.examMode) setExamMode(fill.examMode);
     if (fill.examDate) setExamDate(fill.examDate);
     if (fill.currentScore) setCurrentScore(fill.currentScore);
     if (fill.weakSubjects) setWeakSubjects(fill.weakSubjects);
@@ -180,6 +189,7 @@ const StudyPlan: React.FC = () => {
       region,
       school,
       targetSchool,
+      examMode,
       examDate,
       currentScore,
       targetScore,
@@ -202,6 +212,7 @@ const StudyPlan: React.FC = () => {
     region,
     school,
     targetSchool,
+    examMode,
     examDate,
     currentScore,
     targetScore,
@@ -231,6 +242,7 @@ const StudyPlan: React.FC = () => {
         examDate,
         scoresOverview: currentScore,
         careerIntent,
+        examMode,
         weakSubjects,
         strongSubjects,
         weeklyStudyHours: weeklyHours,
@@ -248,6 +260,7 @@ const StudyPlan: React.FC = () => {
     examDate,
     currentScore,
     careerIntent,
+    examMode,
     weakSubjects,
     strongSubjects,
     weeklyHours,
@@ -267,6 +280,7 @@ const StudyPlan: React.FC = () => {
       examDate,
       scoresOverview: currentScore,
       careerIntent,
+      examMode,
       weakSubjects,
       strongSubjects,
       weeklyStudyHours: weeklyHours,
@@ -274,7 +288,7 @@ const StudyPlan: React.FC = () => {
     });
     toast.success('已同步回学段主页档案');
     setProfileDirty(false);
-  }, [updateProfile, grade, school, targetSchool, targetScore, examDate, currentScore, careerIntent, weakSubjects, strongSubjects, weeklyHours, boardingType]);
+  }, [updateProfile, grade, school, targetSchool, targetScore, examDate, currentScore, careerIntent, examMode, weakSubjects, strongSubjects, weeklyHours, boardingType]);
 
   const validate = (): string | null => {
     if (!grade) return '请选择年级';
@@ -306,6 +320,7 @@ const StudyPlan: React.FC = () => {
         currentScore: currentScore.trim(),
         targetScore: targetScore.trim(),
         careerIntent: careerIntent.trim(),
+        examMode: examMode.trim(),
         weakSubjects: weakSubjects.trim(),
         strongSubjects: strongSubjects.trim(),
         weeklyHours: weeklyHours.trim(),
@@ -332,7 +347,7 @@ const StudyPlan: React.FC = () => {
   }, [
     boardingType, currentScore, customNotes, dailyHours, eveningStudy, examDate,
     extracurricular, grade, region, school, stageConfig.label, stageSlug,
-    strongSubjects, targetSchool, targetScore, careerIntent, timetableNotes, weakSubjects,
+    strongSubjects, targetSchool, targetScore, careerIntent, examMode, timetableNotes, weakSubjects,
     weeklyHours, weeklySchedule, profile,
   ]);
 
@@ -467,15 +482,30 @@ const StudyPlan: React.FC = () => {
                 <Input value={targetScore} onChange={(e) => setTargetScore(e.target.value)} className="font-hand mt-1" />
               </div>
               {stageSlug === 'high' && (
-                <div className="sm:col-span-2">
-                  <Label className="font-hand">想做的事情 / 职业方向</Label>
-                  <Input
-                    value={careerIntent}
-                    onChange={(e) => { markDirty(); setCareerIntent(e.target.value); }}
-                    placeholder="如：人工智能、医学、金融、法律"
-                    className="font-hand mt-1"
-                  />
-                </div>
+                <>
+                  <div>
+                    <Label className="font-hand">高考学科模式</Label>
+                    <Select value={toSelectValue(examMode)} onValueChange={(v) => { markDirty(); setExamMode(v); }}>
+                      <SelectTrigger className="font-hand mt-1">
+                        <SelectValue placeholder="选择高考模式" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HS_MODES.map((mode) => (
+                          <SelectItem key={mode.value} value={mode.value}>{mode.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="font-hand">想做的事情 / 职业方向</Label>
+                    <Input
+                      value={careerIntent}
+                      onChange={(e) => { markDirty(); setCareerIntent(e.target.value); }}
+                      placeholder="如：人工智能、医学、金融、法律"
+                      className="font-hand mt-1"
+                    />
+                  </div>
+                </>
               )}
               <div>
                 <Label className="font-hand">薄弱科目 *</Label>

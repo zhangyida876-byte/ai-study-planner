@@ -131,6 +131,7 @@ export interface PersonalizedLearningPlanInput {
   currentScore?: string;
   targetScore?: string;
   careerIntent?: string;
+  examMode?: string;
   weakSubjects?: string;
   strongSubjects?: string;
   weeklyHours?: string;
@@ -164,6 +165,7 @@ export function buildPersonalizedLearningPlanPrompt(
     input.currentScore ? `当前成绩：${input.currentScore}` : '',
     input.targetScore ? `目标成绩：${input.targetScore}` : '',
     input.careerIntent ? `未来意向方向：${input.careerIntent}` : '',
+    input.examMode ? `高考选科模式：${input.examMode}` : '',
     input.weakSubjects ? `薄弱科目：${input.weakSubjects}` : '',
     input.strongSubjects ? `优势科目：${input.strongSubjects}` : '',
     `学习模式：${boarding}`,
@@ -376,13 +378,28 @@ function normalizeSchoolName(line: string): string {
     .replace(/^[\d\s.\-、]+/, '')
     .replace(/^[-*]\s*/, '')
     .replace(/\|/g, ' ')
+    .replace(/[:：].*$/, '')
+    .replace(/\s*\d{3,4}\s*分.*$/, '')
     .replace(/（[^）]*）/g, '')
     .replace(/\([^)]*\)/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-function extractSchoolCandidates(content: string, keyword?: string): string[] {
+function matchesStageSchoolName(candidate: string, stage: EducationStage): boolean {
+  if (stage === 'high') {
+    if (/(中学|高中|附中|一中|二中|三中|四中|五中|六中|七中|八中|九中|十中)/.test(candidate)) {
+      return false;
+    }
+    return /(大学|学院|职业技术大学|职业技术学院|职业学院|高等专科学校)/.test(candidate);
+  }
+  if (stage === 'middle') {
+    return /(中学|高中|附中|学校|一中|二中|三中|四中|五中|六中|七中|八中|九中|十中)/.test(candidate);
+  }
+  return /(中学|初中|附中|学校|一中|二中|三中|四中|五中|六中|七中|八中|九中|十中)/.test(candidate);
+}
+
+function extractSchoolCandidates(content: string, keyword?: string, stage: EducationStage = 'middle'): string[] {
   const lines = content.split('\n').map((line) => line.trim()).filter(Boolean);
   const normalizedKeyword = keyword?.trim();
   const result: string[] = [];
@@ -398,13 +415,7 @@ function extractSchoolCandidates(content: string, keyword?: string): string[] {
     }
     const candidate = normalizeSchoolName(line);
     if (!candidate || candidate.length < 2 || candidate.length > 32) continue;
-    if (
-      !/(中学|高中|附中|大学|学院|学校|一中|二中|三中|四中|五中|六中|七中|八中|九中|十中)/.test(
-        candidate,
-      )
-    ) {
-      continue;
-    }
+    if (!matchesStageSchoolName(candidate, stage)) continue;
     if (normalizedKeyword && !candidate.includes(normalizedKeyword)) continue;
     result.push(candidate);
   }
@@ -467,7 +478,7 @@ export async function searchSchoolCandidates(
     }
   }
 
-  const names = extractSchoolCandidates(merged, kw).slice(0, limit);
+  const names = extractSchoolCandidates(merged, kw, stage).slice(0, limit);
   return names.map((name) => ({ name }));
 }
 
