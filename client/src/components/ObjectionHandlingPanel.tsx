@@ -11,7 +11,7 @@ interface ObjectionHandlingPanelProps {
   compact?: boolean;
 }
 
-const QUICK_QUERIES = ['家长不回', '一元体验包', '短期小课包', '先看看再说', '科大讯飞'];
+const QUICK_QUERIES = ['五步追单法', '家长不回', '一元体验包', '短期小课包', '科大讯飞'];
 
 const ObjectionHandlingPanel: React.FC<ObjectionHandlingPanelProps> = ({ compact = false }) => {
   const [query, setQuery] = useState('');
@@ -60,7 +60,7 @@ const ObjectionHandlingPanel: React.FC<ObjectionHandlingPanelProps> = ({ compact
           onKeyDown={(event) => {
             if (event.key === 'Enter') handleSearch();
           }}
-          placeholder="输入家长异议，例如：家长不回、一元体验包、短期小课包、科大讯飞"
+          placeholder="输入家长异议，例如：五步追单法、家长不回、一元体验包、科大讯飞"
           className="font-hand"
         />
         <Button onClick={() => handleSearch()} disabled={loading} className="font-hand md:w-24">

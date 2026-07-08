@@ -417,6 +417,19 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     relatedQueries: ['先买短期看看', '小课包有没有', '怕长期孩子不学', '之前买短期没怎么看', '短期课包划算吗'],
   },
   {
+    id: 'gao-ting-five-step-follow-up',
+    title: '高挺的五步追单法：家长不回复消息',
+    stageLabel: '通用',
+    source: '高挺追单法内部补充',
+    sourceUrl: 'internal://gao-ting-five-step-follow-up',
+    intentGroup: 'follow-up',
+    keywords: ['高挺', '高挺五步追单法', '五步追单法', '追单法', '五步追单', '家长不回复', '家长不回', '不回复消息', '微信不回', '联系不到', '课程介绍后不回', '学习费用后不回'],
+    content:
+      '高挺的五步追单法是针对家长不回复消息的跟进方法。\n\n第一句：家长，上一次给您发过课程介绍和学习费用之后，我就再也联系不到您了（搭配捂脸表情）。\n核心逻辑：讲述事实，不抱怨。\n\n第二句：我猜您是不是在别处已经给孩子报过课了呢？是不考虑洋葱了吗？（搭配卖惨语气）。\n发送节奏：与上一条消息间隔 2 分钟发送。\n\n第三句：孩子妈妈，还是要跟您再确认一下，如果您已经给孩子报过了，跟我说一声，我就不再打扰您了。\n核心逻辑：再退一步。\n发送节奏：与上一条消息间隔 30 分钟发送。\n\n第四句：假如您还没有给孩子选好，但是一直没有回复我，是我服务做的不到位吗？（搭配流泪的表情）。\n核心逻辑：假装自责。\n\n第五句：家长，看到消息麻烦回复一下哦，以免我心里总是牵挂着您（搭配玫瑰表情）。',
+    materialHints: ['可配发课程介绍图、学习费用说明、孩子学习记录截图、好评截图或报名案例截图，配合五步追单节奏使用。'],
+    relatedQueries: ['高挺追单法', '家长不回复怎么跟', '课程介绍后联系不上', '发完费用后不回', '微信追单怎么发'],
+  },
+  {
     id: 'wuhan-follow-up-no-reply',
     title: '武汉新势力群：加微信后不回/不搭理/失联',
     stageLabel: '通用',
@@ -537,6 +550,9 @@ const OBJECTION_QUERY_CONCEPTS = [
   '不搭理',
   '微信不回',
   '失联',
+  '高挺',
+  '五步追单法',
+  '追单法',
   'VIP',
   '会员课',
   '体验包',
@@ -588,8 +604,8 @@ function extractQueryTerms(query: string): string[] {
       ? ['短期', '小课包', '短期课包', '先报短期', '只买短期', '短期同步课', '之前报过短期课', '新鲜感', '一元三天体验包', '体验包', '会员课', 'VIP', '免费课', '升单']
       : [];
   const followUpTerms =
-    /不回复|不回|不搭理|失联|微信不回|发消息不回|坐等|守株待兔/.test(normalized)
-      ? ['不回复', '不回消息', '不搭理', '微信不回', '失联', '家长不回', '首轮SOP', '回访物料']
+    /高挺|五步追单|追单法|不回复|不回|不搭理|失联|微信不回|发消息不回|坐等|守株待兔/.test(normalized)
+      ? ['高挺', '五步追单法', '追单法', '不回复', '不回消息', '不搭理', '微信不回', '失联', '家长不回', '首轮SOP', '回访物料']
       : [];
   const competitorTerms =
     /科大讯飞|学习机|学而思|作业帮|天天练|海豚ai|猿辅导|家教|辅导班|线下/.test(normalized)
@@ -624,7 +640,7 @@ function inferObjectionIntentGroup(query: string): ObjectionHandlingScript['inte
   }
   if (/单科|只学一科|只要一科|不报全科/.test(normalized)) return 'single-subject';
   if (/文科|政史地|历史|政治|地理|亏|不划算/.test(normalized)) return 'subject-fit';
-  if (/不回复|不回|不搭理|失联|微信不回|发消息不回|坐等|守株待兔/.test(normalized)) return 'follow-up';
+  if (/高挺|五步追单|追单法|不回复|不回|不搭理|失联|微信不回|发消息不回|坐等|守株待兔/.test(normalized)) return 'follow-up';
   if (/短期|小课包|小课|短期课包|先报短期|报短期|买短期|短期同步课|新鲜感|体验包|体验课|会员课|vip|免费课|升单/.test(normalized)) return 'short-package';
   if (/先看看|先试试|先体验|后面.*再说|以后再说|有需要再说|需要再说|等开学|不着急|考虑一下|再考虑/.test(normalized)) return 'defer';
   if (/助教回复慢|助教不满|对助教|售后不满|退费|服务不满|没人跟进/.test(normalized)) return 'service';
