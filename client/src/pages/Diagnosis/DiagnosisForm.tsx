@@ -791,6 +791,29 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+        <div className="rounded-xl border-2 border-dashed border-pen-blue/25 bg-pen-blue/5 p-4">
+          <h3 className="font-marker text-base font-bold">首页档案已自动带入</h3>
+          <p className="font-hand mt-1 text-xs text-ink/60">
+            这里不再重复编辑基础信息；如需修改姓名、地区、目标学校，请回到学段首页改档案。
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {[
+              ['学生', form.getValues('studentName') || stageProfile?.studentName || '未填写'],
+              ['年级', watchedGrade || stageProfile?.grade || '未填写'],
+              ['地区', watchedRegion || '未填写'],
+              [isElementary ? '目标初中' : isHighSchool ? '目标大学' : '目标学校', watchedSchool || stageProfile?.targetSchool || '未填写'],
+              ['目标分数线', form.getValues('targetScore') != null ? `${form.getValues('targetScore')}分` : '未填写'],
+              ['考试时间', form.getValues('examDate') || '未填写'],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-lg border border-ink/10 bg-white/80 px-3 py-2">
+                <p className="font-hand text-[11px] text-ink/50">{label}</p>
+                <p className="font-marker mt-0.5 text-sm font-bold text-ink">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="hidden" aria-hidden="true">
         <div className="rounded-xl border-2 border-dashed border-ink/15 bg-accent/40 p-4">
           <h3 className="font-marker text-base font-bold">基础档案</h3>
           <p className="font-hand mt-1 text-xs text-ink/60">从首页档案带入，核对姓名、年级、地区和考试节奏。</p>
@@ -1086,8 +1109,10 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
         )}
           </div>
         </div>
+        </div>
 
         {/* Target School (searchable) & Score */}
+        <div className="hidden" aria-hidden="true">
         <div className="rounded-xl border-2 border-dashed border-ink/15 bg-white/70 p-4">
           <h3 className="font-marker text-base font-bold">目标信息</h3>
           <p className="font-hand mt-1 text-xs text-ink/60">目标院校和分数线用于判断当前成绩有没有拖后腿。</p>
@@ -1201,10 +1226,16 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
           />
         )}
         </div>
+        </div>
 
         {/* Subject Scores */}
         <div className="rounded-xl border-2 border-dashed border-ink/15 bg-accent/40 p-4">
-          <FormLabel className="mb-3 block">各科成绩</FormLabel>
+          <div className="mb-3">
+            <FormLabel className="block">各科成绩</FormLabel>
+            <p className="font-hand mt-1 text-xs text-ink/60">
+              首页成绩已自动带入，可只补充或修正本次要诊断的科目。
+            </p>
+          </div>
 
           {isHighSchool && watchedMode ? (
             <div className="space-y-4">
@@ -1271,7 +1302,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
               <FormLabel>学习困扰</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="描述学生遇到的学习问题（选填）"
+                  placeholder="可补充错题表现、听课状态、做题习惯，例如：数学压轴题不会列式，英语完形总靠感觉"
                   className="min-h-[80px] resize-none"
                   value={field.value ?? ''}
                   onChange={field.onChange}
