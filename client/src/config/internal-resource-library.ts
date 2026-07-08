@@ -70,6 +70,7 @@ const OBJECTION_HANDLING_DOC: string[] = [
 interface ObjectionHandlingScript {
   id: string;
   title: string;
+  stageLabel?: string;
   source: string;
   sourceYear?: number;
   sourceUrl: string;
@@ -81,6 +82,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
   {
     id: 'time-no-time',
     title: '课程太多，没时间学',
+    stageLabel: '通用',
     source: '小学四部培训：异议处理',
     sourceUrl: 'https://guanghe.feishu.cn/docx/doxcnrnsrjC2R64dozGViJj3rHf',
     keywords: ['没时间', '时间少', '作业多', '课程太多', '学不过来', '时间不够', '没时间报课', '没时间想报'],
@@ -90,6 +92,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
   {
     id: 'boarding-time',
     title: '住校没时间',
+    stageLabel: '初中/高中',
     source: '代表性异议处理文档--白小峰',
     sourceUrl: 'https://guanghe.feishu.cn/wiki/FQWdwjRQOiNn6lklRpgcNOIun5b',
     keywords: ['住校', '回家晚', '没时间', '晚自习', '放假少'],
@@ -142,13 +145,55 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
       '洋葱这个活动给咱们限额前1000个名额赠送洋葱学习平板，不是觉得同学家里缺平板。赠送平板是因为和洋葱app是智能绑定学习系统，同学在洋葱学习的课程记录和练习错题会实时生成学习报告和错题集，系统会推送高配易错题库和课程，能提高学习效率。洋葱学习平板带类纸护眼技术屏，不反光不折光。',
   },
   {
-    id: 'single-subject-only',
-    title: '只想学数学单科',
-    source: '小学四部培训：异议处理',
-    sourceUrl: 'https://guanghe.feishu.cn/docx/doxcnrnsrjC2R64dozGViJj3rHf',
-    keywords: ['只学数学', '单科', '不报全科', '只要一科', '只报单科', '想报单科', '报单科', '单科课', '一科'],
+    id: 'single-subject-core-general',
+    title: '只想单科/同步课/只买一年等',
+    stageLabel: '通用',
+    source: '洋葱异议处理话术库【2025正式版】',
+    sourceUrl: 'https://guanghe.feishu.cn/docx/Csn4d6brBo1nS6xoTdjcm8wznQe',
+    keywords: [
+      '只想学数学单科',
+      '只想单科',
+      '只要单科',
+      '只报单科',
+      '想报单科',
+      '报单科',
+      '同步课',
+      '只买一年',
+      '买一年',
+      '单科',
+    ],
     content:
-      '洋葱是属于学习工具，咱们在整个小学+初中的学习中肯定每个学科都会遇到问题都用得上。以后无论是中考还是大型考试，肯定不止考数学一门，考的是各科加起来的总分。没有家长像您这样去报单科的，都是去规划全科同步+专项课，不仅划算，更重要的是对孩子成绩提升是最快的。',
+      '只想学数学单科、只认可培优课、只想要基础课、只想买同步课、微信购买就可以了、只想看同步课微课下练习、一直线下补1对1、感觉只买一年足够等，核心沟通方向都是：先认可家长想聚焦一科的想法，再说明洋葱是学习工具，孩子在整个学习阶段不是只会遇到一个学科的问题；考试看的是总分，不是单科。全科同步+专项课不是让孩子每科每天都学，而是哪里有问题就解决哪里，既更划算，也更能避免偏科和问题堆积。',
+  },
+  {
+    id: 'single-subject-core-middle-1',
+    title: '只想报单科：单科不划算，全科更能提总分',
+    stageLabel: '初中',
+    source: '洋葱异议处理话术库【2025正式版】',
+    sourceUrl: 'https://guanghe.feishu.cn/docx/Csn4d6brBo1nS6xoTdjcm8wznQe',
+    keywords: ['只想学数学', '单科', '不报全科', '只要一科', '只报单科', '想报单科', '报单科', '同步课', '培优课'],
+    content:
+      '家长我理解你的想法的，但我们最终是为了提升成绩让同学越学越轻松才去报课的，不是为了报课而报课，应付我们作为家长的责任。数理化生地都是理科，理科不分家，光学数学提个20分也难对总分不明显，没有成就感积极性。现在初中都是五五分流，竞争都比较大，孩子想上高中甚至更好的高中，是一定不能有偏科的，而且多科一起学比单科提分会快很多。孩子单独补一科数学，就算数学补起来了，其他科目要是不理想，总分还是不高，排名一样上不去。现在中考改革，学科关联性非常强，数学里面会涉及到物理甚至化学的内容，如果其他科目掌握不好，数学知识点学得再好，考试数学题涉及到其他科目的知识点时，孩子一样做不出来，最终考试也出不了好成绩。单科也不划算，同步课498+培优课1098=1596，报3年也要4800，其他学科学不了，其他权益也享受不了。我们想报单科无非是怕同学有压力、没时间去学习，洋葱5-8分钟能帮同学解决校内30-40分的学习问题，提前预习知识点后再学会运用，才能提升效率。我们花单科不到的费用学全科，不仅课程权益最多，后续效果也能保证。你完全可以相信老师，我们就选择优惠活动课包好的吧？',
+  },
+  {
+    id: 'single-subject-core-middle-2',
+    title: '只想报单科：全科解锁不是增加压力，是防偏科',
+    stageLabel: '初中',
+    source: '洋葱异议处理话术库【2025正式版】',
+    sourceUrl: 'https://guanghe.feishu.cn/docx/Csn4d6brBo1nS6xoTdjcm8wznQe',
+    keywords: ['只想单科', '只报单科', '没时间学', '怕报多浪费', '不报全科', '全科', '单科'],
+    content:
+      '孩子妈妈，可以理解您担心孩子没时间学，怕报多了没时间学就浪费了，这个是很正常的。首先，现在初高中孩子学科多、科目难度大、作业多，但是现在中考都全科全考，看的是总分，不是单科成绩。然后，我们这个课程时间短，一节课5-8分钟，不是说报名后每天每个学科都学，本身就是哪个学科有问题，在自己有时间的时候随时打开做补充，这样孩子才不会出现偏科，总分提高更快。其次，我们现在之所以课包都是全科给你解锁，你并没有花全科的价格，你单买一科买到中考，比这个套餐价格都要贵。现在相当于只花了两科不到的价格，其他学科免费开通。我们这样设计，就是希望更多学生能在洋葱总分提高，才有更大机会考上重点高中。最后，报名只是刚开始，后期也是我服务你，前期还会有一对一助教老师给你做规划，包含寒暑假、平时上学期间，都会给孩子规划好明确的学习要求，所以你放心哈，帮孩子定下来吧？',
+  },
+  {
+    id: 'single-subject-core-high',
+    title: '高中只想报单科：课外学习做减法，按问题点解决',
+    stageLabel: '高中',
+    source: '洋葱异议处理话术库【2025正式版】',
+    sourceUrl: 'https://guanghe.feishu.cn/docx/Csn4d6brBo1nS6xoTdjcm8wznQe',
+    keywords: ['高中单科', '只想单科', '只报单科', '没时间', '同步强化', '报单科一年', '全科学一年', '单科'],
+    content:
+      '理解的，洋葱这边不需要咱们定时定点去上课，就是在遇到学习问题的时候可以通过洋葱及时解决。平时放假、节假日和寒暑假，是完全有时间利用洋葱去学习的，只需要灵活安排自己的课外时间就行了，这已经是最适合高中生的学习模式了。其次，学习肯定是需要未雨绸缪的，学校老师讲课永远是在讲新课、一遍过大纲，知识点关联性强，所以学期内需要在课外及时查漏补缺，学习中遇到或者遗留的问题要及时解决，不然就恶性循环了。高中课外时间紧不是课外不学的理由，而是更应该未雨绸缪提前学、及时有效地学。课外学习的效果和价值，不在于花多少时间，而在于及时性、针对性和有效性。寒暑假预习衔接、复习巩固，学期内利用课外时间有效解决阶段性学习问题。这个洋葱大会员就是最佳选择，像感冒了买一盒感冒药，不是为了把药吃完，而是及时对症下药。课外学习是做减法的，在于及时性、有效性和针对性，不在于花多少时间。正常报单科一年就要3500，三年要一万多，现在只需要一半的费用就可以全科学一年，性价比非常高，趁着有优惠尽快安排吧？',
   },
   {
     id: 'version-not-match',
@@ -311,6 +356,8 @@ export function matchObjectionHandlingScript(query: string): string {
   const matched = OBJECTION_HANDLING_SCRIPTS.filter((script) => isScriptMatched(query, script))
     .map((script) => ({
       title: script.title,
+      stageLabel: script.stageLabel || '通用',
+      source: script.source,
       content: script.content.trim(),
       score: scoreScriptMatch(query, script),
     }))
@@ -319,7 +366,7 @@ export function matchObjectionHandlingScript(query: string): string {
 
   if (matched.length > 0) {
     return matched
-      .map((item, index) => `【话术选项${index + 1}｜${item.title}】\n${item.content}`)
+      .map((item, index) => `【话术选项${index + 1}｜${item.stageLabel}｜${item.title}】\n来源：${item.source}\n${item.content}`)
       .join('\n\n');
   }
   return '未匹配到相关异议话术，请更换关键词重试（例如：学习主动性差、英语版本不同步、住校没时间、价格太贵）。';
