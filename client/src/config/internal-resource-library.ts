@@ -74,6 +74,7 @@ interface ObjectionHandlingScript {
   source: string;
   sourceYear?: number;
   sourceUrl: string;
+  intentGroup?: 'time' | 'single-subject' | 'version' | 'price' | 'initiative' | 'service' | 'other';
   keywords: string[];
   content: string;
   materialHints?: string[];
@@ -153,6 +154,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     stageLabel: '通用',
     source: '洋葱异议处理话术库【2025正式版】',
     sourceUrl: 'https://guanghe.feishu.cn/docx/Csn4d6brBo1nS6xoTdjcm8wznQe',
+    intentGroup: 'single-subject',
     keywords: [
       '只想学数学单科',
       '只想单科',
@@ -160,7 +162,10 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
       '只报单科',
       '想报单科',
       '报单科',
+      '只想报同步课',
+      '只想学同步课',
       '同步课',
+      '不认可培优课',
       '只买一年',
       '买一年',
       '单科',
@@ -174,10 +179,24 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     stageLabel: '初中',
     source: '洋葱异议处理话术库【2025正式版】',
     sourceUrl: 'https://guanghe.feishu.cn/docx/Csn4d6brBo1nS6xoTdjcm8wznQe',
-    keywords: ['只想学数学', '单科', '不报全科', '只要一科', '只报单科', '想报单科', '报单科', '同步课', '培优课'],
+    intentGroup: 'single-subject',
+    keywords: ['只想学数学', '单科', '不报全科', '只要一科', '只报单科', '想报单科', '报单科', '只想报同步课', '只想学同步课', '同步课', '培优课', '不认可培优课'],
     content:
       '家长我理解你的想法的，但我们最终是为了提升成绩让同学越学越轻松才去报课的，不是为了报课而报课，应付我们作为家长的责任。数理化生地都是理科，理科不分家，光学数学提个20分也难对总分不明显，没有成就感积极性。现在初中都是五五分流，竞争都比较大，孩子想上高中甚至更好的高中，是一定不能有偏科的，而且多科一起学比单科提分会快很多。孩子单独补一科数学，就算数学补起来了，其他科目要是不理想，总分还是不高，排名一样上不去。现在中考改革，学科关联性非常强，数学里面会涉及到物理甚至化学的内容，如果其他科目掌握不好，数学知识点学得再好，考试数学题涉及到其他科目的知识点时，孩子一样做不出来，最终考试也出不了好成绩。单科也不划算，同步课498+培优课1098=1596，报3年也要4800，其他学科学不了，其他权益也享受不了。我们想报单科无非是怕同学有压力、没时间去学习，洋葱5-8分钟能帮同学解决校内30-40分的学习问题，提前预习知识点后再学会运用，才能提升效率。我们花单科不到的费用学全科，不仅课程权益最多，后续效果也能保证。你完全可以相信老师，我们就选择优惠活动课包好的吧？',
     materialHints: ['可配发“单报数学后其他科目仍需补强”的聊天截图案例，辅助说明考试看总分、不能只盯单科。'],
+  },
+  {
+    id: 'single-subject-sync-course-not-peiyou',
+    title: '只想报同步课：不认可培优课',
+    stageLabel: '通用',
+    source: '洋葱异议处理话术库【2025正式版】',
+    sourceUrl: 'https://guanghe.feishu.cn/docx/Csn4d6brBo1nS6xoTdjcm8wznQe',
+    intentGroup: 'single-subject',
+    keywords: ['只想报同步课', '只想学同步课', '同步课', '不认可培优课', '不要培优课', '只要同步课', '同步课就够了'],
+    content:
+      '只想学同步课，不认可培优课\n\n分别介绍同步课和培优课的作用\n重点包装培优课，突出培优课的作用，培优课跟同步课是互补的， 不是成绩好的学生才学；\n\n一定要深入了解学情（了解学习成绩/选科规划等）\n一定要去渲染高中难度下危机\n产介同步课和培优课，侧重讲解培优课就是提分课，成功案例渲染\n\n具体话术：\n嗯，感谢您对同步课的认可，确实很多家长开始接触洋葱的课程都是从同步课开始的，但后面了解了完整学习体系后，也会选择搭配培优课一起来学，为什么呢？\n因为第一，两者学习内容互补 ：同步课对标学校教材版本，注重基础概念，帮助孩子预习复习，解决课堂知识问题；培优课是洋葱核心课程，主讲解题技巧和方法，将知识点学以致用，二者相辅相成。比如只学同步课，孩子可能掌握部分基础概念和简单应用，但重难点题型解题能力不足，而培优课能弥补这一短板\n第二，培优课能提升整体学习效果 ：同步课搭建知识点框架，培优课丰富知识体系，如同建房子，二者结合能让孩子更好地理解和运用知识。例如初中数学有理数和方程，不同知识点解题技巧不同，同步和培优一起学，孩子能掌握不同题型解题方法，提升综合解题能力\n第三，培优课能应对考试需求 ：培优课对标考试，总结常考题型和解题方法，拓展孩子思维，培养举一反三能力。对于初中和高中孩子，培优课圈定考试范围重点。如重难点培优课针对日常考试重难点和必考题型，新中考培优课梳理中考近年常考点和必考点，用真题当例题讲解。同步课打基础，培优课助力提分，二者结合帮助孩子在考试中取得好成绩\n孩子妈妈，你认可了同步课，后面会更加认可我们的培优课，放心让孩子学起来吧！\n\n具体话术：\n你好呀！跟您沟通非常开心，您对孩子的学习成绩也是比较关心的。但是还是有个事情要跟您说的，您后面肯定会感谢我的。\n我们经常听到这样的故事，很多同学初中成绩非常好，上了高中成绩一落千丈，为什么会出现这个现状，其实这是跟高中的考试设置有关系，初中是9年义务教育普及，高中是选拔性考试，所以高中的学习本身难度是非常高的；\n而且还有学考分离的特点，课堂上学的跟考的完全不一样，平时学的是知识点，但考试考的是综合运用； 我们想要考试做题拿到分数就一定要结合培优课一起来学，二者结合一起学才是完整的闭环，帮孩子解决学习问题提高分数；\n洋葱的同步课对标学校教材版本，注重基础概念，主要是解决听不懂的问题；培优课是洋葱核心课程，主要讲的是解题技巧和方法，将知识点学以致用。比如只学同步课，咱们可能掌握的是公式概念，但到考试做题可能就没思路了，培优课主要就是教咱们怎么去做题的；另外，培优课分一二两轮，更能针对性学习；一轮对标的是基础题型的解题思路，对标0~90分；二轮对标的是综合题型的解题思路，对标90~150分；如果咱们现在还没到及格线，那么一定要去用一轮去打基础；\n最后，培优课是对标高考去做的 ：今年高考数学新一卷，洋葱的培优课是完整的覆盖了135分，什么概念呢？相当于你从高一开始去学习，到高三高考的时候，你已经大致熟悉了高考90%以上的题型，你想不考高分都难；\n咱们报名后有7天试学期，你可以深度试学7天感受下培优课，要不咱们趁着现在优惠报上呗？\n\n只想买同步课，做做预习就可以了\n\n具体话术：\n家长，我能理解您想让孩子在假期做预习，用同步课打基础的想法。\n不过，咱们的同步课和培优课其实是一个完整的课程体系，缺一不可，因为咱们报课的终极目的是想要孩子提升成绩呀；\n同步课确实能帮助孩子提前预习知识点，为新学期或是新课程的学习做好准备。但培优课更是对同步课知识点的延伸和拓展，教孩子如何将学会的知识点怎样代入各种题型当中去解题，能够锻炼孩子的逻辑思维能力。如果只学同步课，孩子可能在平时作业完成得不错，但在考试中遇到一些拓展性、综合性的题目时，就容易丢分。毕竟中高考还是以运用知识考试拿分为主，所以培优课是一定要学的。\n而且，咱们现在有很划算的活动。单独买同步课，一科一年要 498 元；如果加上培优课，一科一年是 1586 元。但现在活动期间，买数学科送全科，能用很少的钱让孩子学到更多的课程，老师先把现在的活动优惠跟您介绍一下吧？\n\n具体话术：\n理解您优先学习同步课的想法！洋葱同步课完全同步校内教材，孩子假期预习完，开学上课能跟上，同步课主要是帮助同学理解概念的。\n不过平时预习很重要，还有夯实基础也同样很关键，因为基础不牢，开学新学期其实很难跟得上，因为知识点之间是有衔接连贯性的，所以不仅仅是同步课预习，我们还需要搭配我们的核心专项培优课，把上学期丢分的题型，没有弄明白的解题方法夯实扎实，这样开学新学期才能更好衔接！\n专项培优课就是教的解题方法和技巧，提升孩子解题能力和举一反三能力！所以结合培优课学习，同学的基础会更扎实，新学期遇到变式题型孩子也不用担心！\n第二个预习过程中，仅仅通过同步课预习概念，孩子预习的概念没有结合培优解题课进行实际运用，其实预习的概念课很容易忘记，而且吃得并不透，所以两个课程是缺一不可，相辅相成的！我们官方数据，同步课平均提分 5-8 分，结合培优课一起学习提分 25-30 分！所以我们同学都是结合起来学习，特别是暑假是一个很好查缺补漏的时间，开学之后也不用担心孩子拿不了分了！\n第三个价格方面单独买同步课也不划算，我们正常同步课 498 一年，培优课一科一年 1098 元！单科一年 1598 元！一科三年 4800元左右，因为中考全科全科，每个学科都很重要，全科提升才没有短板，我们7 科同步课➕培优一年就得 1 万多，三年就得 3 万多！\n我们现在活动XXXX元解锁三年七科，只花一科不到的价格解锁全科！\n平均一年 XXXX元解锁七科，平均一科一年同步➕培优才 XXX元左右！相当于只花一年同步课不到的价格解锁同步➕培优，价格更划算，学习更系统，全科提升也没有短板，配套学习更好！',
+    materialHints: ['源文档该话术附近含聊天截图案例，可提示顾问配发：单报数学后其他科目仍需补强截图、同步课与培优课课程目录/题型训练截图。'],
+    relatedQueries: ['只要同步课不要培优课', '只想买同步课做预习', '同步课够不够', '培优课有没有必要', '只想学同步课不认可培优课'],
   },
   {
     id: 'single-subject-core-middle-2',
@@ -185,6 +204,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     stageLabel: '初中',
     source: '洋葱异议处理话术库【2025正式版】',
     sourceUrl: 'https://guanghe.feishu.cn/docx/Csn4d6brBo1nS6xoTdjcm8wznQe',
+    intentGroup: 'single-subject',
     keywords: ['只想单科', '只报单科', '没时间学', '怕报多浪费', '不报全科', '全科', '单科'],
     content:
       '孩子妈妈，可以理解您担心孩子没时间学，怕报多了没时间学就浪费了，这个是很正常的。首先，现在初高中孩子学科多、科目难度大、作业多，但是现在中考都全科全考，看的是总分，不是单科成绩。然后，我们这个课程时间短，一节课5-8分钟，不是说报名后每天每个学科都学，本身就是哪个学科有问题，在自己有时间的时候随时打开做补充，这样孩子才不会出现偏科，总分提高更快。其次，我们现在之所以课包都是全科给你解锁，你并没有花全科的价格，你单买一科买到中考，比这个套餐价格都要贵。现在相当于只花了两科不到的价格，其他学科免费开通。我们这样设计，就是希望更多学生能在洋葱总分提高，才有更大机会考上重点高中。最后，报名只是刚开始，后期也是我服务你，前期还会有一对一助教老师给你做规划，包含寒暑假、平时上学期间，都会给孩子规划好明确的学习要求，所以你放心哈，帮孩子定下来吧？',
@@ -195,6 +215,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     stageLabel: '高中',
     source: '洋葱异议处理话术库【2025正式版】',
     sourceUrl: 'https://guanghe.feishu.cn/docx/Csn4d6brBo1nS6xoTdjcm8wznQe',
+    intentGroup: 'single-subject',
     keywords: ['高中单科', '只想单科', '只报单科', '没时间', '同步强化', '报单科一年', '全科学一年', '单科'],
     content:
       '理解的，洋葱这边不需要咱们定时定点去上课，就是在遇到学习问题的时候可以通过洋葱及时解决。平时放假、节假日和寒暑假，是完全有时间利用洋葱去学习的，只需要灵活安排自己的课外时间就行了，这已经是最适合高中生的学习模式了。其次，学习肯定是需要未雨绸缪的，学校老师讲课永远是在讲新课、一遍过大纲，知识点关联性强，所以学期内需要在课外及时查漏补缺，学习中遇到或者遗留的问题要及时解决，不然就恶性循环了。高中课外时间紧不是课外不学的理由，而是更应该未雨绸缪提前学、及时有效地学。课外学习的效果和价值，不在于花多少时间，而在于及时性、针对性和有效性。寒暑假预习衔接、复习巩固，学期内利用课外时间有效解决阶段性学习问题。这个洋葱大会员就是最佳选择，像感冒了买一盒感冒药，不是为了把药吃完，而是及时对症下药。课外学习是做减法的，在于及时性、有效性和针对性，不在于花多少时间。正常报单科一年就要3500，三年要一万多，现在只需要一半的费用就可以全科学一年，性价比非常高，趁着有优惠尽快安排吧？',
@@ -205,6 +226,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     stageLabel: '通用',
     source: '小学四部培训：异议处理',
     sourceUrl: 'https://guanghe.feishu.cn/docx/doxcnrnsrjC2R64dozGViJj3rHf',
+    intentGroup: 'version',
     keywords: [
       '版本不同步',
       '英语版本',
@@ -231,6 +253,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     stageLabel: '初中',
     source: '小学四部培训：异议处理',
     sourceUrl: 'https://guanghe.feishu.cn/docx/doxcnrnsrjC2R64dozGViJj3rHf',
+    intentGroup: 'version',
     keywords: [
       '版本不同步',
       '生物版本',
@@ -257,6 +280,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     stageLabel: '小学',
     source: '异议处理',
     sourceUrl: 'https://guanghe.feishu.cn/wiki/VTbdwLAoUiPbigkoedlc2zyPng0',
+    intentGroup: 'version',
     keywords: [
       '版本不同步',
       '小学英语版本',
@@ -282,6 +306,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     stageLabel: '通用',
     source: '异议处理',
     sourceUrl: 'https://guanghe.feishu.cn/wiki/VTbdwLAoUiPbigkoedlc2zyPng0',
+    intentGroup: 'version',
     keywords: ['版本覆盖', '教材覆盖', '教材版本', '版本不同步', '天天练', '题库', '知识体系', '内容全面'],
     content:
       '天天练主要是做题库的，而洋葱的优势是同步校内的动画课程，另外洋葱教材版本的覆盖率、课程普及率都是遥遥领先，内容全面，知识体系更完整。\n\n洋葱是以学生主体视角，激发孩子探索欲和求知欲，这也是为什么学生喜欢洋葱的原因，而天天练是单纯的题库刷题，这个对于孩子长期的学习，尤其是随着年级的增加，知识点更复杂的时候，知识点没懂，仅刷题帮助都是很有限的，毕竟题目是千变万化的。',
@@ -403,11 +428,29 @@ function extractQueryTerms(query: string): string[] {
     normalized.includes('没时间') && normalized.includes('单科')
       ? ['没时间', '时间不够', '单科', '报单科', '想报单科']
       : [];
+  const singleSubjectSyncTerms =
+    /(只想|只要|只报|报|买|学).*(同步课|培优课|单科|一年)|同步课.*(不要|不认可|不想要|只要).*培优课/.test(normalized)
+      ? ['只想报同步课', '只想学同步课', '只要同步课', '不认可培优课', '单科', '报单科', '想报单科']
+      : [];
   const versionTerms =
-    /版本|教材|章节|内容|知识点|课本|人教版/.test(normalized)
+    /版本|教材|章节|课文|课本|人教版/.test(normalized)
       ? ['版本不同步', '教材版本', '教材不一样', '章节不同步', '章节对不上', '内容不同步', '知识点不同步', '课本不同步']
       : [];
-  return [...new Set([...baseTerms, ...splitTerms, ...conceptTerms, ...combinationTerms, ...versionTerms])];
+  return [...new Set([...baseTerms, ...splitTerms, ...conceptTerms, ...combinationTerms, ...singleSubjectSyncTerms, ...versionTerms])];
+}
+
+function inferObjectionIntentGroup(query: string): ObjectionHandlingScript['intentGroup'] | null {
+  const normalized = normalizeObjectionQuery(query);
+  if (!normalized) return null;
+  if (/版本|教材|章节|课文|课本|人教版/.test(normalized)) return 'version';
+  if (/(只想|只要|只报|报|买|学).*(同步课|培优课|单科|一年)|同步课.*(不要|不认可|不想要|只要).*培优课/.test(normalized)) {
+    return 'single-subject';
+  }
+  if (/单科|只学一科|只要一科|不报全科/.test(normalized)) return 'single-subject';
+  if (/主动性|自驱|不主动|不爱学/.test(normalized)) return 'initiative';
+  if (/价格|太贵|便宜|优惠|赠品|平板/.test(normalized)) return 'price';
+  if (/没时间|时间不够|住校|晚自习|作业多/.test(normalized)) return 'time';
+  return null;
 }
 
 function buildScriptHaystack(script: ObjectionHandlingScript): string {
@@ -436,6 +479,7 @@ function scoreScriptMatch(query: string, script: ObjectionHandlingScript): numbe
   const haystack = buildScriptHaystack(script);
   const terms = extractQueryTerms(query).map(normalizeObjectionQuery);
   let score = 0;
+  if (normalizeObjectionQuery(script.title).includes(normalized)) score += 60;
   if (haystack.includes(normalized)) score += 30;
   for (const term of terms) {
     if (term.length < 2) continue;
@@ -451,7 +495,12 @@ function scoreScriptMatch(query: string, script: ObjectionHandlingScript): numbe
 }
 
 export function matchObjectionHandlingScript(query: string): string {
-  const matched = OBJECTION_HANDLING_SCRIPTS.filter((script) => isScriptMatched(query, script))
+  const intentGroup = inferObjectionIntentGroup(query);
+  const rawMatched = OBJECTION_HANDLING_SCRIPTS.filter((script) => isScriptMatched(query, script));
+  const intentMatched = intentGroup
+    ? rawMatched.filter((script) => script.intentGroup === intentGroup)
+    : rawMatched;
+  const matched = (intentMatched.length > 0 ? intentMatched : rawMatched)
     .map((script) => ({
       title: script.title,
       stageLabel: script.stageLabel || '通用',
