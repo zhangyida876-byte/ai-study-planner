@@ -696,11 +696,7 @@ const Plan: React.FC = () => {
   const applyingProfileRef = useRef(false);
   const hydratedRef = useRef(false);
   const targetSchoolFromProfileRef = useRef(false);
-  const hideElementaryPlanBlocks = useMemo(() => {
-    if (stageConfig.slug === 'elementary') return true;
-    if (examType === '小升初') return true;
-    return ['三年级', '四年级', '五年级', '六年级'].includes(grade);
-  }, [stageConfig.slug, examType, grade]);
+  const hideElementaryPlanBlocks = false;
 
   useEffect(() => {
     let cancelled = false;
@@ -919,15 +915,6 @@ const Plan: React.FC = () => {
       }));
     }
   }, [examType]);
-
-  useEffect(() => {
-    if (!hideElementaryPlanBlocks) return;
-    // Hard clear elementary-only hidden blocks and cached session
-    setPolicies([]);
-    setPolicySearchContent('');
-    setTimelineContent('');
-    clearModuleSession(stageSlug, 'plan');
-  }, [hideElementaryPlanBlocks, stageSlug]);
 
   useEffect(() => {
     const cached = loadModuleSession<PlanSessionState>(stageSlug, 'plan');
@@ -1460,6 +1447,117 @@ const Plan: React.FC = () => {
           onSyncBack={handleSyncProfileBack}
         />
 
+        <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false} className="p-5">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-marker text-xl font-bold text-ink">首页档案信息</h2>
+                <p className="font-hand mt-1 text-sm text-ink/65">
+                  本页不再重复填写，姓名、年级、地区、成绩和目标学校直接从学段首页档案带入。
+                </p>
+              </div>
+              {policySearchContent && (
+                <span className="rounded-full border-2 border-emerald-600 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                  已带入联网考情/政策信息
+                </span>
+              )}
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              {[
+                ['学生姓名', profile.studentName || '未填写'],
+                ['年级/类型', `${grade || profile.grade || '未填写'} · ${examType}`],
+                ['地区', regionText || region || '未填写'],
+                ['目标', targetSchool || profile.targetSchool || '未填写'],
+                ['当前成绩', profile.scoresOverview || (hasScores ? `总分 ${totalScore}` : '未填写')],
+                ['目标分数线', targetScore != null ? `${targetScore}分` : '未匹配'],
+                ['走读/住读', boardingType === 'boarding' ? '住读' : boardingType === 'day' ? '走读' : '未填写'],
+                ['考试年份', `${examYear}年`],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg border-2 border-dashed border-ink/15 bg-accent/50 px-3 py-2">
+                  <p className="text-xs text-ink/55">{label}</p>
+                  <p className="font-marker mt-1 text-base font-bold text-ink">{value}</p>
+                </div>
+              ))}
+            </div>
+            {!region || !hasScores ? (
+              <div className="rounded-lg border-2 border-marker-red/30 bg-marker-red/5 px-3 py-2 text-sm text-marker-red">
+                生成前请先回到学段首页补齐地区和当前各科成绩；本页会自动带入，不建议在这里重复编辑。
+              </div>
+            ) : null}
+          </div>
+        </WobblyCard>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false} className="p-5">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-marker text-xl font-bold text-ink">规划图 / 备考路线图</h2>
+                <p className="font-hand mt-1 text-sm text-ink/70">
+                  作用：把未来每个月要做什么、为什么重要、模拟考和关键节点列清楚，让家长看到时间紧迫感和执行节奏。
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={handleGenerateTimeline}
+                disabled={timelineLoading || !region}
+                className="border-[3px] border-ink bg-postit-yellow font-hand shadow-hard"
+              >
+                <Clock className="size-4" />
+                {timelineLoading ? '生成中...' : '点击生成规划图'}
+              </Button>
+            </div>
+            <p className="mb-3 rounded-md border-2 border-dashed border-ink/20 bg-white/70 px-3 py-2 text-xs text-ink/65">
+              必须点击右上角「点击生成规划图」，下方才会生成备考路线图。
+            </p>
+            <PlanTimeline content={timelineContent} loading={timelineLoading} examType={examType} examDate={examDate} grade={grade} />
+          </WobblyCard>
+
+          <WobblyCard variant="white" decoration="tape" wobblyIndex={2} hoverable={false} className="p-5">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-marker text-xl font-bold text-ink">升学报告</h2>
+                <p className="font-hand mt-1 text-sm text-ink/70">
+                  作用：把当前成绩、目标差距、升学路径和课程顾问可沟通的规划建议整理成一份报告，方便直接给家长讲。
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {reportContent && (
+                  <Button variant="outline" size="sm" onClick={handleCopyReport} className="border-2 border-ink font-hand shadow-hard-sm">
+                    <Copy className="size-3.5" />
+                    复制全文
+                  </Button>
+                )}
+                <Button
+                  onClick={handleGenerateReport}
+                  disabled={reportLoading || !region || !hasScores}
+                  className="border-[3px] border-ink font-hand shadow-hard"
+                >
+                  <FileText className="size-4" />
+                  {reportLoading ? '生成中...' : '点击生成升学报告'}
+                </Button>
+              </div>
+            </div>
+            <p className="mb-3 rounded-md border-2 border-dashed border-ink/20 bg-accent/50 px-3 py-2 text-xs text-ink/65">
+              必须点击右上角「点击生成升学报告」，下方才会生成可沟通的升学规划内容。
+            </p>
+            {reportLoading && !reportContent ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="font-marker text-lg text-ink animate-pulse">AI 正在分析规划方案...</div>
+                <div className="mt-2 text-sm text-muted-foreground">根据首页档案、成绩和政策生成个性化升学规划</div>
+              </div>
+            ) : reportContent ? (
+              <div className="prose prose-sm max-w-none font-hand"><Streamdown>{reportContent}</Streamdown></div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <FileText className="mb-3 size-12 opacity-30" />
+                <p>请点击「点击生成升学报告」</p>
+                <p className="text-sm">系统会自动读取首页档案，不需要在本页重复录入。</p>
+              </div>
+            )}
+          </WobblyCard>
+        </div>
+
+        <div className="hidden" aria-hidden="true">
         {/* Top Input Bar */}
         <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false} className="p-5">
           <div className="space-y-4">
@@ -2032,6 +2130,7 @@ const Plan: React.FC = () => {
         {!hideElementaryPlanBlocks && (
           <PlanTimeline content={timelineContent} loading={timelineLoading} examType={examType} examDate={examDate} grade={grade} />
         )}
+        </div>
       </div>
     </div>
   );
