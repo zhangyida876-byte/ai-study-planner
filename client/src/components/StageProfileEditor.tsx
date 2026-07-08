@@ -23,15 +23,6 @@ import {
   type SchoolCandidate,
 } from '@client/src/api/plugins';
 import { policy as policyApi } from '@client/src/api';
-import {
-  filterRegionOptions,
-  findOptionByName,
-  loadCities,
-  loadCounties,
-  loadProvinces,
-  STATIC_PROVINCES,
-  type RegionOption,
-} from '@client/src/utils/region-network';
 import { resolveGaokaoModeByProvince } from '@client/src/utils/gaokao-mode';
 import { ALL_SUBJECTS, getVersionForProvinceSubject } from '@client/src/pages/Knowledge/KnowledgeFilterPanel';
 
@@ -83,14 +74,6 @@ function extractExamTotalScore(text: string): number | null {
   return null;
 }
 
-function dedupeRegionOptions(options: RegionOption[]): RegionOption[] {
-  const map = new Map<string, RegionOption>();
-  for (const option of options) {
-    if (!map.has(option.name)) map.set(option.name, option);
-  }
-  return Array.from(map.values());
-}
-
 const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   stageConfig,
   profile,
@@ -103,15 +86,6 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   const [schoolCandidates, setSchoolCandidates] = useState<SchoolCandidate[]>([]);
   const [searchingSchool, setSearchingSchool] = useState(false);
   const [matchingScore, setMatchingScore] = useState(false);
-  const [provinceOptions, setProvinceOptions] = useState<RegionOption[]>([]);
-  const [cityOptions, setCityOptions] = useState<RegionOption[]>([]);
-  const [countyOptions, setCountyOptions] = useState<RegionOption[]>([]);
-  const [regionLoading, setRegionLoading] = useState(false);
-  const [cityLoadFailed, setCityLoadFailed] = useState(false);
-  const [countyLoadFailed, setCountyLoadFailed] = useState(false);
-  const [provinceSearch, setProvinceSearch] = useState('');
-  const [citySearch, setCitySearch] = useState('');
-  const [countySearch, setCountySearch] = useState('');
   const [scoreSummary, setScoreSummary] = useState('');
   const [scoreSummaryLoading, setScoreSummaryLoading] = useState(false);
   const [subjectMaxHints, setSubjectMaxHints] = useState<Record<string, number>>({});
@@ -120,118 +94,9 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   useEffect(() => {
     setDraft(profile);
     setSchoolKeyword(profile.targetSchool || '');
-    setProvinceSearch(profile.province || '');
-    setCitySearch(profile.city || '');
-    setCountySearch(profile.county || '');
   }, [profile.updatedAt]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const fetchProvinces = async () => {
-      setRegionLoading(true);
-      try {
-        const items = await loadProvinces();
-        if (cancelled) return;
-        setProvinceOptions(items);
-      } catch {
-        if (!cancelled) {
-          setProvinceOptions([]);
-          toast.error('地区列表联网加载失败，请稍后重试');
-        }
-      } finally {
-        if (!cancelled) setRegionLoading(false);
-      }
-    };
-    fetchProvinces();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!draft.province) {
-      setCityOptions([]);
-      setCountyOptions([]);
-      return;
-    }
-    const province = findOptionByName(dedupeRegionOptions([...provinceOptions, ...STATIC_PROVINCES]), draft.province);
-    if (!province) {
-      setCityOptions([]);
-      setCountyOptions([]);
-      return;
-    }
-    let cancelled = false;
-    const fetchCities = async () => {
-      setRegionLoading(true);
-      setCityLoadFailed(false);
-      try {
-        const items = await loadCities(province);
-        if (cancelled) return;
-        setCityOptions(items);
-        setCityLoadFailed(items.length === 0);
-      } catch {
-        if (!cancelled) {
-          setCityOptions([]);
-          setCityLoadFailed(true);
-        }
-      } finally {
-        if (!cancelled) setRegionLoading(false);
-      }
-    };
-    fetchCities();
-    return () => {
-      cancelled = true;
-    };
-  }, [draft.province, provinceOptions]);
-
-  useEffect(() => {
-    if (!draft.city) {
-      setCountyOptions([]);
-      return;
-    }
-    const city = findOptionByName(cityOptions, draft.city);
-    if (!city) {
-      setCountyOptions([]);
-      return;
-    }
-    let cancelled = false;
-    const fetchCounties = async () => {
-      setRegionLoading(true);
-      setCountyLoadFailed(false);
-      try {
-        const items = await loadCounties(city);
-        if (cancelled) return;
-        setCountyOptions(items);
-      } catch {
-        if (!cancelled) {
-          setCountyOptions([]);
-          setCountyLoadFailed(true);
-        }
-      } finally {
-        if (!cancelled) setRegionLoading(false);
-      }
-    };
-    fetchCounties();
-    return () => {
-      cancelled = true;
-    };
-  }, [draft.city, cityOptions]);
-
-  const stableProvinceOptions = useMemo(
-    () => dedupeRegionOptions([...provinceOptions, ...STATIC_PROVINCES]),
-    [provinceOptions],
-  );
-  const filteredProvinces = filterRegionOptions(stableProvinceOptions, provinceSearch);
-  const filteredCities = filterRegionOptions(
-    cityOptions,
-    citySearch,
-  );
-  const filteredCounties = filterRegionOptions(countyOptions, countySearch);
   const safeGrade = stageConfig.grades.includes(draft.grade) ? draft.grade : '';
-  const quickProvinceOptions = (provinceSearch.trim() ? filteredProvinces : stableProvinceOptions).slice(0, 31);
-  const quickCityOptions = (citySearch.trim() ? filteredCities : cityOptions).slice(0, 20);
-  const quickCountyOptions = (countySearch.trim() ? filteredCounties : countyOptions).slice(0, 20);
-  const showCityLoadFailed = cityLoadFailed && quickCityOptions.length === 0;
   const gaokaoModeMatch = useMemo(
     () => resolveGaokaoModeByProvince(draft.province),
     [draft.province],
@@ -242,20 +107,16 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   };
 
   const clearSchoolAndLowerRegion = () => {
-    setCitySearch('');
-    setCountySearch('');
-    setCityLoadFailed(false);
-    setCountyLoadFailed(false);
     setSchoolKeyword('');
     setSchoolCandidates([]);
   };
 
-  const applyProvinceOption = (province: RegionOption) => {
-    setProvinceSearch(province.name);
+  const handleProvinceTextChange = (next: string) => {
+    const text = next.trim();
     clearSchoolAndLowerRegion();
-    const nextGaokaoMode = stageConfig.slug === 'high' ? resolveGaokaoModeByProvince(province.name).mode : draft.examMode;
+    const nextGaokaoMode = stageConfig.slug === 'high' ? resolveGaokaoModeByProvince(text).mode : draft.examMode;
     patch({
-      province: province.name,
+      province: text,
       city: '',
       county: '',
       targetSchool: '',
@@ -264,67 +125,15 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     });
   };
 
-  const applyCityOption = async (city: RegionOption) => {
-    setCitySearch(city.name);
-    setCountySearch('');
-    setCountyLoadFailed(false);
-    setSchoolKeyword('');
-    setSchoolCandidates([]);
-    patch({ city: city.name, county: '', targetSchool: '', targetScore: undefined });
-    setRegionLoading(true);
-    try {
-      const items = await loadCounties(city);
-      setCountyOptions(items);
-      setCountyLoadFailed(items.length === 0);
-    } catch {
-      setCountyOptions([]);
-      setCountyLoadFailed(true);
-      toast.info('区县联网加载失败，可直接手动输入区县');
-    } finally {
-      setRegionLoading(false);
-    }
-  };
-
-  const handleProvinceTextChange = (next: string) => {
-    setProvinceSearch(next);
-    const text = next.trim();
-    const matched = findOptionByName(stableProvinceOptions, text);
-    if (matched) {
-      applyProvinceOption(matched);
-      return;
-    }
-    if (text.length >= 2) {
-      const candidates = filterRegionOptions(stableProvinceOptions, text);
-      if (candidates.length === 1) {
-        applyProvinceOption(candidates[0]);
-        return;
-      }
-    }
-    clearSchoolAndLowerRegion();
-    const nextGaokaoMode = stageConfig.slug === 'high' ? resolveGaokaoModeByProvince(text).mode : draft.examMode;
-    patch({ province: text, city: '', county: '', targetSchool: '', targetScore: undefined, examMode: nextGaokaoMode });
-  };
-
   const handleCityTextChange = (next: string) => {
     const text = next.trim();
-    setCitySearch(next);
-    setCountySearch('');
-    setCountyLoadFailed(false);
     setSchoolKeyword('');
     setSchoolCandidates([]);
-    const matched = findOptionByName(cityOptions, text);
-    if (matched) {
-      void applyCityOption(matched);
-      return;
-    }
     patch({ city: text, county: '', targetSchool: '', targetScore: undefined });
   };
 
   const handleCountyTextChange = (next: string) => {
-    const text = next.trim();
-    setCountySearch(next);
-    const matched = findOptionByName(countyOptions, text);
-    patch({ county: matched?.name || text });
+    patch({ county: next.trim() });
   };
 
   const handleSave = () => {
@@ -602,7 +411,6 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <h3 className="font-marker text-base font-bold text-ink">地区选择</h3>
             <span className="font-hand text-xs text-ink/60">当前地区：{regionSummary || '未选择'}</span>
-            {regionLoading && <span className="font-hand text-xs text-pen-blue">正在加载地区列表...</span>}
             {scoreSummaryLoading && <span className="font-hand text-xs text-pen-blue">正在查询本地满分...</span>}
             {!scoreSummaryLoading && scoreSummary && (
               <span className="font-hand text-xs text-marker-red">{scoreSummary}</span>
@@ -612,121 +420,40 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           <div>
-            <Label className="font-hand">省份 *（可搜索）</Label>
+            <Label className="font-hand">省份 *</Label>
             <Input
               className="font-hand mt-1"
-              value={provinceSearch}
+              value={draft.province}
               onChange={(e) => handleProvinceTextChange(e.target.value)}
-              placeholder="直接输入省份，如：湖北、湖北省、hubei"
+              placeholder="手动输入省份，如：湖北省"
             />
             <p className="font-hand mt-1 text-[11px] text-muted-foreground">
-              输入“湖北”会直接识别为“湖北省”；候选按钮只是辅助，输完即可保存。
+              手动输入，不自动识别、不联想、不锁定旧值。
             </p>
-            <div className="mt-2 rounded-lg border border-ink/15 bg-card/70 p-2">
-              <div className="mb-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span>省份候选可直接点选</span>
-                {quickProvinceOptions.length === 0 && <span className="text-marker-red">无候选，可直接自定义输入</span>}
-              </div>
-              {quickProvinceOptions.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {quickProvinceOptions.map((province) => (
-                    <button
-                      key={province.adcode}
-                      type="button"
-                      className="cursor-pointer rounded-full border border-ink/20 bg-accent px-2 py-1 text-xs hover:bg-postit-yellow"
-                      onMouseDown={(event) => {
-                        event.preventDefault();
-                        applyProvinceOption(province);
-                      }}
-                    >
-                      {province.name}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">暂无省份候选，可在上方直接输入省份/地区名称。</p>
-              )}
-            </div>
-            {draft.province && !findOptionByName(stableProvinceOptions, draft.province) && (
-              <p className="font-hand mt-1 text-[11px] text-marker-red">
-                当前使用自定义省份：{draft.province}
-              </p>
-            )}
           </div>
           <div>
             <Label className="font-hand">城市 *</Label>
             <Input
               className="font-hand mt-1"
-              value={citySearch}
+              value={draft.city}
               onChange={(e) => handleCityTextChange(e.target.value)}
-              disabled={!draft.province}
-              placeholder={showCityLoadFailed ? '城市联网失败，可直接输入城市' : '直接输入城市/盟/州，如武汉、重庆市'}
+              placeholder="手动输入城市/盟/州，如：武汉市"
             />
-            {draft.province && (
-              <div className="mt-2 rounded-lg border border-ink/15 bg-card/70 p-2">
-                <div className="mb-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span>城市候选可点选；没有候选时，上方直接输入仍然有效</span>
-                  {showCityLoadFailed && <span className="text-marker-red">联网失败，可手动输入</span>}
-                </div>
-                {quickCityOptions.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {quickCityOptions.map((city) => (
-                      <button
-                        key={city.adcode}
-                        type="button"
-                        className="cursor-pointer rounded-full border border-ink/20 bg-accent px-2 py-1 text-xs hover:bg-postit-yellow"
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          void applyCityOption(city);
-                        }}
-                      >
-                        {city.name}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">暂无城市候选，可在上方直接输入城市名称。</p>
-                )}
-              </div>
-            )}
+            <p className="font-hand mt-1 text-[11px] text-muted-foreground">
+              输入什么保存什么，不再依赖城市候选。
+            </p>
           </div>
           <div>
             <Label className="font-hand">区县（选填，可不选）</Label>
             <Input
               className="font-hand mt-1"
-              value={countySearch}
+              value={draft.county}
               onChange={(e) => handleCountyTextChange(e.target.value)}
-              disabled={!draft.city}
-              placeholder="直接输入区县，如沙坪坝区；也可以不填"
+              placeholder="手动输入区县，如：沙坪坝区；也可以不填"
             />
-            {draft.city && (
-              <div className="mt-2 rounded-lg border border-ink/15 bg-card/70 p-2">
-                <div className="mb-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span>区县候选可点选；不确定可留空</span>
-                  {countyLoadFailed && <span className="text-marker-red">联网失败，可手动输入</span>}
-                </div>
-                {quickCountyOptions.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {quickCountyOptions.map((county) => (
-                      <button
-                        key={county.adcode}
-                        type="button"
-                        className="cursor-pointer rounded-full border border-ink/20 bg-accent px-2 py-1 text-xs hover:bg-postit-yellow"
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          setCountySearch(county.name);
-                          patch({ county: county.name });
-                        }}
-                      >
-                        {county.name}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">暂无区县候选，可在上方直接输入或留空。</p>
-                )}
-              </div>
-            )}
+            <p className="font-hand mt-1 text-[11px] text-muted-foreground">
+              区县不确定可以空着，后续模块仍按省市运行。
+            </p>
           </div>
         </div>
       </div>
