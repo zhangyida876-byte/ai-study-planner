@@ -83,7 +83,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     title: '课程太多，没时间学',
     source: '小学四部培训：异议处理',
     sourceUrl: 'https://guanghe.feishu.cn/docx/doxcnrnsrjC2R64dozGViJj3rHf',
-    keywords: ['没时间', '时间少', '作业多', '课程太多', '学不过来'],
+    keywords: ['没时间', '时间少', '作业多', '课程太多', '学不过来', '时间不够', '没时间报课', '没时间想报'],
     content:
       '家长对于孩子的培养还是很重视的，舞蹈可以提升孩子的气质还是挺好的，但是孩子目前是五年级了，孩子年级越高，肯定全部心思都是放在校内知识点上面。初中3年学习9个学科，时间相对紧张，初中知识点也会越来越难，而且中考需要考全科的。孩子每一个学科随时都有可能遇到问题。如果遇到了问题不及时去解决的话，一天一个问题，那么一年堆积下来就365个问题。洋葱课程知识点涵盖非常全面，基础中等，难点拔高全部都包含。随时打开咱们洋葱学他不懂的知识点，做到有问题不堆积、及时解决。',
   },
@@ -146,7 +146,7 @@ const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
     title: '只想学数学单科',
     source: '小学四部培训：异议处理',
     sourceUrl: 'https://guanghe.feishu.cn/docx/doxcnrnsrjC2R64dozGViJj3rHf',
-    keywords: ['只学数学', '单科', '不报全科', '只要一科'],
+    keywords: ['只学数学', '单科', '不报全科', '只要一科', '只报单科', '想报单科', '报单科', '单科课', '一科'],
     content:
       '洋葱是属于学习工具，咱们在整个小学+初中的学习中肯定每个学科都会遇到问题都用得上。以后无论是中考还是大型考试，肯定不止考数学一门，考的是各科加起来的总分。没有家长像您这样去报单科的，都是去规划全科同步+专项课，不仅划算，更重要的是对孩子成绩提升是最快的。',
   },
@@ -219,15 +219,52 @@ function normalizeObjectionQuery(query: string): string {
   return query.replace(/\s+/g, '').toLowerCase();
 }
 
+const OBJECTION_QUERY_CONCEPTS = [
+  '没时间',
+  '时间不够',
+  '时间少',
+  '作业多',
+  '住校',
+  '晚自习',
+  '单科',
+  '报单科',
+  '想报单科',
+  '只报单科',
+  '只学一科',
+  '只要一科',
+  '不报全科',
+  '全科',
+  '价格',
+  '太贵',
+  '效果',
+  '主动性',
+  '不主动学习',
+  '英语版本',
+  '版本不同步',
+  '不要平板',
+  '线下',
+  '学习机',
+  '竞品',
+  '寒假再报',
+  '暑假再报',
+  '先等等',
+];
+
 function extractQueryTerms(query: string): string[] {
   const tokens = query.match(/[\u4e00-\u9fa5a-zA-Z0-9]+/g) || [];
   const stopWords = new Set(['孩子', '家长', '这个', '那个', '怎么', '问题', '一下', '一下子']);
   const baseTerms = tokens.map((t) => t.trim()).filter((t) => t.length >= 2 && !stopWords.has(t));
   const splitTerms = baseTerms
-    .flatMap((term) => term.split(/还是|或者|以及|并且|但是|没有|没|不是|不|呀|呢|吗|么/))
+    .flatMap((term) => term.split(/还是|或者|以及|并且|但是|没有|没|不是|不|想报|只想|只要|报|呀|呢|吗|么/))
     .map((t) => t.trim())
-    .filter((t) => t.length >= 2 && !stopWords.has(t));
-  return [...new Set([...baseTerms, ...splitTerms])];
+    .filter((t) => t.length >= 3 && !stopWords.has(t));
+  const normalized = normalizeObjectionQuery(query);
+  const conceptTerms = OBJECTION_QUERY_CONCEPTS.filter((term) => normalized.includes(normalizeObjectionQuery(term)));
+  const combinationTerms =
+    normalized.includes('没时间') && normalized.includes('单科')
+      ? ['没时间', '时间不够', '单科', '报单科', '想报单科']
+      : [];
+  return [...new Set([...baseTerms, ...splitTerms, ...conceptTerms, ...combinationTerms])];
 }
 
 function buildScriptHaystack(script: ObjectionHandlingScript): string {

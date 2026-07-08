@@ -32,6 +32,7 @@ import {
   loadProvinces,
   type RegionOption,
 } from '@client/src/utils/region-network';
+import { resolveGaokaoModeByProvince } from '@client/src/utils/gaokao-mode';
 import { ALL_SUBJECTS, getVersionForProvinceSubject } from '@client/src/pages/Knowledge/KnowledgeFilterPanel';
 
 interface StageProfileEditorProps {
@@ -43,11 +44,6 @@ interface StageProfileEditorProps {
 }
 
 type CandidateTier = '冲刺' | '匹配' | '保底';
-
-const HS_MODES = [
-  { value: '3+1+2', label: '3+1+2（物理/历史 二选一）' },
-  { value: '3+3', label: '3+3（六选三）' },
-];
 
 function resolveSubjectMaxForDisplay(subject: string, hints: Record<string, number>): number | undefined {
   if (hints[subject]) return hints[subject];
@@ -234,6 +230,10 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   const quickProvinceOptions = (provinceSearch.trim() && !provinceSearchMatchesCurrentOption ? filteredProvinces : provinceOptions).slice(0, 10);
   const quickCityOptions = (citySearch.trim() && !citySearchMatchesCurrentOption ? filteredCities : cityOptions).slice(0, 10);
   const showCityLoadFailed = cityLoadFailed && quickCityOptions.length === 0;
+  const gaokaoModeMatch = useMemo(
+    () => resolveGaokaoModeByProvince(draft.province),
+    [draft.province],
+  );
 
   const patch = (partial: Partial<StageProfile>) => {
     setDraft((prev) => ({ ...prev, ...partial }));
@@ -252,12 +252,14 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   const applyProvinceOption = (province: RegionOption) => {
     setProvinceSearch(province.name);
     clearSchoolAndLowerRegion();
+    const nextGaokaoMode = stageConfig.slug === 'high' ? resolveGaokaoModeByProvince(province.name).mode : draft.examMode;
     patch({
       province: province.name,
       city: '',
       county: '',
       targetSchool: '',
       targetScore: undefined,
+      examMode: nextGaokaoMode,
     });
   };
 
@@ -266,7 +268,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     if (!text) {
       if (draft.province) {
         clearSchoolAndLowerRegion();
-        patch({ province: '', city: '', county: '', targetSchool: '', targetScore: undefined });
+        patch({ province: '', city: '', county: '', targetSchool: '', targetScore: undefined, examMode: stageConfig.slug === 'high' ? '' : draft.examMode });
       }
       return;
     }
@@ -278,7 +280,8 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     }
     if (text !== draft.province) {
       clearSchoolAndLowerRegion();
-      patch({ province: text, city: '', county: '', targetSchool: '', targetScore: undefined });
+      const nextGaokaoMode = stageConfig.slug === 'high' ? resolveGaokaoModeByProvince(text).mode : draft.examMode;
+      patch({ province: text, city: '', county: '', targetSchool: '', targetScore: undefined, examMode: nextGaokaoMode });
     }
   };
 
@@ -320,7 +323,10 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       toast.error('请选择城市');
       return;
     }
-    onSave({ ...draft });
+    onSave({
+      ...draft,
+      examMode: stageConfig.slug === 'high' ? gaokaoModeMatch.mode : draft.examMode,
+    });
     toast.success('已保存个人信息，下面 4 个模块会自动带入');
   };
 
@@ -564,19 +570,15 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         </div>
         {stageConfig.slug === 'high' && (
           <div>
-            <Label className="font-hand">高考学科模式（选填）</Label>
-            <Select value={toSelectValue(draft.examMode)} onValueChange={(v) => patch({ examMode: v })}>
-              <SelectTrigger className="font-hand mt-1">
-                <SelectValue placeholder="选择高考模式" />
-              </SelectTrigger>
-              <SelectContent>
-                {HS_MODES.map((mode) => (
-                  <SelectItem key={mode.value} value={mode.value}>{mode.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="font-hand">当地高考选科模式</Label>
+            <div className="mt-1 rounded-lg border border-ink/15 bg-pen-blue/5 px-3 py-2">
+              <div className="font-marker text-lg font-bold text-pen-blue">
+                {gaokaoModeMatch.mode || '待选择省份后自动判断'}
+              </div>
+              <p className="font-hand mt-1 text-xs text-ink/70">{gaokaoModeMatch.label}</p>
+            </div>
             <p className="font-hand mt-1 text-[11px] text-muted-foreground">
-              保存后会自动带入学情诊断、升学规划和课表学习方案。
+              系统按省份自动写入档案，保存后带入学情诊断、升学规划和课表学习方案。
             </p>
           </div>
         )}
@@ -891,8 +893,8 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         <div className="font-hand text-sm text-ink/70">
           {regionSummary && <span className="mr-3">📍 {regionSummary}</span>}
           {draft.grade && <span className="mr-3">🎓 {draft.grade}</span>}
-          {stageConfig.slug === 'high' && draft.examMode && (
-            <span className="mr-3">🧭 {draft.examMode}</span>
+          {stageConfig.slug === 'high' && gaokaoModeMatch.mode && (
+            <span className="mr-3">🧭 {gaokaoModeMatch.mode}</span>
           )}
           {draft.targetSchool && <span className="mr-3">🏫 {draft.targetSchool}</span>}
           {stageConfig.slug === 'high' && draft.careerIntent && (
