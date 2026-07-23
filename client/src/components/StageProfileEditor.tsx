@@ -18,7 +18,9 @@ import { toSelectValue } from '@client/src/lib/utils';
 import {
   extractSubjectMaxHintsFromPolicyText,
   fetchSchoolScoreByName,
+  getKnownExamScoreNotes,
   getKnownExamTotalScore,
+  getKnownSubjectScoreNote,
   getKnownSubjectMaxHints,
   searchSchoolCandidates,
   streamPolicySearch,
@@ -191,7 +193,9 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         const explicitTotal = getKnownExamTotalScore(region, stageConfig.examType) ?? extractExamTotalScore(full);
         const total = explicitTotal ?? entries.reduce((sum, [, value]) => sum + value, 0);
         const detail = entries.map(([subject, value]) => `${subject}${value}`).join('、');
-        setScoreSummary(`本地区满分：已识别${total}分（${detail}，以官方当年政策为准）`);
+        const scoreNotes = getKnownExamScoreNotes(region, stageConfig.examType);
+        const noteText = scoreNotes.length > 0 ? `；${scoreNotes.join('；')}` : '';
+        setScoreSummary(`本地区满分：已识别${total}分（${detail}，以官方当年政策为准${noteText}）`);
       } catch {
         if (!cancelled) {
           setSubjectMaxHints({});
@@ -214,6 +218,10 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   const selectedSubjectMax = useMemo(
     () => resolveSubjectMaxForDisplay(selectedTextbookSubject, subjectMaxHints),
     [selectedTextbookSubject, subjectMaxHints],
+  );
+  const selectedSubjectScoreNote = useMemo(
+    () => getKnownSubjectScoreNote(regionSummary, stageConfig.examType, selectedTextbookSubject),
+    [regionSummary, stageConfig.examType, selectedTextbookSubject],
   );
   const shouldShowTextbookHint = Boolean(draft.province && draft.city && safeGrade);
   const currentTotalScore = useMemo(
@@ -511,6 +519,11 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               <p className="font-hand mt-1 text-xs text-ink/60">
                 来源于当前地区考情联网查询，若当年政策更新，请以官方最新文件为准。
               </p>
+              {selectedSubjectScoreNote && (
+                <p className="font-hand mt-1 rounded-md bg-marker-red/10 px-2 py-1 text-xs text-marker-red">
+                  {selectedSubjectScoreNote}
+                </p>
+              )}
             </div>
           </div>
         </div>

@@ -340,6 +340,22 @@ export function getKnownExamTotalScore(region: string, examType?: string): numbe
   return null;
 }
 
+export function getKnownExamScoreNotes(region: string, examType?: string): string[] {
+  const compactRegion = region.replace(/\s+/g, '');
+  if (/中考/.test(examType || '') && /湖北|武汉/.test(compactRegion) && /武汉/.test(compactRegion)) {
+    return ['理化生实验操作共30分（物理、化学、生物每科10分），计入中考总分。'];
+  }
+  return [];
+}
+
+export function getKnownSubjectScoreNote(region: string, examType: string | undefined, subject: string): string {
+  const compactRegion = region.replace(/\s+/g, '');
+  if (/中考/.test(examType || '') && /湖北|武汉/.test(compactRegion) && /武汉/.test(compactRegion) && /物理|化学|生物/.test(subject)) {
+    return '另有理化生实验操作：物理、化学、生物每科10分，共30分，计入武汉中考总分。';
+  }
+  return '';
+}
+
 export function extractSubjectMaxHintsFromPolicyText(text: string): Record<string, number> {
   const result: Record<string, number> = {};
   if (!text.trim()) return result;
