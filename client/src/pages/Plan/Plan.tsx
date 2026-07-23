@@ -22,6 +22,7 @@ import {
   buildScoresText,
   buildPlanAdditionalInfo,
   extractSubjectMaxHintsFromPolicyText,
+  getKnownSubjectMaxHints,
   type PlanFormContext,
 } from '@client/src/api/plugins';
 import PlanTimeline from './PlanTimeline';
@@ -1150,7 +1151,10 @@ const Plan: React.FC = () => {
           for await (const chunk of streamPolicySearch({ region: r, year: y, keyword })) {
             full += chunk;
             setPolicySearchContent(sanitizePolicyContentByStage(full, stageConfig.slug));
-            const parsedHints = extractSubjectMaxHintsFromPolicyText(full);
+            const parsedHints = {
+              ...extractSubjectMaxHintsFromPolicyText(full),
+              ...getKnownSubjectMaxHints(r, stageConfig.examType),
+            };
             if (Object.keys(parsedHints).length > 0) {
               setSubjectMaxHints(parsedHints);
             }
@@ -1158,9 +1162,16 @@ const Plan: React.FC = () => {
         }
       }
       const cleaned = sanitizePolicyContentByStage(full, stageConfig.slug).trim();
-      const hasHints = Object.keys(extractSubjectMaxHintsFromPolicyText(full)).length > 0;
+      const finalHints = {
+        ...extractSubjectMaxHintsFromPolicyText(full),
+        ...getKnownSubjectMaxHints(r, stageConfig.examType),
+      };
+      const hasHints = Object.keys(finalHints).length > 0;
+      if (hasHints) {
+        setSubjectMaxHints(finalHints);
+      }
       const sourceCount = (full.match(/https?:\/\/[^\s)]+/g) || []).length;
-      if (!cleaned || !hasHints) {
+      if (!hasHints) {
         setPolicySearchContent(
           [
             `地区：${r}`,
@@ -1169,6 +1180,13 @@ const Plan: React.FC = () => {
           ].join('\n'),
         );
         setSubjectMaxHints({});
+      } else if (!cleaned) {
+        setPolicySearchContent(
+          [
+            `地区：${r}`,
+            '已使用本地权威校验规则识别科目满分；联网正文为空，请以教育局当年文件复核。',
+          ].join('\n'),
+        );
       } else if (sourceCount < 2) {
         setPolicySearchContent(
           `${cleaned}\n\n⚠️ 当前联网结果权威来源不足 2 条，请补充教育局官网/教育考试院文件后再确认当年分值。`,

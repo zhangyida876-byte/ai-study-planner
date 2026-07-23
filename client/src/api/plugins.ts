@@ -295,26 +295,82 @@ function normalizeSubjectForHint(raw: string): string {
   return raw;
 }
 
+function setSubjectMaxHint(result: Record<string, number>, subjectRaw: string, value: number) {
+  const subject = normalizeSubjectForHint(subjectRaw);
+  if (!Number.isFinite(value) || value <= 0 || value > 200) return;
+  const prev = result[subject] || 0;
+  result[subject] = prev > 0 ? Math.min(prev, value) : value;
+}
+
+function extractSubjectsFromText(text: string): string[] {
+  const subjects = text.match(/语文|数学|英语|外语|物理|化学|生物|历史|地理|道德与法治|道法|政治|体育/g) || [];
+  return [...new Set(subjects.map(normalizeSubjectForHint))];
+}
+
+function shouldSkipCombinedSubjectScore(betweenSubjectAndScore: string): boolean {
+  const compact = betweenSubjectAndScore.replace(/\s+/g, '');
+  if (/各|分别|均/.test(compact)) return false;
+  return /合卷|[、,，]|和|与|及/.test(compact);
+}
+
+export function getKnownSubjectMaxHints(region: string, examType?: string): Record<string, number> {
+  const compactRegion = region.replace(/\s+/g, '');
+  if (/中考/.test(examType || '') && /湖北|武汉/.test(compactRegion) && /武汉/.test(compactRegion)) {
+    return {
+      语文: 120,
+      数学: 120,
+      英语: 120,
+      物理: 70,
+      化学: 50,
+      道法: 60,
+      历史: 60,
+      地理: 50,
+      生物: 50,
+      体育: 50,
+    };
+  }
+  return {};
+}
+
+export function getKnownExamTotalScore(region: string, examType?: string): number | null {
+  const compactRegion = region.replace(/\s+/g, '');
+  if (/中考/.test(examType || '') && /湖北|武汉/.test(compactRegion) && /武汉/.test(compactRegion)) {
+    return 680;
+  }
+  return null;
+}
+
 export function extractSubjectMaxHintsFromPolicyText(text: string): Record<string, number> {
   const result: Record<string, number> = {};
   if (!text.trim()) return result;
-  const normalized = text.replace(/\s+/g, ' ');
-  const subjectPattern = /(语文|数学|英语|物理|化学|生物|历史|地理|道法|政治|体育)/g;
-  const lines = normalized.split('\n');
+  const subjectPattern = /(语文|数学|英语|外语|物理|化学|生物|历史|地理|道德与法治|道法|政治|体育)/g;
+  const lines = text
+    .split(/\n|。|；|;/)
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
 
   for (const line of lines) {
+    const directPattern = /(语文|数学|英语|外语|物理|化学|生物|历史|地理|道德与法治|道法|政治|体育)([^。；,，、\n]{0,24}?)(\d{2,3})\s*分/g;
+    for (const match of line.matchAll(directPattern)) {
+      const [, subjectRaw, middle, scoreText] = match;
+      if (shouldSkipCombinedSubjectScore(middle)) continue;
+      setSubjectMaxHint(result, subjectRaw, Number.parseInt(scoreText, 10));
+    }
+
+    const eachPattern = /([^。；\n]{0,80}?)(?:各|分别|均)(?:[^0-9]{0,12})(\d{2,3})\s*分/g;
+    for (const match of line.matchAll(eachPattern)) {
+      const [, subjectText, scoreText] = match;
+      for (const subject of extractSubjectsFromText(subjectText)) {
+        setSubjectMaxHint(result, subject, Number.parseInt(scoreText, 10));
+      }
+    }
+
     const subjects = line.match(subjectPattern);
     if (!subjects || subjects.length === 0) continue;
     const nums = line.match(/\d{2,3}(?=\s*分|\s*$)/g)?.map((n) => Number.parseInt(n, 10)) || [];
     const validNums = nums.filter((n) => Number.isFinite(n) && n > 0 && n <= 200);
-    if (validNums.length === 0) continue;
-
-    for (const subjectRaw of subjects) {
-      const subject = normalizeSubjectForHint(subjectRaw);
-      const best = Math.max(...validNums);
-      const prev = result[subject] || 0;
-      // pick the most likely full-mark number in educational ranges
-      result[subject] = prev > 0 ? Math.min(prev, best) : best;
+    if (validNums.length === 1 && /各|分别|均/.test(line)) {
+      for (const subjectRaw of subjects) setSubjectMaxHint(result, subjectRaw, validNums[0]);
     }
   }
   return result;

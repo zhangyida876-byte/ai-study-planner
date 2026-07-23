@@ -8,7 +8,13 @@ import { axiosForBackend } from '@lark-apaas/client-toolkit/utils/getAxiosForBac
 
 import { capabilityClient } from '@lark-apaas/client-toolkit';
 import { policy as policyApi } from '@client/src/api';
-import { PLUGIN_IDS, getEducationStage, streamPolicySearch, extractSubjectMaxHintsFromPolicyText } from '@client/src/api/plugins';
+import {
+  PLUGIN_IDS,
+  getEducationStage,
+  streamPolicySearch,
+  extractSubjectMaxHintsFromPolicyText,
+  getKnownSubjectMaxHints,
+} from '@client/src/api/plugins';
 import {
   Form,
   FormControl,
@@ -523,7 +529,11 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
           full += chunk;
         }
         if (!cancelled) {
-          setInternetSubjectMaxHints(extractSubjectMaxHintsFromPolicyText(full));
+          const examType = stage === 'elementary' ? '小升初' : stage === 'middle' ? '中考' : '高考';
+          setInternetSubjectMaxHints({
+            ...extractSubjectMaxHintsFromPolicyText(full),
+            ...getKnownSubjectMaxHints(watchedRegion, examType),
+          });
         }
       } catch {
         if (!cancelled) setInternetSubjectMaxHints({});

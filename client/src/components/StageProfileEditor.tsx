@@ -18,6 +18,8 @@ import { toSelectValue } from '@client/src/lib/utils';
 import {
   extractSubjectMaxHintsFromPolicyText,
   fetchSchoolScoreByName,
+  getKnownExamTotalScore,
+  getKnownSubjectMaxHints,
   searchSchoolCandidates,
   streamPolicySearch,
   type SchoolCandidate,
@@ -176,7 +178,8 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
           full += chunk;
         }
         if (cancelled) return;
-        const hints = extractSubjectMaxHintsFromPolicyText(full);
+        const knownHints = getKnownSubjectMaxHints(region, stageConfig.examType);
+        const hints = { ...extractSubjectMaxHintsFromPolicyText(full), ...knownHints };
         setSubjectMaxHints(hints);
         const entries = Object.entries(hints)
           .filter(([, value]) => Number.isFinite(value) && value > 0)
@@ -185,7 +188,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
           setScoreSummary('本地区满分：暂无明确数据，需人工核验');
           return;
         }
-        const explicitTotal = extractExamTotalScore(full);
+        const explicitTotal = getKnownExamTotalScore(region, stageConfig.examType) ?? extractExamTotalScore(full);
         const total = explicitTotal ?? entries.reduce((sum, [, value]) => sum + value, 0);
         const detail = entries.map(([subject, value]) => `${subject}${value}`).join('、');
         setScoreSummary(`本地区满分：已识别${total}分（${detail}，以官方当年政策为准）`);
