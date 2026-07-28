@@ -1,42 +1,9 @@
 {
-  "name": "fullstack-nestjs-template",
-  "version": "2.2.6",
-  "private": true,
-  "flags": {
-    "supportBusinessUser": true,
-    "supportScrollReveal": true,
-    "supportTiptapAndStreamdown": true,
-    "customToaster": true
-  },
-  "scripts": {
-    "dev": "./scripts/dev.sh",
-    "dev:sandbox-restart": "./scripts/sandbox-restart.sh",
-    "dev:server": "NODE_ENV=development nest start --watch",
-    "dev:server:sandbox": "NODE_ENV=development nest start",
-    "dev:server:sandbox:dist": "NODE_ENV=production node dist/server/main.js",
-    "dev:server:sandbox:stub": "NODE_ENV=production node scripts/sandbox-stub-server.js",
-    "dev:sandbox:ultra-preview": "NODE_ENV=production node scripts/sandbox-ultra-preview-server.js",
-    "dev:client": "NODE_ENV=development vite --config vite.config.ts",
-    "gen:db-schema": "npx -y @lark-apaas/db-schema-sync@latest --output server/database/schema.ts --export-custom-types",
-    "gen:openapi": "echo 'UNSUPPORTED, SKIP'",
-    "build": "./scripts/build.sh",
-    "build:prod": "npm run build:server && npm run build:client",
-    "build:server": "NODE_ENV=production nest build",
-    "build:client": "NODE_ENV=production vite build --config vite.config.ts",
-    "start": "NODE_ENV=production node main.js",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:e2e": "jest --config test/e2e/jest.config.js",
-    "eslint": "eslint . --quiet",
-    "stylelint": "stylelint client/src/**/*.css --quiet",
-    "type:check": "concurrently -n \"server,client\" -c \"blue,green\" \"npm run type:check:server\" \"npm run type:check:client\"",
-    "type:check:client": "tsc --noEmit --project tsconfig.app.json",
-    "type:check:server": "tsc --noEmit --project tsconfig.node.json",
-    "lint": "node ./scripts/lint.js",
-    "format": "prettier --write \"{server,client,test}/**/*.{js,ts,tsx,json,md}\"",
-    "prepare": "node scripts/prepare.js",
-    "precommit": "node scripts/hooks/run-precommit.js",
-    "postinstall": "node scripts/ensure-action-plugins.js"
+  "actionPlugins": {
+    "@official-plugins/ai-search-summary": "1.0.11",
+    "@official-plugins/ai-text-generate": "1.0.18",
+    "@official-plugins/apaas-data": "1.0.0",
+    "@official-plugins/feishu-bitable": "1.0.22"
   },
   "dependencies": {
     "@lark-apaas/fullstack-nestjs-core": "^1.1.22",
@@ -192,25 +159,58 @@
     "zod": "^3.25.76",
     "zustand": "~5.0.8"
   },
-  "overrides": {
-    "dayjs": "^1.11.15"
+  "engines": {
+    "node": "\u003e=22.0.0",
+    "npm": "\u003e=10.0.0"
+  },
+  "flags": {
+    "customToaster": true,
+    "supportBusinessUser": true,
+    "supportScrollReveal": true,
+    "supportTiptapAndStreamdown": true
   },
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
     "testMatch": [
-      "<rootDir>/server/**/*.spec.ts",
-      "<rootDir>/test/unit/**/*.spec.ts"
+      "\u003crootDir\u003e/server/**/*.spec.ts",
+      "\u003crootDir\u003e/test/unit/**/*.spec.ts"
     ]
   },
-  "engines": {
-    "node": ">=22.0.0",
-    "npm": ">=10.0.0"
+  "name": "fullstack-nestjs-template",
+  "overrides": {
+    "dayjs": "^1.11.15"
   },
-  "actionPlugins": {
-    "@official-plugins/ai-search-summary": "1.0.11",
-    "@official-plugins/ai-text-generate": "1.0.17",
-    "@official-plugins/apaas-data": "1.0.0",
-    "@official-plugins/feishu-bitable": "1.0.22"
-  }
+  "private": true,
+  "scripts": {
+    "build": "./scripts/build.sh",
+    "build:client": "NODE_ENV=production vite build --config vite.config.ts",
+    "build:prod": "npm run build:server \u0026\u0026 npm run build:client",
+    "build:server": "NODE_ENV=production nest build",
+    "dev": "./scripts/dev.sh",
+    "dev:client": "NODE_ENV=development vite --config vite.config.ts",
+    "dev:sandbox-restart": "./scripts/sandbox-restart.sh",
+    "dev:sandbox:ultra-preview": "NODE_ENV=production node scripts/sandbox-ultra-preview-server.js",
+    "dev:server": "NODE_ENV=development nest start --watch",
+    "dev:server:sandbox": "NODE_ENV=development nest start",
+    "dev:server:sandbox:dist": "NODE_ENV=production node dist/server/main.js",
+    "dev:server:sandbox:stub": "NODE_ENV=production node scripts/sandbox-stub-server.js",
+    "eslint": "eslint . --quiet",
+    "format": "prettier --write \"{server,client,test}/**/*.{js,ts,tsx,json,md}\"",
+    "gen:db-schema": "npx -y @lark-apaas/db-schema-sync@latest --output server/database/schema.ts --export-custom-types",
+    "gen:openapi": "echo 'UNSUPPORTED, SKIP'",
+    "lint": "node ./scripts/lint.js",
+    "postinstall": "node scripts/ensure-action-plugins.js",
+    "precommit": "node scripts/hooks/run-precommit.js",
+    "prepare": "node scripts/prepare.js",
+    "start": "NODE_ENV=production node main.js",
+    "stylelint": "stylelint client/src/**/*.css --quiet",
+    "test": "jest",
+    "test:e2e": "jest --config test/e2e/jest.config.js",
+    "test:watch": "jest --watch",
+    "type:check": "concurrently -n \"server,client\" -c \"blue,green\" \"npm run type:check:server\" \"npm run type:check:client\"",
+    "type:check:client": "tsc --noEmit --project tsconfig.app.json",
+    "type:check:server": "tsc --noEmit --project tsconfig.node.json"
+  },
+  "version": "2.2.6"
 }
