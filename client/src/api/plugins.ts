@@ -299,7 +299,22 @@ function setSubjectMaxHint(result: Record<string, number>, subjectRaw: string, v
   const subject = normalizeSubjectForHint(subjectRaw);
   if (!Number.isFinite(value) || value <= 0 || value > 200) return;
   const prev = result[subject] || 0;
-  result[subject] = prev > 0 ? Math.min(prev, value) : value;
+  if (prev <= 0) {
+    result[subject] = value;
+    return;
+  }
+  // 语数常见冲突：120（录取计分）vs 100（卷面折合/百分制噪声）→ 优先 120
+  if (/^(语文|数学)$/.test(subject) && [prev, value].every((n) => n === 100 || n === 120)) {
+    result[subject] = 120;
+    return;
+  }
+  // 体育近年常见 40/50 调整 → 取较大值（更贴近最新政策）
+  if (subject === '体育' && [prev, value].every((n) => n === 40 || n === 50)) {
+    result[subject] = Math.max(prev, value);
+    return;
+  }
+  // 默认后写覆盖：避免旧逻辑 Math.min 把正确满分压成噪声低值
+  result[subject] = value;
 }
 
 function extractSubjectsFromText(text: string): string[] {
@@ -313,52 +328,121 @@ function shouldSkipCombinedSubjectScore(betweenSubjectAndScore: string): boolean
   return /合卷|[、,，]|和|与|及/.test(compact);
 }
 
-export function getKnownSubjectMaxHints(region: string, examType?: string): Record<string, number> {
-  const compactRegion = region.replace(/\s+/g, '');
-  if (/中考/.test(examType || '') && /湖北|武汉/.test(compactRegion) && /武汉/.test(compactRegion)) {
-    return {
-      语文: 120,
-      数学: 120,
-      英语: 120,
-      物理: 70,
-      化学: 50,
-      道法: 60,
-      历史: 60,
-      地理: 50,
-      生物: 50,
-      体育: 50,
-    };
-  }
-  return {};
+function isNoisyScoreLine(line: string): boolean {
+  return /百分制|满分制|卷面分(?:值)?\s*100|折合为|折合分|单元测试|期中|期末测验|模拟考|日常测验/.test(line);
 }
 
-export function getKnownExamTotalScore(region: string, examType?: string): number | null {
+type KnownExamScoreProfile = {
+  total: number;
+  subjects: Record<string, number>;
+  notes?: string[];
+  subjectNotes?: Record<string, string>;
+};
+
+/** 权威城市中考分值表（优先于联网解析；冲突时以此为准） */
+const KNOWN_ZK_SCORE_PROFILES: Array<{ match: RegExp; profile: KnownExamScoreProfile }> = [
+  {
+    // 武汉中考：语数外120 + 地生体各50 + 理化生实验30 → 录取综合总分 680
+    match: /武汉/,
+    profile: {
+      total: 680,
+      subjects: {
+        语文: 120,
+        数学: 120,
+        英语: 120,
+        物理: 70,
+        化学: 50,
+        道法: 60,
+        历史: 60,
+        地理: 50,
+        生物: 50,
+        体育: 50,
+      },
+      notes: ['理化生实验操作共30分（物理、化学、生物每科10分），计入中考总分。'],
+      subjectNotes: {
+        物理: '另有理化生实验操作：物理、化学、生物每科10分，共30分，计入武汉中考总分。',
+        化学: '另有理化生实验操作：物理、化学、生物每科10分，共30分，计入武汉中考总分。',
+        生物: '另有理化生实验操作：物理、化学、生物每科10分，共30分，计入武汉中考总分。',
+      },
+    },
+  },
+  {
+    // 长沙中考（2026 起）：总分 630；语文/数学 120，英语 100；生地改为等第不计入总分
+    // 来源：长沙市教育局《长沙市2026年初中学业水平考试与高中招生工作方案》及官方解读
+    match: /长沙/,
+    profile: {
+      total: 630,
+      subjects: {
+        语文: 120,
+        数学: 120,
+        英语: 100,
+        道法: 60,
+        历史: 60,
+        物理: 70,
+        化学: 50,
+        体育: 50,
+      },
+      notes: [
+        '2026年起生物、地理改为等第入围，不计入630分总分；体育与健康50分。',
+        '道法/历史/物理/化学为卷面折合后的录取计分分值。',
+      ],
+    },
+  },
+];
+
+function resolveKnownZkProfile(region: string, examType?: string): KnownExamScoreProfile | null {
+  if (!/中考/.test(examType || '')) return null;
   const compactRegion = region.replace(/\s+/g, '');
-  if (/中考/.test(examType || '') && /湖北|武汉/.test(compactRegion) && /武汉/.test(compactRegion)) {
-    return 680;
+  for (const item of KNOWN_ZK_SCORE_PROFILES) {
+    if (item.match.test(compactRegion)) return item.profile;
   }
   return null;
 }
 
+export function hasKnownExamScoreAuthority(region: string, examType?: string): boolean {
+  return Boolean(resolveKnownZkProfile(region, examType));
+}
+
+export function getKnownSubjectMaxHints(region: string, examType?: string): Record<string, number> {
+  return { ...(resolveKnownZkProfile(region, examType)?.subjects || {}) };
+}
+
+export function getKnownExamTotalScore(region: string, examType?: string): number | null {
+  return resolveKnownZkProfile(region, examType)?.total ?? null;
+}
+
 export function getKnownExamScoreNotes(region: string, examType?: string): string[] {
-  const compactRegion = region.replace(/\s+/g, '');
-  if (/中考/.test(examType || '') && /湖北|武汉/.test(compactRegion) && /武汉/.test(compactRegion)) {
-    return ['理化生实验操作共30分（物理、化学、生物每科10分），计入中考总分。'];
-  }
-  return [];
+  return [...(resolveKnownZkProfile(region, examType)?.notes || [])];
 }
 
 export function getKnownSubjectScoreNote(region: string, examType: string | undefined, subject: string): string {
-  const compactRegion = region.replace(/\s+/g, '');
-  if (/中考/.test(examType || '') && /湖北|武汉/.test(compactRegion) && /武汉/.test(compactRegion) && /物理|化学|生物/.test(subject)) {
-    return '另有理化生实验操作：物理、化学、生物每科10分，共30分，计入武汉中考总分。';
+  const profile = resolveKnownZkProfile(region, examType);
+  if (!profile?.subjectNotes) return '';
+  const key = normalizeSubjectForHint(subject);
+  return profile.subjectNotes[key] || profile.subjectNotes[subject] || '';
+}
+
+function extractSubjectMaxBlock(text: string): Record<string, number> {
+  const result: Record<string, number> = {};
+  const blockMatch = text.match(/SUBJECT_MAX\s*[:：]\s*([^\n]+)/i);
+  if (!blockMatch) return result;
+  const pairs = blockMatch[1].split(/[;；|]/);
+  for (const pair of pairs) {
+    const m = pair.match(/(语文|数学|英语|外语|物理|化学|生物|历史|地理|道德与法治|道法|政治|体育)\s*[=:：]\s*(\d{2,3})/);
+    if (!m) continue;
+    setSubjectMaxHint(result, m[1], Number.parseInt(m[2], 10));
   }
-  return '';
+  return result;
 }
 
 export function extractSubjectMaxHintsFromPolicyText(text: string): Record<string, number> {
   const result: Record<string, number> = {};
   if (!text.trim()) return result;
+
+  // 优先解析模型按约定输出的机读块
+  const fromBlock = extractSubjectMaxBlock(text);
+  Object.assign(result, fromBlock);
+
   const subjectPattern = /(语文|数学|英语|外语|物理|化学|生物|历史|地理|道德与法治|道法|政治|体育)/g;
   const lines = text
     .split(/\n|。|；|;/)
@@ -366,16 +450,21 @@ export function extractSubjectMaxHintsFromPolicyText(text: string): Record<strin
     .filter(Boolean);
 
   for (const line of lines) {
+    if (isNoisyScoreLine(line)) continue;
+
     const directPattern = /(语文|数学|英语|外语|物理|化学|生物|历史|地理|道德与法治|道法|政治|体育)([^。；,，、\n]{0,24}?)(\d{2,3})\s*分/g;
     for (const match of line.matchAll(directPattern)) {
       const [, subjectRaw, middle, scoreText] = match;
       if (shouldSkipCombinedSubjectScore(middle)) continue;
+      // 跳过「卷面分100分，折合为xx分」里的卷面100
+      if (/卷面/.test(middle) && Number.parseInt(scoreText, 10) === 100) continue;
       setSubjectMaxHint(result, subjectRaw, Number.parseInt(scoreText, 10));
     }
 
     const eachPattern = /([^。；\n]{0,80}?)(?:各|分别|均)(?:[^0-9]{0,12})(\d{2,3})\s*分/g;
     for (const match of line.matchAll(eachPattern)) {
       const [, subjectText, scoreText] = match;
+      if (isNoisyScoreLine(subjectText)) continue;
       for (const subject of extractSubjectsFromText(subjectText)) {
         setSubjectMaxHint(result, subject, Number.parseInt(scoreText, 10));
       }

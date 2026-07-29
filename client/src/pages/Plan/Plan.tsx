@@ -1144,8 +1144,8 @@ const Plan: React.FC = () => {
         stageConfig.slug === 'elementary'
           ? ['小升初 考试科目 满分分值', '教育局 入学政策 划片 摇号', '小升初 总分构成 体育 实验']
           : stageConfig.slug === 'middle'
-            ? ['中考 考试科目 满分分值', '教育局 中考政策 考试大纲', '中考总分 各科分数 最新']
-            : ['高考 考试科目 满分分值', '教育考试院 高考政策 考试大纲', '高考总分 各科分值 最新'];
+            ? ['中考 录取综合总分 各科录取计分满分 官方', '教育局 中考政策 考试大纲', '中考总分 各科分数 最新 教育考试院']
+            : ['高考 考试科目 满分分值 官方', '教育考试院 高考政策 考试大纲', '高考总分 各科分值 最新'];
       for (const y of searchYears) {
         for (const keyword of keywords) {
           for await (const chunk of streamPolicySearch({ region: r, year: y, keyword })) {

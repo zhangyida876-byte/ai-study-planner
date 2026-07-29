@@ -22,6 +22,7 @@ import {
   getKnownExamTotalScore,
   getKnownSubjectScoreNote,
   getKnownSubjectMaxHints,
+  hasKnownExamScoreAuthority,
   searchSchoolCandidates,
   streamPolicySearch,
   type SchoolCandidate,
@@ -93,6 +94,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   const [scoreSummary, setScoreSummary] = useState('');
   const [scoreSummaryLoading, setScoreSummaryLoading] = useState(false);
   const [subjectMaxHints, setSubjectMaxHints] = useState<Record<string, number>>({});
+  const [scoreHintFromAuthority, setScoreHintFromAuthority] = useState(false);
   const [selectedTextbookSubject, setSelectedTextbookSubject] = useState('数学');
 
   useEffect(() => {
@@ -165,6 +167,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     if (!draft.province || !draft.city) {
       setScoreSummary('');
       setSubjectMaxHints({});
+      setScoreHintFromAuthority(false);
       return;
     }
     let cancelled = false;
@@ -173,33 +176,63 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       try {
         const region = [draft.province, draft.city, draft.county].filter(Boolean).join(' ');
         const year = String(new Date().getFullYear());
-        const keyword = `${stageConfig.examType} 考试科目 满分分值 总分构成`;
+        const keyword = `${stageConfig.examType} 考试科目 录取计分满分 总分构成 官方`;
+        const knownHints = getKnownSubjectMaxHints(region, stageConfig.examType);
+        const hasAuthority = hasKnownExamScoreAuthority(region, stageConfig.examType);
+        setScoreHintFromAuthority(hasAuthority);
+
+        // 权威城市：先立刻展示本地核验分值，再后台联网补充校验文案
+        if (hasAuthority && Object.keys(knownHints).length > 0) {
+          setSubjectMaxHints(knownHints);
+          const entries = Object.entries(knownHints);
+          const total = getKnownExamTotalScore(region, stageConfig.examType) ?? entries.reduce((sum, [, v]) => sum + v, 0);
+          const detail = entries.map(([subject, value]) => `${subject}${value}`).join('、');
+          const scoreNotes = getKnownExamScoreNotes(region, stageConfig.examType);
+          const noteText = scoreNotes.length > 0 ? `；${scoreNotes.join('；')}` : '';
+          setScoreSummary(`本地区满分：已识别${total}分（${detail}，以官方当年政策为准${noteText}）`);
+          setScoreSummaryLoading(false);
+        }
+
         let full = '';
         for await (const chunk of streamPolicySearch({ region, year, keyword })) {
           if (cancelled) return;
           full += chunk;
         }
         if (cancelled) return;
-        const knownHints = getKnownSubjectMaxHints(region, stageConfig.examType);
+
+        // 权威表始终覆盖联网解析，避免「卷面100/百分制」污染
         const hints = { ...extractSubjectMaxHintsFromPolicyText(full), ...knownHints };
         setSubjectMaxHints(hints);
-        const entries = Object.entries(hints)
-          .filter(([, value]) => Number.isFinite(value) && value > 0)
-          .slice(0, 10);
+        const knownOrder = Object.keys(knownHints);
+        const entries = (
+          knownOrder.length > 0
+            ? knownOrder.map((subject) => [subject, hints[subject]] as const)
+            : Object.entries(hints)
+        ).filter(([, value]) => Number.isFinite(value) && value > 0);
         if (entries.length === 0) {
           setScoreSummary('本地区满分：暂无明确数据，需人工核验');
           return;
         }
         const explicitTotal = getKnownExamTotalScore(region, stageConfig.examType) ?? extractExamTotalScore(full);
-        const total = explicitTotal ?? entries.reduce((sum, [, value]) => sum + value, 0);
+        // 无权威总分时，不拿科目相加冒充「本地区满分」，避免误导
+        const total = explicitTotal;
         const detail = entries.map(([subject, value]) => `${subject}${value}`).join('、');
         const scoreNotes = getKnownExamScoreNotes(region, stageConfig.examType);
         const noteText = scoreNotes.length > 0 ? `；${scoreNotes.join('；')}` : '';
-        setScoreSummary(`本地区满分：已识别${total}分（${detail}，以官方当年政策为准${noteText}）`);
+        if (total != null) {
+          setScoreSummary(`本地区满分：已识别${total}分（${detail}，以官方当年政策为准${noteText}）`);
+        } else {
+          setScoreSummary(`本地区科目满分：已识别（${detail}）；总分待官方核验${noteText}`);
+        }
       } catch {
         if (!cancelled) {
-          setSubjectMaxHints({});
-          setScoreSummary('本地区满分：联网查询失败，可稍后重试或手动核验');
+          // 权威城市即使联网失败也保留本地分值
+          const region = [draft.province, draft.city, draft.county].filter(Boolean).join(' ');
+          if (!hasKnownExamScoreAuthority(region, stageConfig.examType)) {
+            setSubjectMaxHints({});
+            setScoreSummary('本地区满分：联网查询失败，可稍后重试或手动核验');
+            setScoreHintFromAuthority(false);
+          }
         }
       } finally {
         if (!cancelled) setScoreSummaryLoading(false);
@@ -517,7 +550,9 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
                 {selectedSubjectMax ? `${selectedTextbookSubject}满分 ${selectedSubjectMax} 分` : '暂无明确满分，需人工核验'}
               </div>
               <p className="font-hand mt-1 text-xs text-ink/60">
-                来源于当前地区考情联网查询，若当年政策更新，请以官方最新文件为准。
+                {scoreHintFromAuthority
+                  ? '来源于本地权威政策表（教育局/考试院口径），联网仅作校验；若当年政策更新，请以官方最新文件为准。'
+                  : '来源于当前地区考情联网查询并交叉校验；若当年政策更新，请以官方最新文件为准。'}
               </p>
               {selectedSubjectScoreNote && (
                 <p className="font-hand mt-1 rounded-md bg-marker-red/10 px-2 py-1 text-xs text-marker-red">

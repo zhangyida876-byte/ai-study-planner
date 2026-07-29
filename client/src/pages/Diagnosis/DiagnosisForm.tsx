@@ -516,8 +516,8 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
           stage === 'elementary'
             ? '小升初 科目 分值 总分构成'
             : stage === 'middle'
-              ? '中考 科目 分值 总分构成'
-              : '高考 科目 分值 总分构成';
+              ? '中考 录取综合总分 各科录取计分满分 官方'
+              : '高考 科目 分值 总分构成 官方';
         const year = String(new Date().getFullYear());
         let full = '';
         for await (const chunk of streamPolicySearch({
