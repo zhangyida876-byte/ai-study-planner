@@ -208,6 +208,7 @@
     "test": "jest",
     "test:e2e": "jest --config test/e2e/jest.config.js",
     "test:watch": "jest --watch",
+    "check:zhongkao": "node scripts/check-zhongkao-scores.mjs",
     "type:check": "concurrently -n \"server,client\" -c \"blue,green\" \"npm run type:check:server\" \"npm run type:check:client\"",
     "type:check:client": "tsc --noEmit --project tsconfig.app.json",
     "type:check:server": "tsc --noEmit --project tsconfig.node.json"

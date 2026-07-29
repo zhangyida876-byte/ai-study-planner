@@ -3,6 +3,7 @@ import { logger } from '@lark-apaas/client-toolkit/logger';
 import type { StageSlug } from '@client/src/config/stages';
 import { appendProfileAndStageRules } from '@client/src/config/stage-analysis-rules';
 import { getInternalMaterialContext } from '@client/src/config/internal-resource-library';
+import { resolveZhongkaoProfile, type ZhongkaoScoreProfile } from '@client/src/data/zhongkao-score-profiles';
 import type { StageProfile } from '@client/src/types/stage-profile';
 
 export const PLUGIN_IDS = {
@@ -284,13 +285,14 @@ function normalizeSubjectForHint(raw: string): string {
   const text = raw.replace(/\s+/g, '');
   if (/(语文|语)/.test(text)) return '语文';
   if (/(数学|数)/.test(text)) return '数学';
-  if (/(英语|英)/.test(text)) return '英语';
+  if (/(英语|英|外语)/.test(text)) return '英语';
+  if (/科学/.test(text)) return '科学';
   if (/物理/.test(text)) return '物理';
   if (/化学/.test(text)) return '化学';
   if (/生物/.test(text)) return '生物';
   if (/历史/.test(text)) return '历史';
   if (/地理/.test(text)) return '地理';
-  if (/(道法|政治)/.test(text)) return '道法';
+  if (/(道法|政治|社会)/.test(text)) return '道法';
   if (/体育/.test(text)) return '体育';
   return raw;
 }
@@ -332,71 +334,9 @@ function isNoisyScoreLine(line: string): boolean {
   return /百分制|满分制|卷面分(?:值)?\s*100|折合为|折合分|单元测试|期中|期末测验|模拟考|日常测验/.test(line);
 }
 
-type KnownExamScoreProfile = {
-  total: number;
-  subjects: Record<string, number>;
-  notes?: string[];
-  subjectNotes?: Record<string, string>;
-};
-
-/** 权威城市中考分值表（优先于联网解析；冲突时以此为准） */
-const KNOWN_ZK_SCORE_PROFILES: Array<{ match: RegExp; profile: KnownExamScoreProfile }> = [
-  {
-    // 武汉中考：语数外120 + 地生体各50 + 理化生实验30 → 录取综合总分 680
-    match: /武汉/,
-    profile: {
-      total: 680,
-      subjects: {
-        语文: 120,
-        数学: 120,
-        英语: 120,
-        物理: 70,
-        化学: 50,
-        道法: 60,
-        历史: 60,
-        地理: 50,
-        生物: 50,
-        体育: 50,
-      },
-      notes: ['理化生实验操作共30分（物理、化学、生物每科10分），计入中考总分。'],
-      subjectNotes: {
-        物理: '另有理化生实验操作：物理、化学、生物每科10分，共30分，计入武汉中考总分。',
-        化学: '另有理化生实验操作：物理、化学、生物每科10分，共30分，计入武汉中考总分。',
-        生物: '另有理化生实验操作：物理、化学、生物每科10分，共30分，计入武汉中考总分。',
-      },
-    },
-  },
-  {
-    // 长沙中考（2026 起）：总分 630；语文/数学 120，英语 100；生地改为等第不计入总分
-    // 来源：长沙市教育局《长沙市2026年初中学业水平考试与高中招生工作方案》及官方解读
-    match: /长沙/,
-    profile: {
-      total: 630,
-      subjects: {
-        语文: 120,
-        数学: 120,
-        英语: 100,
-        道法: 60,
-        历史: 60,
-        物理: 70,
-        化学: 50,
-        体育: 50,
-      },
-      notes: [
-        '2026年起生物、地理改为等第入围，不计入630分总分；体育与健康50分。',
-        '道法/历史/物理/化学为卷面折合后的录取计分分值。',
-      ],
-    },
-  },
-];
-
-function resolveKnownZkProfile(region: string, examType?: string): KnownExamScoreProfile | null {
+function resolveKnownZkProfile(region: string, examType?: string): ZhongkaoScoreProfile | null {
   if (!/中考/.test(examType || '')) return null;
-  const compactRegion = region.replace(/\s+/g, '');
-  for (const item of KNOWN_ZK_SCORE_PROFILES) {
-    if (item.match.test(compactRegion)) return item.profile;
-  }
-  return null;
+  return resolveZhongkaoProfile(region);
 }
 
 export function hasKnownExamScoreAuthority(region: string, examType?: string): boolean {
@@ -412,7 +352,10 @@ export function getKnownExamTotalScore(region: string, examType?: string): numbe
 }
 
 export function getKnownExamScoreNotes(region: string, examType?: string): string[] {
-  return [...(resolveKnownZkProfile(region, examType)?.notes || [])];
+  const profile = resolveKnownZkProfile(region, examType);
+  if (!profile) return [];
+  const prefix = [`权威表适用约${profile.year}年（${profile.source}）`];
+  return [...prefix, ...(profile.notes || [])];
 }
 
 export function getKnownSubjectScoreNote(region: string, examType: string | undefined, subject: string): string {
