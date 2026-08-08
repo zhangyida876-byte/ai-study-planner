@@ -5,6 +5,7 @@ import WobblyCard from '@client/src/components/WobblyCard';
 import { STAGE_LIST } from '@client/src/config/stages';
 import { stagePath } from '@client/src/config/stages';
 import { Button } from '@/components/ui/button';
+import { UniversalLink } from '@lark-apaas/client-toolkit/components/UniversalLink';
 
 const Workbench: React.FC = () => {
   return (
@@ -21,14 +22,14 @@ const Workbench: React.FC = () => {
           </p>
         </div>
         <Button className="font-hand" variant="outline" asChild>
-          <a
-            href="https://guanghe.feishu.cn/share/base/form/shrcnfls7RZiUEZRDlfxW35XDTg"
+          <UniversalLink
+            to="https://guanghe.feishu.cn/share/base/form/shrcnfls7RZiUEZRDlfxW35XDTg"
             target="_blank"
             rel="noreferrer"
           >
             <MessageCircleMore className="mr-1 size-4" />
             反馈建议
-          </a>
+          </UniversalLink>
         </Button>
       </div>
 

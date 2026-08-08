@@ -322,198 +322,200 @@ const Diagnosis: React.FC = () => {
   }, [studentInfo, profile.weakSubjects, scoreGap, reportContent]);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <div>
-        <Button variant="ghost" size="sm" className="font-hand mb-2 -ml-2" asChild>
-          <Link to={stagePath(stageSlug)}>
-            <ArrowLeft className="mr-1 size-4" />
-            返回{stageConfig.label}主页
-          </Link>
-        </Button>
-        <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 学情诊断</h1>
-        <p className="font-hand mt-1 text-sm text-muted-foreground">
-          按{stageConfig.label}学段标准分析薄弱点、失分原因与升学影响
-        </p>
-      </div>
+    <>
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div>
+          <Button variant="ghost" size="sm" className="font-hand mb-2 -ml-2" asChild>
+            <Link to={stagePath(stageSlug)}>
+              <ArrowLeft className="mr-1 size-4" />
+              返回{stageConfig.label}主页
+            </Link>
+          </Button>
+          <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 学情诊断</h1>
+          <p className="font-hand mt-1 text-sm text-muted-foreground">
+            按{stageConfig.label}学段标准分析薄弱点、失分原因与升学影响
+          </p>
+        </div>
 
-      <ProfileAutofillBanner
-        stageSlug={stageSlug}
-        profile={profile}
-        regionText={regionText}
-        showSyncBack={profileDirty}
-        onSyncBack={handleSyncProfileBack}
-      />
+        <ProfileAutofillBanner
+          stageSlug={stageSlug}
+          profile={profile}
+          regionText={regionText}
+          showSyncBack={profileDirty}
+          onSyncBack={handleSyncProfileBack}
+        />
 
-    <div className="grid gap-6 xl:grid-cols-[460px_minmax(0,1fr)]">
-      <div className="min-w-0">
-        <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false}>
-          <div className="space-y-5 p-5">
-            <div className="border-b-2 border-dashed border-ink/15 pb-4">
-              <p className="font-hand text-xs font-bold text-marker-red">STEP 1</p>
-              <h2 className="font-marker mt-1 text-xl font-bold">填写诊断信息</h2>
-              <p className="font-hand mt-1 text-sm text-ink/60">
-                基础档案会自动带入，只需要核对目标、成绩和学习困扰。
-              </p>
+      <div className="grid gap-6 xl:grid-cols-[460px_minmax(0,1fr)]">
+        <div className="min-w-0">
+          <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false}>
+            <div className="space-y-5 p-5">
+              <div className="border-b-2 border-dashed border-ink/15 pb-4">
+                <p className="font-hand text-xs font-bold text-marker-red">STEP 1</p>
+                <h2 className="font-marker mt-1 text-xl font-bold">填写诊断信息</h2>
+                <p className="font-hand mt-1 text-sm text-ink/60">
+                  基础档案会自动带入，只需要核对目标、成绩和学习困扰。
+                </p>
+              </div>
+              <div className="space-y-4">
+                <DiagnosisForm
+                  onSubmit={onSubmit}
+                  isGenerating={isGenerating}
+                  onMajorInfoChange={setMajorInfoContent}
+                  allowedGrades={stageConfig.grades}
+                  stageLabel={stageConfig.label}
+                  stageProfile={profile}
+                  onProfileFieldsChange={() => setProfileDirty(true)}
+                  onRegionPartsChange={(parts) => { regionPartsRef.current = parts; }}
+                  onFormSnapshotChange={(data) => { setFormSnapshot(data); }}
+                />
+              </div>
             </div>
-            <div className="space-y-4">
-              <DiagnosisForm
-                onSubmit={onSubmit}
-                isGenerating={isGenerating}
-                onMajorInfoChange={setMajorInfoContent}
-                allowedGrades={stageConfig.grades}
-                stageLabel={stageConfig.label}
-                stageProfile={profile}
-                onProfileFieldsChange={() => setProfileDirty(true)}
-                onRegionPartsChange={(parts) => { regionPartsRef.current = parts; }}
-                onFormSnapshotChange={(data) => { setFormSnapshot(data); }}
-              />
-            </div>
-          </div>
-        </WobblyCard>
-      </div>
+          </WobblyCard>
+        </div>
 
-      <div className="min-w-0 space-y-4">
-        {isGenerating || reportContent ? (
-          <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false}>
-            <div className="p-5">
-              <div className="mb-5 rounded-lg border-2 border-dashed border-ink/15 bg-white/70 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
-                    <h2 className="font-marker mt-1 text-2xl font-bold">
-                      {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}诊断报告
-                    </h2>
+        <div className="min-w-0 space-y-4">
+          {isGenerating || reportContent ? (
+            <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false}>
+              <div className="p-5">
+                <div className="mb-5 rounded-lg border-2 border-dashed border-ink/15 bg-white/70 p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
+                      <h2 className="font-marker mt-1 text-2xl font-bold">
+                        {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}诊断报告
+                      </h2>
+                    </div>
+                    {reportContent && (
+                      <Button variant="outline" size="sm" onClick={handleCopy} disabled={isGenerating}>
+                        {copied ? (
+                          <><Check className="mr-1 size-4" />已复制</>
+                        ) : (
+                          <><Copy className="mr-1 size-4" />复制全文</>
+                        )}
+                      </Button>
+                    )}
                   </div>
-                  {reportContent && (
-                    <Button variant="outline" size="sm" onClick={handleCopy} disabled={isGenerating}>
-                      {copied ? (
-                        <><Check className="mr-1 size-4" />已复制</>
-                      ) : (
-                        <><Copy className="mr-1 size-4" />复制全文</>
+
+                  {/* Student info strip */}
+                  {studentInfo && (
+                    <div className="font-hand mt-4 flex flex-wrap gap-2 text-sm text-ink/70">
+                      {studentInfo.studentName && (
+                        <span className="rounded-full border-2 border-ink/20 bg-card px-3 py-1">
+                          {studentInfo.studentName}
+                        </span>
                       )}
-                    </Button>
+                      <span className="rounded-full border-2 border-ink/20 bg-card px-3 py-1">
+                        {studentInfo.grade}
+                      </span>
+                      <span className="rounded-full border-2 border-ink/20 bg-card px-3 py-1">
+                        {studentInfo.region}
+                      </span>
+                      {countdown != null && (
+                        <span className="flex items-center gap-1 rounded-full border-2 border-marker-red/30 bg-marker-red/5 px-3 py-1 font-bold text-marker-red">
+                          <Clock className="size-3.5" />
+                          距{examLabel}还有 {countdown} 天
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Target school & score */}
+                  {(studentInfo?.targetSchool || (studentInfo?.targetScore != null && studentStage !== 'elementary')) && (
+                    <div className="mt-4 rounded-lg border-2 border-dashed border-pen-blue/30 bg-pen-blue/5 p-3">
+                      <div className="flex flex-wrap items-center gap-4 text-sm">
+                        {studentInfo?.targetSchool && (
+                          <div className="flex items-center gap-1.5">
+                            <Target className="size-4 text-pen-blue" />
+                            <span className="font-hand text-ink/60">
+                              {studentStage === 'high' ? '目标大学：' : studentStage === 'elementary' ? '目标初中：' : '目标院校：'}
+                            </span>
+                            <span className="font-marker font-bold text-pen-blue">
+                              {studentInfo.targetSchool}
+                            </span>
+                          </div>
+                        )}
+                        {studentInfo?.targetMajor && studentStage === 'high' && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-hand text-ink/60">目标专业：</span>
+                            <span className="font-marker font-bold text-marker-red">
+                              {studentInfo.targetMajor}
+                            </span>
+                          </div>
+                        )}
+                        {studentStage === 'high' && profile.careerIntent && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-hand text-ink/60">未来意向：</span>
+                            <span className="font-marker font-bold text-ink">
+                              {profile.careerIntent}
+                            </span>
+                          </div>
+                        )}
+                        {studentInfo?.targetScore != null && studentStage !== 'elementary' && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-hand text-ink/60">
+                              {studentStage === 'high' ? '大学投档线：' : '最新分数线：'}
+                            </span>
+                            <span className="font-marker font-bold text-pen-blue">
+                              {studentInfo.targetScore}分
+                            </span>
+                            {scoreGap != null && (
+                              <span className={`font-hand text-xs font-bold ${scoreGap > 0 ? 'text-marker-red' : 'text-emerald-600'}`}>
+                                {scoreGap > 0 ? `差 ${scoreGap} 分` : `超 ${Math.abs(scoreGap)} 分`}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Major career info panel */}
+                  {majorInfoContent && studentStage === 'high' && (
+                    <div className="mt-3 rounded-lg border-2 border-marker-red/20 bg-marker-red/5 p-4">
+                      <h3 className="font-marker mb-2 text-lg font-bold text-marker-red">专业与职业信息</h3>
+                      <div className="font-hand prose-sm">
+                        <Streamdown>{majorInfoContent}</Streamdown>
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                {/* Student info strip */}
-                {studentInfo && (
-                  <div className="font-hand mt-4 flex flex-wrap gap-2 text-sm text-ink/70">
-                    {studentInfo.studentName && (
-                      <span className="rounded-full border-2 border-ink/20 bg-card px-3 py-1">
-                        {studentInfo.studentName}
-                      </span>
-                    )}
-                    <span className="rounded-full border-2 border-ink/20 bg-card px-3 py-1">
-                      {studentInfo.grade}
-                    </span>
-                    <span className="rounded-full border-2 border-ink/20 bg-card px-3 py-1">
-                      {studentInfo.region}
-                    </span>
-                    {countdown != null && (
-                      <span className="flex items-center gap-1 rounded-full border-2 border-marker-red/30 bg-marker-red/5 px-3 py-1 font-bold text-marker-red">
-                        <Clock className="size-3.5" />
-                        距{examLabel}还有 {countdown} 天
-                      </span>
-                    )}
+                {isGenerating && !reportContent && (
+                  <div className="flex items-center gap-3 py-12 font-hand text-xl text-muted-foreground">
+                    <Loader2 className="size-5 animate-spin" />
+                    正在生成诊断报告...
                   </div>
                 )}
 
-                {/* Target school & score */}
-                {(studentInfo?.targetSchool || (studentInfo?.targetScore != null && studentStage !== 'elementary')) && (
-                  <div className="mt-4 rounded-lg border-2 border-dashed border-pen-blue/30 bg-pen-blue/5 p-3">
-                    <div className="flex flex-wrap items-center gap-4 text-sm">
-                      {studentInfo?.targetSchool && (
-                        <div className="flex items-center gap-1.5">
-                          <Target className="size-4 text-pen-blue" />
-                          <span className="font-hand text-ink/60">
-                            {studentStage === 'high' ? '目标大学：' : studentStage === 'elementary' ? '目标初中：' : '目标院校：'}
-                          </span>
-                          <span className="font-marker font-bold text-pen-blue">
-                            {studentInfo.targetSchool}
-                          </span>
-                        </div>
-                      )}
-                      {studentInfo?.targetMajor && studentStage === 'high' && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-hand text-ink/60">目标专业：</span>
-                          <span className="font-marker font-bold text-marker-red">
-                            {studentInfo.targetMajor}
-                          </span>
-                        </div>
-                      )}
-                      {studentStage === 'high' && profile.careerIntent && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-hand text-ink/60">未来意向：</span>
-                          <span className="font-marker font-bold text-ink">
-                            {profile.careerIntent}
-                          </span>
-                        </div>
-                      )}
-                      {studentInfo?.targetScore != null && studentStage !== 'elementary' && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-hand text-ink/60">
-                            {studentStage === 'high' ? '大学投档线：' : '最新分数线：'}
-                          </span>
-                          <span className="font-marker font-bold text-pen-blue">
-                            {studentInfo.targetScore}分
-                          </span>
-                          {scoreGap != null && (
-                            <span className={`font-hand text-xs font-bold ${scoreGap > 0 ? 'text-marker-red' : 'text-emerald-600'}`}>
-                              {scoreGap > 0 ? `差 ${scoreGap} 分` : `超 ${Math.abs(scoreGap)} 分`}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Major career info panel */}
-                {majorInfoContent && studentStage === 'high' && (
-                  <div className="mt-3 rounded-lg border-2 border-marker-red/20 bg-marker-red/5 p-4">
-                    <h3 className="font-marker mb-2 text-lg font-bold text-marker-red">专业与职业信息</h3>
-                    <div className="font-hand prose-sm">
-                      <Streamdown>{majorInfoContent}</Streamdown>
-                    </div>
+                {reportContent && (
+                  <div className="font-hand prose-headings:font-marker rounded-lg bg-white/70 p-4">
+                    <Streamdown>{reportContent}</Streamdown>
                   </div>
                 )}
               </div>
-
-              {isGenerating && !reportContent && (
-                <div className="flex items-center gap-3 py-12 font-hand text-xl text-muted-foreground">
-                  <Loader2 className="size-5 animate-spin" />
-                  正在生成诊断报告...
-                </div>
-              )}
-
-              {reportContent && (
-                <div className="font-hand prose-headings:font-marker rounded-lg bg-white/70 p-4">
-                  <Streamdown>{reportContent}</Streamdown>
-                </div>
-              )}
-            </div>
-          </WobblyCard>
-        ) : (
-          <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false}>
-            <div className="flex min-h-[360px] flex-col items-center justify-center p-8 text-center">
-              <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
-              <p className="font-marker mt-2 text-2xl font-bold text-ink">生成学情诊断报告</p>
-              <p className="font-hand mt-2 max-w-md text-sm text-muted-foreground">
-                左侧确认基础信息和各科成绩后，点击“生成诊断报告”，这里会展示完整诊断结果。
-              </p>
-            </div>
-          </WobblyCard>
-        )}
-        <div className="mt-4">
-          <ReferenceScriptCard
-            onGenerate={buildDiagnosisReferenceScript}
-            hint="基于当前诊断结果生成可直接和孩子沟通的话术（300字内）。"
-            wobblyIndex={31}
-          />
+            </WobblyCard>
+          ) : (
+            <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false}>
+              <div className="flex min-h-[360px] flex-col items-center justify-center p-8 text-center">
+                <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
+                <p className="font-marker mt-2 text-2xl font-bold text-ink">生成学情诊断报告</p>
+                <p className="font-hand mt-2 max-w-md text-sm text-muted-foreground">
+                  左侧确认基础信息和各科成绩后，点击“生成诊断报告”，这里会展示完整诊断结果。
+                </p>
+              </div>
+            </WobblyCard>
+          )}
+          <div className="mt-4">
+            <ReferenceScriptCard
+              onGenerate={buildDiagnosisReferenceScript}
+              hint="基于当前诊断结果生成可直接和孩子沟通的话术（300字内）。"
+              wobblyIndex={31}
+            />
+          </div>
         </div>
       </div>
-    </div>
-    </div>
+      </div>
+    </>
   );
 };
 

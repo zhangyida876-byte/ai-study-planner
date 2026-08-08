@@ -52,8 +52,8 @@ const FEATURES: StageFeatureConfig[] = [
   },
   {
     slug: 'advice',
-    label: '建议话术',
-    description: '汇总四大模块结果，生成可直接沟通的话术建议',
+    label: '话术百宝库',
+    description: '汇总总话术、自定义问答与电话异议随查',
     pathSuffix: 'advice',
   },
 ];
