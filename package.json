@@ -6,7 +6,7 @@
     "@official-plugins/feishu-bitable": "1.0.22"
   },
   "dependencies": {
-    "@lark-apaas/fullstack-nestjs-core": "^1.1.22",
+    "@lark-apaas/fullstack-nestjs-core": "^1.1.57",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^10.4.20",
     "@nestjs/config": "^3.3.0",
@@ -33,9 +33,9 @@
     "@headlessui/react": "^2.2.9",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.2.2",
-    "@lark-apaas/client-toolkit": "^1.2.51",
+    "@lark-apaas/client-toolkit": "^1.2.61",
     "@lark-apaas/fullstack-presets": "^1.1.0",
-    "@lark-apaas/fullstack-vite-preset": "^1.0.1",
+    "@lark-apaas/fullstack-vite-preset": "^1.0.32",
     "@nestjs/cli": "^10.4.9",
     "@nestjs/testing": "^10.4.20",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -160,8 +160,8 @@
     "zustand": "~5.0.8"
   },
   "engines": {
-    "node": "\u003e=22.0.0",
-    "npm": "\u003e=10.0.0"
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
   },
   "flags": {
     "customToaster": true,
@@ -173,8 +173,8 @@
     "preset": "ts-jest",
     "testEnvironment": "node",
     "testMatch": [
-      "\u003crootDir\u003e/server/**/*.spec.ts",
-      "\u003crootDir\u003e/test/unit/**/*.spec.ts"
+      "<rootDir>/server/**/*.spec.ts",
+      "<rootDir>/test/unit/**/*.spec.ts"
     ]
   },
   "name": "fullstack-nestjs-template",
@@ -185,7 +185,7 @@
   "scripts": {
     "build": "./scripts/build.sh",
     "build:client": "NODE_ENV=production vite build --config vite.config.ts",
-    "build:prod": "npm run build:server \u0026\u0026 npm run build:client",
+    "build:prod": "npm run build:server && npm run build:client",
     "build:server": "NODE_ENV=production nest build",
     "dev": "./scripts/dev.sh",
     "dev:client": "NODE_ENV=development vite --config vite.config.ts",
@@ -211,7 +211,8 @@
     "check:zhongkao": "node scripts/check-zhongkao-scores.mjs",
     "type:check": "concurrently -n \"server,client\" -c \"blue,green\" \"npm run type:check:server\" \"npm run type:check:client\"",
     "type:check:client": "tsc --noEmit --project tsconfig.app.json",
-    "type:check:server": "tsc --noEmit --project tsconfig.node.json"
+    "type:check:server": "tsc --noEmit --project tsconfig.node.json",
+    "dev:local": "node ./scripts/dev-local.js"
   },
   "version": "2.2.6"
 }
