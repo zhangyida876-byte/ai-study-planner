@@ -117,6 +117,43 @@ export const fileAttachmentArray = customType<{
   },
 });
 
+export const resourceLibrary = pgTable("resource_library", {
+  id: text("id").primaryKey().default(sql`md5(((random())`),
+  sourceUrl: text("source_url").notNull().unique(),
+  sourceId: text("source_id"),
+  title: text("title").notNull(),
+  resourceType: varchar("resource_type", { length: 20 }).notNull(),
+  stage: varchar("stage", { length: 20 }).notNull(),
+  topic: varchar("topic", { length: 100 }).notNull(),
+  content: text("content").notNull(),
+  summary: text("summary"),
+  priority: integer("priority").notNull().default(100),
+  isLatest: boolean("is_latest").notNull().default(true),
+  createdAt: customTimestamptz("created_at", { precision: 6 }).notNull().default(sql`now()`),
+  updatedAt: customTimestamptz("updated_at", { precision: 6 }).notNull().default(sql`now()`),
+}, (table) => [
+  uniqueIndex("resource_library_source_url_key").on(table.sourceUrl),
+]);
+
+export const scriptResourceLibrary = pgTable("script_resource_library", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  sourceUrl: text("source_url").notNull().unique(),
+  sourceType: varchar("source_type", { length: 20 }).notNull().default('docx'),
+  category: varchar("category", { length: 80 }).notNull(),
+  stage: varchar("stage", { length: 20 }).notNull().default('all'),
+  tags: jsonb("tags").notNull().default('[]'),
+  contentMarkdown: text("content_markdown").notNull(),
+  summary: text("summary"),
+  priorityNote: text("priority_note"),
+  createdAt: customTimestamptz("created_at", { precision: 6 }).notNull().default(sql`now()`),
+  updatedAt: customTimestamptz("updated_at", { precision: 6 }).notNull().default(sql`now()`),
+}, (table) => [
+  uniqueIndex("script_resource_library_source_url_key").on(table.sourceUrl),
+  index("idx_script_resource_library_stage").on(table.stage),
+  index("idx_script_resource_library_category").on(table.category),
+]);
+
 export const learningPlanRecord = pgTable("learning_plan_record", {
   id: uuid("id").primaryKey().defaultRandom(),
   stage: varchar("stage", { length: 20 }).notNull(),
@@ -326,3 +363,5 @@ export const knowledgePointTable = knowledgePoint;
 export const learningPlanRecordTable = learningPlanRecord;
 export const learningSituationDataTable = learningSituationData;
 export const planRecordTable = planRecord;
+export const resourceLibraryTable = resourceLibrary;
+export const scriptResourceLibraryTable = scriptResourceLibrary;
