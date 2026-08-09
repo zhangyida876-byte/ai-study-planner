@@ -4,29 +4,13 @@
     "baseUrl": "./",
     "outDir": "./dist",
     "paths": {
-      "@server/*": [
-        "server/*"
-      ],
-      "@shared/*": [
-        "shared/*"
-      ]
-    },
-    "preserveWatchOutput": true
+      "@server/*": ["server/*"],
+      "@shared/*": ["shared/*"],
+    }
   },
   "watchOptions": {
-    "excludeDirectories": [
-      "node_modules/**"
-    ]
+    "excludeDirectories": ["node_modules/**"]
   },
-  "include": [
-    "server/**/*",
-    "shared/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "client",
-    "**/*.spec.ts",
-    "**/*.e2e-spec.ts"
-  ]
+  "include": ["server/**/*", "shared/**/*.ts"],
+  "exclude": ["node_modules", "dist", "client", "**/*.spec.ts", "**/*.e2e-spec.ts"],
 }

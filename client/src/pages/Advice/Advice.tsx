@@ -6,7 +6,6 @@ import WobblyCard from '@client/src/components/WobblyCard';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Streamdown } from '@client/src/components/ui/streamdown';
-import ObjectionHandlingPanel from '@client/src/components/ObjectionHandlingPanel';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import { stagePath } from '@client/src/config/stages';
@@ -234,22 +233,11 @@ const Advice: React.FC = () => {
             返回{stageConfig.label}主页
           </Link>
         </Button>
-        <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 话术百宝库</h1>
+        <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 建议话术</h1>
         <p className="font-hand mt-1 text-sm text-muted-foreground">
-          汇总总话术、自定义问题查询和电话异议随查，方便顾问按沟通场景快速取用。
+          保留总话术和自定义问题查询；异议处理已前移到本学段主页档案下方，方便电话中随查随打。
         </p>
       </div>
-
-      <section className="space-y-3">
-        <div>
-          <p className="font-hand text-xs font-bold text-marker-red">电话异议随查</p>
-          <h2 className="font-marker text-xl font-bold">异议处理快捷查询</h2>
-          <p className="font-hand mt-1 text-sm text-muted-foreground">
-            复用主页档案下方的随查随打能力，电话中遇到家长异议可直接检索源文档话术。
-          </p>
-        </div>
-        <ObjectionHandlingPanel compact />
-      </section>
 
       <WobblyCard variant="yellow" decoration="tack" wobblyIndex={5} hoverable={false} className="p-5">
         <div className="mb-3 flex items-center justify-between">
