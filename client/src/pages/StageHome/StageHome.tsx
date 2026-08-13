@@ -78,7 +78,7 @@ const StageHome: React.FC = () => {
           <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
           <h2 className="font-marker text-xl font-bold">电话异议随查</h2>
           <p className="font-hand mt-1 text-sm text-muted-foreground">
-            放在档案下方，方便顾问通话时边看学生信息边查询话术。
+            放在档案下方便于通话时随查；话术百宝库里也有同一套「异议处理｜随查随打」。
           </p>
         </div>
         <ObjectionHandlingPanel compact />

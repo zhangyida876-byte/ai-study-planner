@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Copy, Loader2, MessageCircleMore } from 'lucide-react';
 import { toast } from 'sonner';
 import WobblyCard from '@client/src/components/WobblyCard';
+import ObjectionHandlingPanel from '@client/src/components/ObjectionHandlingPanel';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Streamdown } from '@client/src/components/ui/streamdown';
@@ -235,9 +236,11 @@ const Advice: React.FC = () => {
         </Button>
         <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 话术百宝库</h1>
         <p className="font-hand mt-1 text-sm text-muted-foreground">
-          保留总话术和自定义问题查询；异议处理已前移到本学段主页档案下方，方便电话中随查随打。
+          含异议处理随查随打、总话术与自定义查询；异议处理与学段主页为同一套能力，两处都能用。
         </p>
       </div>
+
+      <ObjectionHandlingPanel />
 
       <WobblyCard variant="yellow" decoration="tack" wobblyIndex={5} hoverable={false} className="p-5">
         <div className="mb-3 flex items-center justify-between">
