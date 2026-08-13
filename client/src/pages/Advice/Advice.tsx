@@ -233,7 +233,7 @@ const Advice: React.FC = () => {
             返回{stageConfig.label}主页
           </Link>
         </Button>
-        <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 建议话术</h1>
+        <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 话术百宝库</h1>
         <p className="font-hand mt-1 text-sm text-muted-foreground">
           保留总话术和自定义问题查询；异议处理已前移到本学段主页档案下方，方便电话中随查随打。
         </p>

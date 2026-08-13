@@ -52,7 +52,7 @@ const FEATURES: StageFeatureConfig[] = [
   },
   {
     slug: 'advice',
-    label: '建议话术',
+    label: '话术百宝库',
     description: '汇总四大模块结果，生成可直接沟通的话术建议',
     pathSuffix: 'advice',
   },
