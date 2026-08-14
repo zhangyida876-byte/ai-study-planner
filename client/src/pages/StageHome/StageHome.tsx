@@ -1,28 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Stethoscope,
-  GraduationCap,
-  BookOpen,
-  CalendarDays,
-  MessageCircleMore,
-  ArrowLeft,
-} from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
 import StageProfileEditor from '@client/src/components/StageProfileEditor';
 import ObjectionHandlingPanel from '@client/src/components/ObjectionHandlingPanel';
 import { Button } from '@/components/ui/button';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
-import { stagePath } from '@client/src/config/stages';
-
-const FEATURE_ICONS = {
-  diagnosis: Stethoscope,
-  plan: GraduationCap,
-  knowledge: BookOpen,
-  'study-plan': CalendarDays,
-  advice: MessageCircleMore,
-} as const;
 
 const StageHome: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
@@ -82,43 +66,6 @@ const StageHome: React.FC = () => {
           </p>
         </div>
         <ObjectionHandlingPanel compact />
-      </section>
-
-      <section className="space-y-3">
-        <div>
-          <p className="font-hand text-xs font-bold text-marker-red">STEP 3</p>
-          <h2 className="font-marker text-xl font-bold">按需进入功能模块</h2>
-          <p className="font-hand mt-1 text-sm text-muted-foreground">
-            功能模块保留为导航入口，档案已自动带入，老师只需要按当前沟通场景选择进入。
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {stageConfig.features.map((feature, index) => {
-            const Icon = FEATURE_ICONS[feature.slug];
-            return (
-              <WobblyCard
-                key={feature.slug}
-                variant={index % 2 === 0 ? 'white' : 'yellow'}
-                decoration={index === 0 ? 'tape' : index === 1 ? 'tack' : 'none'}
-                wobblyIndex={index}
-                className="group p-4"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full border-[3px] border-ink bg-card">
-                    <Icon className="size-5 text-marker-red" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-marker text-base font-bold">{feature.label}</h3>
-                    <p className="font-hand mt-1 min-h-10 text-xs text-ink/65">{feature.description}</p>
-                    <Button asChild className="font-hand mt-3" variant="outline" size="sm">
-                      <Link to={stagePath(stageSlug, feature.slug)}>进入模块</Link>
-                    </Button>
-                  </div>
-                </div>
-              </WobblyCard>
-            );
-          })}
-        </div>
       </section>
     </div>
   );

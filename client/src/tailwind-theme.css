@@ -64,12 +64,12 @@
   --accent-border: hsl(from hsl(40 60% 93%) h s calc(l + var(--opaque-button-border-intensity)));
   --muted-border: hsl(from hsl(30 16% 87%) h s calc(l + var(--opaque-button-border-intensity)));
 
-  /* Fonts: hand-drawn sketch style */
+  /* Unified professional Chinese UI typography */
   --font-sans:
-    'Patrick Hand', 'Kalam', 'Segoe Print', 'Comic Sans MS',
-    'PingFang SC', 'Microsoft Yahei', cursive, sans-serif;
-  --font-marker: 'Kalam', 'Segoe Print', 'Comic Sans MS', 'PingFang SC', cursive;
-  --font-hand: 'Patrick Hand', 'Segoe Print', 'Comic Sans MS', 'PingFang SC', cursive;
+    'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC',
+    'Source Han Sans SC', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-marker: var(--font-sans);
+  --font-hand: var(--font-sans);
   --font-serif:
     'Georgia', 'Cambria', 'Times New Roman', Times, serif;
   --font-mono: 'Source Code Pro', monospace;
@@ -151,20 +151,20 @@
   --font-marker: var(--font-marker);
   --font-hand: var(--font-hand);
 
-  /* 阅读舒适度：略大于默认 16px，层级比例更清晰 */
-  --text-xs: 0.8125rem;
+  /* Restrained type scale for an information-dense workspace */
+  --text-xs: 0.75rem;
   --text-xs--line-height: 1.45;
-  --text-sm: 0.9375rem;
+  --text-sm: 0.875rem;
   --text-sm--line-height: 1.5;
-  --text-base: 1.0625rem;
+  --text-base: 1rem;
   --text-base--line-height: 1.6;
-  --text-lg: 1.1875rem;
+  --text-lg: 1.125rem;
   --text-lg--line-height: 1.55;
-  --text-xl: 1.3125rem;
+  --text-xl: 1.25rem;
   --text-xl--line-height: 1.45;
-  --text-2xl: 1.625rem;
+  --text-2xl: 1.5rem;
   --text-2xl--line-height: 1.35;
-  --text-3xl: 2rem;
+  --text-3xl: 1.875rem;
   --text-3xl--line-height: 1.25;
 
   --radius-sm: calc(var(--radius) - 4px);
@@ -184,10 +184,11 @@
 
 @layer base {
   html {
-    font-size: 106.25%;
+    font-size: 100%;
   }
 
   body {
+    font-family: var(--font-sans);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
