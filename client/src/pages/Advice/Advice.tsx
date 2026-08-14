@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Copy, Loader2, MessageCircleMore } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import WobblyCard from '@client/src/components/WobblyCard';
 import ObjectionHandlingPanel from '@client/src/components/ObjectionHandlingPanel';
@@ -46,8 +46,6 @@ function pickKeySentences(text: string, limit: number): string[] {
 const Advice: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
   const { profile } = useStageProfile(stageSlug);
-  const [comprehensiveAdvice, setComprehensiveAdvice] = useState('');
-  const [loadingComprehensive, setLoadingComprehensive] = useState(false);
   const [customQuery, setCustomQuery] = useState('');
   const [customAnswer, setCustomAnswer] = useState('');
   const [loadingCustom, setLoadingCustom] = useState(false);
@@ -174,23 +172,6 @@ const Advice: React.FC = () => {
     ],
   );
 
-  const handleGenerateComprehensive = useCallback(async () => {
-    setLoadingComprehensive(true);
-    setComprehensiveAdvice('');
-    try {
-      await generateAdviceByQuery({
-        query: `${stageConfig.label}综合建议话术`,
-        scene: '综合建议话术',
-        baseMaterial: internalMaterial,
-        onChunk: setComprehensiveAdvice,
-      });
-    } catch {
-      toast.error('综合建议话术生成失败，请重试');
-    } finally {
-      setLoadingComprehensive(false);
-    }
-  }, [generateAdviceByQuery, internalMaterial, stageConfig.label]);
-
   const handleGenerateCustom = useCallback(async () => {
     if (!customQuery.trim()) {
       toast.error('请先输入自定义问题');
@@ -212,19 +193,6 @@ const Advice: React.FC = () => {
     }
   }, [customQuery, generateAdviceByQuery, internalMaterial]);
 
-  const copyAll = async () => {
-    if (!comprehensiveAdvice.trim()) {
-      toast.error('请先生成总话术');
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(comprehensiveAdvice);
-      toast.success('总话术已复制');
-    } catch {
-      toast.error('复制失败，请重试');
-    }
-  };
-
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
@@ -236,40 +204,11 @@ const Advice: React.FC = () => {
         </Button>
         <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 话术百宝库</h1>
         <p className="font-hand mt-1 text-sm text-muted-foreground">
-          含异议处理随查随打、总话术与自定义查询；异议处理与学段主页为同一套能力，两处都能用。
+          含异议处理随查随打与自定义查询；异议处理与学段主页为同一套能力，两处都能用。
         </p>
       </div>
 
       <ObjectionHandlingPanel />
-
-      <WobblyCard variant="yellow" decoration="tack" wobblyIndex={5} hoverable={false} className="p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MessageCircleMore className="size-5 text-marker-red" />
-            <h2 className="font-marker text-xl font-bold">总的话术</h2>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleGenerateComprehensive} disabled={loadingComprehensive}>
-              {loadingComprehensive ? <Loader2 className="mr-1 size-4 animate-spin" /> : null}
-              生成话术
-            </Button>
-            <Button variant="outline" onClick={copyAll} disabled={!comprehensiveAdvice}>
-              <Copy className="mr-1 size-4" />
-              复制
-            </Button>
-          </div>
-        </div>
-        <p className="mb-2 text-xs text-ink/70">内部话术锚点：{internalAnchor}</p>
-        <div className="rounded-md border border-ink/20 bg-white/70 p-3 min-h-[120px]">
-          {comprehensiveAdvice ? (
-            <Streamdown>{comprehensiveAdvice}</Streamdown>
-          ) : (
-            <p className="font-hand text-sm text-muted-foreground">
-              点击“生成话术”，系统会结合当前模块结果与内部素材输出总话术。
-            </p>
-          )}
-        </div>
-      </WobblyCard>
 
       <WobblyCard variant="white" decoration="tape" wobblyIndex={7} hoverable={false} className="p-5">
         <h3 className="font-marker mb-3 text-lg font-bold">自定义问题查询</h3>
