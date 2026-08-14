@@ -98,7 +98,11 @@
 - ❌ 使用模糊阴影 shadow-md/shadow-lg 替代零 blur 硬阴影（丧失平面插画质感）
 - ❌ 在手写字体体系中混入 Inter/Roboto 等无衬线体（割裂手绘氛围一致性）
 
-## 9. 系统架构
+## 9. Codex / 发布注意
+
+Codex 与 Cursor 共用本仓库。发布与权限问题见根目录 **`CODEX.md`**（不是备份文件损坏）。本地可选原生依赖残缺时先跑 `npm run ensure:native`；发布前以 `npm run type:check` 为准，勿因本地 `build:client` 失败单独阻断妙搭发布。
+
+## 10. 系统架构
 
 ### 页面路由
 

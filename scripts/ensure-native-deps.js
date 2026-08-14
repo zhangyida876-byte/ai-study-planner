@@ -60,12 +60,19 @@ function missingPackages() {
 
 function installPackage(pkg) {
   console.log(`[native-deps] 安装 ${pkg} ...`);
-  execSync(`npm install --no-save --include=optional --no-audit --no-fund "${pkg}"`, {
+  const opts = {
     cwd: ROOT,
     stdio: 'inherit',
     env: { ...process.env, CI: '1' },
     timeout: 180000,
-  });
+  };
+  try {
+    execSync(`npm install --no-save --include=optional --no-audit --no-fund "${pkg}"`, opts);
+  } catch {
+    // npm 偶发跳过 optional / lock 漂移时，--force 才能装上平台原生包
+    console.warn(`[native-deps] ${pkg} 常规安装失败，改用 --force 重试`);
+    execSync(`npm install --no-save --force --no-audit --no-fund "${pkg}"`, opts);
+  }
 }
 
 function markOk() {
