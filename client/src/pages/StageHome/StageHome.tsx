@@ -10,7 +10,7 @@ import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 
 const StageHome: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
-  const { profile, saveProfile, regionText, countdownDays } = useStageProfile(stageSlug);
+  const { profile, saveProfile, countdownDays } = useStageProfile(stageSlug);
 
   return (
     <div className="mx-auto max-w-6xl space-y-7">
@@ -53,7 +53,6 @@ const StageHome: React.FC = () => {
           profile={profile}
           onSave={saveProfile}
           countdownDays={countdownDays}
-          regionText={regionText}
         />
       </section>
 

@@ -49,6 +49,7 @@ export function appendProfileAndStageRules(
       profile.studentName ? `学生姓名：${profile.studentName}` : '',
       region ? `地区：${region}` : '',
       profile.grade ? `年级：${profile.grade}` : '',
+      profile.schoolSystem ? `学制：${profile.schoolSystem === '5-4' ? '五四制' : '六三制'}` : '',
       profile.school ? `当前学校：${profile.school}` : '',
       profile.targetSchool ? `目标学校/院校：${profile.targetSchool}` : '',
       profile.targetMajor ? `目标专业：${profile.targetMajor}` : '',

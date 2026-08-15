@@ -7,6 +7,8 @@ export interface StageProfile {
   city: string;
   county: string;
   grade: string;
+  /** 基础教育学制：六三制或五四制 */
+  schoolSystem: '' | '6-3' | '5-4';
   school: string;
   targetSchool: string;
   /** 目标学校近年分数线（自动匹配，可手动覆盖） */
@@ -33,6 +35,7 @@ export const EMPTY_STAGE_PROFILE: StageProfile = {
   city: '',
   county: '',
   grade: '',
+  schoolSystem: '',
   school: '',
   targetSchool: '',
   targetScore: undefined,
@@ -49,7 +52,10 @@ export const EMPTY_STAGE_PROFILE: StageProfile = {
 };
 
 export function formatProfileRegion(p: Pick<StageProfile, 'province' | 'city' | 'county'>): string {
-  return [p.province, p.city, p.county].filter(Boolean).join('');
+  // 城市是招生、教材和考试政策的主要口径；省市冲突时不让省份覆盖城市。
+  return p.city
+    ? [p.city, p.county].filter(Boolean).join('')
+    : [p.province, p.county].filter(Boolean).join('');
 }
 
 export function getProfileStorageKey(stageSlug: StageSlug): string {

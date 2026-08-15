@@ -1,10 +1,13 @@
 import type { StageProfile } from '@client/src/types/stage-profile';
 import { formatProfileRegion } from '@client/src/types/stage-profile';
 import { parseScoreOverviewToSubjectScores } from '@client/src/utils/score-overview';
+import { resolvePolicyProvince } from '@client/src/utils/region-priority';
 
 /** 省 / 市 / 区县 → 模块内 region 文本（空格分隔，与 Plan/Diagnosis 一致） */
 export function buildRegionTextFromProfile(profile: Pick<StageProfile, 'province' | 'city' | 'county'>): string {
-  return [profile.province, profile.city, profile.county].filter(Boolean).join(' ');
+  return profile.city
+    ? [profile.city, profile.county].filter(Boolean).join(' ')
+    : [profile.province, profile.county].filter(Boolean).join(' ');
 }
 
 export function hasProfileBasics(profile: StageProfile): boolean {
@@ -20,7 +23,7 @@ export function getPlanAutofillFromProfile(profile: StageProfile) {
     if (!Number.isNaN(y)) examYear = y;
   }
   return {
-    selectedProvince: profile.province,
+    selectedProvince: resolvePolicyProvince(profile.province, profile.city),
     selectedCity: profile.city,
     county: profile.county,
     region,
@@ -57,7 +60,7 @@ export function getStudyPlanAutofillFromProfile(profile: StageProfile) {
 /** 从档案构建知识点筛选可写入的局部状态 */
 export function getKnowledgeAutofillFromProfile(profile: StageProfile) {
   return {
-    province: profile.province,
+    province: resolvePolicyProvince(profile.province, profile.city),
     city: profile.city,
     region: buildRegionTextFromProfile(profile),
     grade: profile.grade,

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader2, Save, Search, Sparkles, User } from 'lucide-react';
+import { BookOpen, Loader2, MapPin, Save, Search, Target, User } from 'lucide-react';
 import { toast } from 'sonner';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Button } from '@/components/ui/button';
@@ -29,17 +29,30 @@ import {
 } from '@client/src/api/plugins';
 import { policy as policyApi } from '@client/src/api';
 import { resolveGaokaoModeByProvince } from '@client/src/utils/gaokao-mode';
-import { ALL_SUBJECTS, getVersionForProvinceSubject } from '@client/src/pages/Knowledge/KnowledgeFilterPanel';
+import {
+  ALL_SUBJECTS,
+  getVersionForProvinceSubject,
+} from '@client/src/pages/Knowledge/KnowledgeFilterPanel';
+import { resolveProvinceByCity } from '@client/src/utils/region-priority';
 
 interface StageProfileEditorProps {
   stageConfig: StageConfig;
   profile: StageProfile;
   onSave: (profile: StageProfile) => void;
   countdownDays: number | null;
-  regionText: string;
 }
 
 type CandidateTier = '冲刺' | '匹配' | '保底';
+
+const SIX_THREE_GRADES = {
+  elementary: ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'],
+  middle: ['初一', '初二', '初三'],
+} as const;
+
+const FIVE_FOUR_GRADES = {
+  elementary: ['一年级', '二年级', '三年级', '四年级', '五年级'],
+  middle: ['初一', '初二', '初三', '初四'],
+} as const;
 
 function resolveSubjectMaxForDisplay(subject: string, hints: Record<string, number>): number | undefined {
   if (hints[subject]) return hints[subject];
@@ -84,7 +97,6 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   profile,
   onSave,
   countdownDays,
-  regionText,
 }) => {
   const [draft, setDraft] = useState<StageProfile>(profile);
   const [schoolKeyword, setSchoolKeyword] = useState('');
@@ -102,31 +114,32 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     setSchoolKeyword(profile.targetSchool || '');
   }, [profile.updatedAt]);
 
-  const safeGrade = stageConfig.grades.includes(draft.grade) ? draft.grade : '';
+  const schoolSystem = draft.schoolSystem || '6-3';
+  const gradeOptions = useMemo(() => {
+    if (stageConfig.slug === 'high') return ['高一', '高二', '高三'];
+    const options = schoolSystem === '5-4' ? FIVE_FOUR_GRADES : SIX_THREE_GRADES;
+    return [...options[stageConfig.slug]];
+  }, [schoolSystem, stageConfig.slug]);
+  const safeGrade = gradeOptions.includes(draft.grade) ? draft.grade : '';
+  const cityProvince = useMemo(() => resolveProvinceByCity(draft.city), [draft.city]);
+  const effectiveProvince = cityProvince || draft.province;
   const gaokaoModeMatch = useMemo(
-    () => resolveGaokaoModeByProvince(draft.province),
-    [draft.province],
+    () => resolveGaokaoModeByProvince(effectiveProvince),
+    [effectiveProvince],
   );
 
   const patch = (partial: Partial<StageProfile>) => {
     setDraft((prev) => ({ ...prev, ...partial }));
   };
 
-  const clearSchoolAndLowerRegion = () => {
-    setSchoolKeyword('');
-    setSchoolCandidates([]);
-  };
-
   const handleProvinceTextChange = (next: string) => {
     const text = next.trim();
-    clearSchoolAndLowerRegion();
-    const nextGaokaoMode = stageConfig.slug === 'high' ? resolveGaokaoModeByProvince(text).mode : draft.examMode;
+    const policyProvince = cityProvince || text;
+    const nextGaokaoMode = stageConfig.slug === 'high'
+      ? resolveGaokaoModeByProvince(policyProvince).mode
+      : draft.examMode;
     patch({
       province: text,
-      city: '',
-      county: '',
-      targetSchool: '',
-      targetScore: undefined,
       examMode: nextGaokaoMode,
     });
   };
@@ -135,7 +148,17 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     const text = next.trim();
     setSchoolKeyword('');
     setSchoolCandidates([]);
-    patch({ city: text, county: '', targetSchool: '', targetScore: undefined });
+    const inferredProvince = resolveProvinceByCity(text) || draft.province;
+    const nextGaokaoMode = stageConfig.slug === 'high'
+      ? resolveGaokaoModeByProvince(inferredProvince).mode
+      : draft.examMode;
+    patch({
+      city: text,
+      county: '',
+      targetSchool: '',
+      targetScore: undefined,
+      examMode: nextGaokaoMode,
+    });
   };
 
   const handleCountyTextChange = (next: string) => {
@@ -153,13 +176,17 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     }
     onSave({
       ...draft,
+      grade: safeGrade,
+      schoolSystem: stageConfig.slug === 'high' ? '' : schoolSystem,
       examMode: stageConfig.slug === 'high' ? gaokaoModeMatch.mode : draft.examMode,
     });
     toast.success('已保存个人信息，下面 4 个模块会自动带入');
   };
 
   const regionSummary = useMemo(
-    () => [draft.province, draft.city, draft.county].filter(Boolean).join(' '),
+    () => draft.city
+      ? [draft.city, draft.county].filter(Boolean).join(' ')
+      : [draft.province, draft.county].filter(Boolean).join(' '),
     [draft.province, draft.city, draft.county],
   );
 
@@ -174,7 +201,9 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     const timer = setTimeout(async () => {
       setScoreSummaryLoading(true);
       try {
-        const region = [draft.province, draft.city, draft.county].filter(Boolean).join(' ');
+        const region = draft.city
+          ? [draft.city, draft.county].filter(Boolean).join(' ')
+          : draft.province;
         const year = String(new Date().getFullYear());
         const keyword = `${stageConfig.examType} 考试科目 录取计分满分 总分构成 官方`;
         const knownHints = getKnownSubjectMaxHints(region, stageConfig.examType);
@@ -227,7 +256,9 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       } catch {
         if (!cancelled) {
           // 权威城市即使联网失败也保留本地分值
-          const region = [draft.province, draft.city, draft.county].filter(Boolean).join(' ');
+          const region = draft.city
+            ? [draft.city, draft.county].filter(Boolean).join(' ')
+            : draft.province;
           if (!hasKnownExamScoreAuthority(region, stageConfig.examType)) {
             setSubjectMaxHints({});
             setScoreSummary('本地区满分：联网查询失败，可稍后重试或手动核验');
@@ -245,8 +276,8 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   }, [draft.province, draft.city, draft.county, stageConfig.examType]);
 
   const textbookVersion = useMemo(
-    () => getVersionForProvinceSubject(draft.province, selectedTextbookSubject),
-    [draft.province, selectedTextbookSubject],
+    () => getVersionForProvinceSubject(effectiveProvince, selectedTextbookSubject),
+    [effectiveProvince, selectedTextbookSubject],
   );
   const selectedSubjectMax = useMemo(
     () => resolveSubjectMaxForDisplay(selectedTextbookSubject, subjectMaxHints),
@@ -294,7 +325,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     const keyword = (keywordOverride ?? schoolKeyword).trim();
     setSearchingSchool(true);
     try {
-      const region = [draft.province, draft.city].join(' ');
+      const region = draft.city || draft.province;
       let candidates: SchoolCandidate[] = [];
 
       // 初中学段优先用本地高中政策库；高中目标是大学/院校，不能混用高中/中学库。
@@ -388,7 +419,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     setMatchingScore(true);
     try {
       const score = await fetchSchoolScoreByName({
-        region: [draft.province, draft.city].join(' '),
+        region: draft.city || draft.province,
         schoolName: candidate.name,
         examType: stageConfig.slug === 'high' ? '高考' : '中考',
       });
@@ -405,15 +436,14 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
 
   return (
     <WobblyCard variant="white" decoration="tape" wobblyIndex={1} hoverable={false} className="p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-5 flex items-center gap-2">
         <div className="flex items-center gap-2">
           <User className="size-5 text-pen-blue" />
-          <h2 className="font-marker text-lg font-bold">全局学生档案</h2>
+          <h2 className="font-marker text-lg font-bold">学生基本信息</h2>
         </div>
-        <p className="font-hand text-xs text-muted-foreground">只需先填地区和目标学校，下面模块都会自动复用</p>
       </div>
 
-      <div className={`grid gap-4 ${stageConfig.slug === 'high' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+      <div className="grid gap-4 md:grid-cols-3">
         <div>
           <Label className="font-hand">学生姓名</Label>
           <Input
@@ -423,12 +453,36 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
             placeholder="如：张三"
           />
         </div>
+        {stageConfig.slug !== 'high' && (
+          <div>
+            <Label className="font-hand">学制</Label>
+            <Select
+              value={schoolSystem}
+              onValueChange={(value: '6-3' | '5-4') => {
+                const nextOptions = value === '5-4' ? FIVE_FOUR_GRADES : SIX_THREE_GRADES;
+                const nextGrades = nextOptions[stageConfig.slug];
+                patch({
+                  schoolSystem: value,
+                  grade: nextGrades.some((grade) => grade === draft.grade) ? draft.grade : '',
+                });
+              }}
+            >
+              <SelectTrigger className="font-hand mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="6-3">六三制（小学6年 + 初中3年）</SelectItem>
+                <SelectItem value="5-4">五四制（小学5年 + 初中4年）</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div>
-          <Label className="font-hand">当前年级（选填）</Label>
+          <Label className="font-hand">当前年级</Label>
           <Select value={toSelectValue(safeGrade)} onValueChange={(v) => patch({ grade: v })}>
             <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择年级" /></SelectTrigger>
             <SelectContent>
-              {stageConfig.grades.map((g) => (
+              {gradeOptions.map((g) => (
                 <SelectItem key={g} value={g}>{g}</SelectItem>
               ))}
             </SelectContent>
@@ -437,30 +491,23 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         {stageConfig.slug === 'high' && (
           <div>
             <Label className="font-hand">当地高考选科模式</Label>
-            <div className="mt-1 rounded-lg border border-ink/15 bg-pen-blue/5 px-3 py-2">
-              <div className="font-marker text-lg font-bold text-pen-blue">
+            <div className="mt-1 border-l-[3px] border-pen-blue bg-pen-blue/5 px-3 py-2">
+              <div className="font-marker text-sm font-bold text-pen-blue">
                 {gaokaoModeMatch.mode || '待选择省份后自动判断'}
               </div>
-              <p className="font-hand mt-1 text-xs text-ink/70">{gaokaoModeMatch.label}</p>
+              <p className="font-hand mt-0.5 text-xs text-ink/70">{gaokaoModeMatch.label}</p>
             </div>
-            <p className="font-hand mt-1 text-[11px] text-muted-foreground">
-              系统按省份自动写入档案，保存后带入学情诊断、升学规划和课表学习方案。
-            </p>
           </div>
         )}
       </div>
 
-      <div className="mt-4 rounded-xl border border-ink/10 bg-background/80 p-4 shadow-sm">
+      <div className="mt-5 border-t-2 border-dashed border-ink/15 pt-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h3 className="font-marker text-base font-bold text-ink">地区选择</h3>
-            <span className="font-hand text-xs text-ink/60">当前地区：{regionSummary || '未选择'}</span>
-            {scoreSummaryLoading && <span className="font-hand text-xs text-pen-blue">正在查询本地满分...</span>}
-            {!scoreSummaryLoading && scoreSummary && (
-              <span className="font-hand text-xs text-marker-red">{scoreSummary}</span>
-            )}
+          <div className="flex items-center gap-2">
+            <MapPin className="size-4 text-marker-red" />
+            <h3 className="font-marker text-base font-bold text-ink">地区与政策口径</h3>
           </div>
-          <span className="font-hand text-xs text-muted-foreground">省份、城市必填，区县选填</span>
+          <span className="font-hand text-xs text-muted-foreground">省市不一致时，系统以城市为准</span>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           <div>
@@ -469,11 +516,8 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               className="font-hand mt-1"
               value={draft.province}
               onChange={(e) => handleProvinceTextChange(e.target.value)}
-              placeholder="手动输入省份，如：湖北省"
+              placeholder="如：湖北省"
             />
-            <p className="font-hand mt-1 text-[11px] text-muted-foreground">
-              手动输入，不自动识别、不联想、不锁定旧值。
-            </p>
           </div>
           <div>
             <Label className="font-hand">城市 *</Label>
@@ -481,11 +525,8 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               className="font-hand mt-1"
               value={draft.city}
               onChange={(e) => handleCityTextChange(e.target.value)}
-              placeholder="手动输入城市/盟/州，如：武汉市"
+              placeholder="如：武汉市"
             />
-            <p className="font-hand mt-1 text-[11px] text-muted-foreground">
-              输入什么保存什么，不再依赖城市候选。
-            </p>
           </div>
           <div>
             <Label className="font-hand">区县（选填，可不选）</Label>
@@ -493,36 +534,29 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               className="font-hand mt-1"
               value={draft.county}
               onChange={(e) => handleCountyTextChange(e.target.value)}
-              placeholder="手动输入区县，如：沙坪坝区；也可以不填"
+              placeholder="如：武昌区"
             />
-            <p className="font-hand mt-1 text-[11px] text-muted-foreground">
-              区县不确定可以空着，后续模块仍按省市运行。
-            </p>
           </div>
         </div>
+        {(scoreSummaryLoading || scoreSummary) && (
+          <div className="font-hand mt-3 flex items-start gap-2 border-l-[3px] border-marker-red bg-marker-red/5 px-3 py-2 text-xs">
+            {scoreSummaryLoading && <Loader2 className="mt-0.5 size-3.5 shrink-0 animate-spin text-pen-blue" />}
+            <span>{scoreSummaryLoading ? `正在核验 ${regionSummary || '当前城市'} 的考试分值` : scoreSummary}</span>
+          </div>
+        )}
       </div>
 
       {shouldShowTextbookHint && (
-        <div className="mt-4 rounded-xl border-2 border-dashed border-pen-blue/30 bg-pen-blue/5 p-3">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h3 className="font-marker text-base font-bold text-ink">当地教材版本与单科满分</h3>
-              <p className="font-hand text-xs text-ink/60">
-                已根据地区和年级自动匹配，默认展示数学；可切换科目，便于顾问沟通。
-              </p>
-            </div>
-            {scoreSummaryLoading && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-xs text-pen-blue">
-                <Loader2 className="size-3 animate-spin" />
-                正在联网核验满分
-              </span>
-            )}
+        <div className="mt-5 border-t-2 border-dashed border-ink/15 pt-5">
+          <div className="mb-3 flex items-center gap-2">
+            <BookOpen className="size-4 text-pen-blue" />
+            <h3 className="font-marker text-base font-bold text-ink">教材与单科分值</h3>
           </div>
-          <div className="grid gap-3 md:grid-cols-[160px_1fr_1fr]">
+          <div className="grid items-end gap-3 md:grid-cols-[180px_1fr]">
             <div>
-              <Label className="font-hand">查询科目</Label>
+              <Label className="font-hand">科目</Label>
               <Select value={selectedTextbookSubject} onValueChange={setSelectedTextbookSubject}>
-                <SelectTrigger className="font-hand mt-1 bg-white">
+                <SelectTrigger className="font-hand mt-1">
                   <SelectValue placeholder="选择科目" />
                 </SelectTrigger>
                 <SelectContent>
@@ -532,100 +566,80 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
                 </SelectContent>
               </Select>
             </div>
-            <div className="rounded-lg border border-ink/10 bg-white px-3 py-2">
-              <div className="font-hand text-xs text-muted-foreground">自动匹配教材版本</div>
-              <div className="mt-1 flex items-center gap-2">
-                <span className="font-marker text-lg font-bold text-pen-blue">
-                  {selectedTextbookSubject} · {textbookVersion}
-                </span>
-                <span className="rounded-full bg-pen-blue/10 px-2 py-0.5 text-xs text-pen-blue">自动匹配</span>
-              </div>
-              <p className="font-hand mt-1 text-xs text-ink/60">
-                以当地教育局与学校实际使用版本为准，顾问沟通前可二次确认。
-              </p>
-            </div>
-            <div className="rounded-lg border border-ink/10 bg-white px-3 py-2">
-              <div className="font-hand text-xs text-muted-foreground">单科满分提示</div>
-              <div className="mt-1 font-marker text-lg font-bold text-marker-red">
-                {selectedSubjectMax ? `${selectedTextbookSubject}满分 ${selectedSubjectMax} 分` : '暂无明确满分，需人工核验'}
-              </div>
-              <p className="font-hand mt-1 text-xs text-ink/60">
-                {scoreHintFromAuthority
-                  ? '来源于本地权威政策表（教育局/考试院口径），联网仅作校验；若当年政策更新，请以官方最新文件为准。'
-                  : '来源于当前地区考情联网查询并交叉校验；若当年政策更新，请以官方最新文件为准。'}
-              </p>
-              {selectedSubjectScoreNote && (
-                <p className="font-hand mt-1 rounded-md bg-marker-red/10 px-2 py-1 text-xs text-marker-red">
-                  {selectedSubjectScoreNote}
-                </p>
-              )}
+            <div className="font-hand flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 border-l-[3px] border-pen-blue bg-pen-blue/5 px-3 py-2 text-sm">
+              <strong className="text-pen-blue">{selectedTextbookSubject} · {textbookVersion}</strong>
+              <span className="text-ink/30">|</span>
+              <strong className="text-marker-red">
+                {selectedSubjectMax ? `满分 ${selectedSubjectMax} 分` : '满分待核验'}
+              </strong>
+              {selectedSubjectScoreNote && <span className="text-xs text-ink/65">{selectedSubjectScoreNote}</span>}
+              <span className="text-xs text-ink/50">
+                {scoreHintFromAuthority ? '本地政策口径' : '联网匹配结果，以学校最新通知为准'}
+              </span>
             </div>
           </div>
         </div>
       )}
 
-      <div className="mt-4">
-        <Label className="font-hand">当前成绩概览（选填）</Label>
-        <Input
-          className="font-hand mt-1"
-          value={draft.scoresOverview}
-          onChange={(e) => patch({ scoresOverview: e.target.value })}
-          placeholder="如：语92 数78 英85 物70"
-        />
+      <div className="mt-5 border-t-2 border-dashed border-ink/15 pt-5">
+        <div className="mb-3 flex items-center gap-2">
+          <Target className="size-4 text-marker-red" />
+          <h3 className="font-marker text-base font-bold text-ink">成绩与升学目标</h3>
+        </div>
+        <div className={`grid gap-4 ${stageConfig.slug === 'high' ? 'md:grid-cols-2' : ''}`}>
+          <div>
+            <Label className="font-hand">当前成绩概览（选填）</Label>
+            <Input
+              className="font-hand mt-1"
+              value={draft.scoresOverview}
+              onChange={(e) => patch({ scoresOverview: e.target.value })}
+              placeholder="如：语文92，数学78，英语85"
+            />
+          </div>
+          {stageConfig.slug === 'high' && (
+            <div>
+              <Label className="font-hand">职业方向（选填）</Label>
+              <Input
+                className="font-hand mt-1"
+                value={draft.careerIntent}
+                onChange={(e) => patch({ careerIntent: e.target.value })}
+                placeholder="如：人工智能、医学、金融、设计"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
-      {stageConfig.slug === 'high' && (
-        <div className="mt-4">
-          <Label className="font-hand">想做的事情 / 职业方向（选填）</Label>
-          <Input
-            className="font-hand mt-1"
-            value={draft.careerIntent}
-            onChange={(e) => patch({ careerIntent: e.target.value })}
-            placeholder="如：人工智能、医生、金融分析、设计、法律"
-          />
-        </div>
-      )}
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <div className="rounded-xl border-2 border-dashed border-postit-yellow bg-postit-yellow/20 p-3">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <Label className="font-hand font-bold text-ink">{stageConfig.targetLabel}</Label>
-            <span className="rounded-full border border-marker-red/30 bg-white px-2 py-0.5 text-xs font-bold text-marker-red">
-              {stageConfig.slug === 'high' ? '大学/院校可搜索，也支持自定义输入' : '当地学校可搜索，也支持自定义输入'}
-            </span>
-          </div>
-          <p className="font-hand mb-2 text-xs text-ink/70">
-            {stageConfig.slug === 'high'
-              ? '不知道当地有哪些大学，先点“显示当地院校”；知道院校名称，可输入关键词后点“搜索并匹配”。'
-              : '不知道当地有哪些学校，先点“显示当地重点校”；知道学校名称，可输入关键词后点“搜索并匹配”。'}
-          </p>
-          <div className="mt-1 flex gap-2">
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)]">
+        <div>
+          <Label className="font-hand font-bold text-ink">{stageConfig.targetLabel}</Label>
+          <div className="mt-1 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
             <Input
               className="font-hand"
               value={schoolKeyword}
               onChange={(e) => setSchoolKeyword(e.target.value)}
-              placeholder={stageConfig.slug === 'high' ? '如：清华大学 / 本地大学名称' : '如：华师一附中 / 当地学校名称'}
+              placeholder={stageConfig.slug === 'high' ? '输入目标院校' : '输入目标学校'}
             />
             <Button
               type="button"
               variant="outline"
-              className="min-w-[132px] border-2 border-ink bg-white font-hand"
+              className="border-2 border-ink bg-white font-hand"
               onClick={() => {
                 setSchoolKeyword('');
                 handleSearchSchools('');
               }}
               disabled={searchingSchool}
             >
-              {stageConfig.slug === 'high' ? '显示当地院校' : '显示当地重点校'}
+              {stageConfig.slug === 'high' ? '本地院校' : '本地学校'}
             </Button>
             <Button
               type="button"
-              className="min-w-[132px] border-2 border-ink bg-marker-red font-hand text-white hover:bg-marker-red/90"
+              className="border-2 border-ink bg-marker-red font-hand text-white hover:bg-marker-red/90"
               onClick={() => handleSearchSchools()}
               disabled={searchingSchool}
             >
               {searchingSchool ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-              搜索并匹配
+              搜索
             </Button>
           </div>
           {schoolCandidates.length > 0 && (
@@ -648,12 +662,9 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               ))}
             </div>
           )}
-          <p className="font-hand mt-2 text-xs text-ink/70">
-            搜索后最多展示 10 个本地候选学校，并按“冲刺/匹配/保底”分层；点击学校即可自动填入并尝试匹配分数线。
-          </p>
         </div>
         <div>
-          <Label className="font-hand">自动匹配分数线</Label>
+          <Label className="font-hand">目标分数线（选填）</Label>
           <Input
             className="font-hand mt-1"
             value={draft.targetScore != null ? String(draft.targetScore) : ''}
@@ -661,7 +672,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               const value = e.target.value.trim();
               patch({ targetScore: value ? Number(value) : undefined });
             }}
-            placeholder={matchingScore ? '联网匹配中...' : '选择学校后自动匹配'}
+            placeholder={matchingScore ? '匹配中...' : '选择学校后自动填写'}
           />
           {matchingScore && (
             <p className="font-hand mt-1 inline-flex items-center gap-1 text-xs text-pen-blue">
@@ -672,27 +683,11 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t-2 border-dashed border-ink/10 pt-4">
-        <div className="font-hand text-sm text-ink/70">
-          {regionSummary && <span className="mr-3">📍 {regionSummary}</span>}
-          {draft.grade && <span className="mr-3">🎓 {draft.grade}</span>}
-          {stageConfig.slug === 'high' && gaokaoModeMatch.mode && (
-            <span className="mr-3">🧭 {gaokaoModeMatch.mode}</span>
-          )}
-          {draft.targetSchool && <span className="mr-3">🏫 {draft.targetSchool}</span>}
-          {stageConfig.slug === 'high' && draft.careerIntent && (
-            <span className="mr-3">💼 {draft.careerIntent}</span>
-          )}
-          {draft.targetScore != null && (
-            <span className="mr-3 inline-flex items-center gap-1 text-marker-red">
-              <Sparkles className="size-3.5" />
-              分数线约 {draft.targetScore} 分
-            </span>
-          )}
-          {countdownDays != null && draft.examDate && (
-            <span className="text-marker-red">距{stageConfig.examLabel} {countdownDays} 天</span>
-          )}
-        </div>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t-2 border-dashed border-ink/15 pt-4">
+        <p className="font-hand text-xs text-muted-foreground">
+          保存后将同步到学情诊断、升学规划、知识点查询和学习计划。
+          {countdownDays != null && draft.examDate ? ` 距${stageConfig.examLabel} ${countdownDays} 天。` : ''}
+        </p>
         <Button className="font-hand" onClick={handleSave}>
           <Save className="mr-1 size-4" />
           保存档案

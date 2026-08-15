@@ -306,4 +306,10 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
 };
 
 export default KnowledgeFilterPanel;
-export { REGION_VERSION_MAP, SUBJECT_VERSION_MAP, GRADES, SEMESTERS, getVersionForProvinceSubject };
+export {
+  REGION_VERSION_MAP,
+  SUBJECT_VERSION_MAP,
+  GRADES,
+  SEMESTERS,
+  getVersionForProvinceSubject,
+};
