@@ -126,7 +126,6 @@ const Diagnosis: React.FC = () => {
       const city = regionPartsRef.current.city || parts[1] || profile.city;
       const county = regionPartsRef.current.county || parts[2] || profile.county;
       updateProfile({
-        studentName: formSnapshot.studentName || '',
         province,
         city,
         county,
@@ -274,7 +273,6 @@ const Diagnosis: React.FC = () => {
       return;
     }
     updateProfile({
-      studentName: snapshot.studentName || '',
       province: regionPartsRef.current.province || profile.province,
       city: regionPartsRef.current.city || profile.city,
       county: regionPartsRef.current.county || profile.county,

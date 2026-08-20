@@ -13,10 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { StageConfig } from '@client/src/config/stages';
-import {
-  getProfileStorageKey,
-  type StageProfile,
-} from '@client/src/types/stage-profile';
+import type { StageProfile } from '@client/src/types/stage-profile';
 import { toSelectValue } from '@client/src/lib/utils';
 import {
   extractSubjectMaxHintsFromPolicyText,
@@ -111,12 +108,12 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   const [subjectMaxHints, setSubjectMaxHints] = useState<Record<string, number>>({});
   const [scoreHintFromAuthority, setScoreHintFromAuthority] = useState(false);
   const [selectedTextbookSubject, setSelectedTextbookSubject] = useState('数学');
-  const draftDirtyRef = useRef(false);
+  const draftRef = useRef<StageProfile>(profile);
 
   useEffect(() => {
     setDraft(profile);
+    draftRef.current = profile;
     setSchoolKeyword(profile.targetSchool || '');
-    draftDirtyRef.current = false;
   }, [profile.updatedAt]);
 
   const schoolSystem = draft.schoolSystem || '6-3';
@@ -144,32 +141,11 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   );
 
   const patch = (partial: Partial<StageProfile>) => {
-    draftDirtyRef.current = true;
-    setDraft((prev) => {
-      const next: StageProfile = { ...prev, ...partial };
-      try {
-        localStorage.setItem(
-          getProfileStorageKey(stageConfig.slug),
-          JSON.stringify({
-            ...buildProfileForSave(next),
-            updatedAt: new Date().toISOString(),
-          }),
-        );
-      } catch {
-        // ignore local draft persistence failures
-      }
-      return next;
-    });
+    const next: StageProfile = { ...draftRef.current, ...partial };
+    draftRef.current = next;
+    setDraft(next);
+    onSave(buildProfileForSave(next));
   };
-
-  useEffect(() => {
-    if (!draftDirtyRef.current) return;
-    const timer = setTimeout(() => {
-      draftDirtyRef.current = false;
-      onSave(buildProfileForSave(draft));
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [draft, onSave, buildProfileForSave]);
 
   const handleProvinceTextChange = (next: string) => {
     const text = next.trim();
@@ -213,7 +189,6 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       toast.error('请选择城市');
       return;
     }
-    draftDirtyRef.current = false;
     onSave(buildProfileForSave(draft));
     toast.success('已保存个人信息，下面 4 个模块会自动带入');
   };
