@@ -157,6 +157,11 @@ const NORMAL_SUBJECTS: Array<{ name: keyof DiagnosisFormData; label: string; max
   { name: 'politics', label: '政治&道法', max: 100 },
 ];
 
+const ALL_SCORE_SUBJECTS: Array<{ name: keyof DiagnosisFormData; label: string; max: number }> = [
+  ...CORE_SUBJECTS,
+  ...ALL_ELECTIVES,
+];
+
 const STAGE_SUBJECTS: Record<string, typeof NORMAL_SUBJECTS> = {
   elementary: ELEMENTARY_SUBJECTS,
   middle: MIDDLE_SUBJECTS,
@@ -763,9 +768,8 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   }, [form, selectedProvince, selectedCity, markProfileDirty, onRegionPartsChange]);
 
   const handleFormSubmit = useCallback((data: DiagnosisFormData) => {
-    const activeFields = getActiveSubjectFields(data);
     const scores: Record<string, number> = {};
-    for (const field of activeFields) {
+    for (const field of ALL_SCORE_SUBJECTS) {
       const val = data[field.name];
       if (typeof val === 'number') {
         scores[field.label] = val;

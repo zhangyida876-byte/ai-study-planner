@@ -61,6 +61,7 @@ const SUBJECT_LABELS: Record<DiagnosisSubjectKey, string> = {
 const CORE_SUBJECT_KEYS: DiagnosisSubjectKey[] = ['chinese', 'math', 'english'];
 const ELECTIVE_12_KEYS: DiagnosisSubjectKey[] = ['chemistry', 'biology', 'politics', 'geography'];
 const ALL_ELECTIVE_KEYS: DiagnosisSubjectKey[] = ['physics', 'chemistry', 'biology', 'history', 'geography', 'politics'];
+const ALL_SUBJECT_KEYS: DiagnosisSubjectKey[] = [...CORE_SUBJECT_KEYS, ...ALL_ELECTIVE_KEYS];
 
 function resolveExpectedSubjects(data: DiagnosisFormData): DiagnosisSubjectKey[] {
   const isHighSchool = ['高一', '高二', '高三'].includes(data.grade);
@@ -78,6 +79,10 @@ function resolveExpectedSubjects(data: DiagnosisFormData): DiagnosisSubjectKey[]
     return [...CORE_SUBJECT_KEYS, ...selected];
   }
   return CORE_SUBJECT_KEYS;
+}
+
+function resolveFilledSubjects(data: DiagnosisFormData): DiagnosisSubjectKey[] {
+  return ALL_SUBJECT_KEYS.filter((key) => typeof data[key] === 'number');
 }
 
 /* ===== Component ===== */
@@ -172,8 +177,9 @@ const Diagnosis: React.FC = () => {
     setStudentInfo(normalizedData);
 
     const scores: Record<string, number> = {};
+    const filledSubjectKeys = resolveFilledSubjects(normalizedData);
     const expectedSubjectKeys = resolveExpectedSubjects(normalizedData);
-    for (const key of expectedSubjectKeys) {
+    for (const key of filledSubjectKeys) {
       const val = normalizedData[key];
       if (typeof val === 'number') {
         scores[SUBJECT_LABELS[key]] = val;
@@ -201,7 +207,7 @@ const Diagnosis: React.FC = () => {
       const stage = getEducationStage(normalizedData.grade);
       const coreMax = stage === 'elementary' ? 100 : stage === 'middle' ? 120 : 150;
       const scoreMaxValues: Record<string, number> = {};
-      for (const key of expectedSubjectKeys) {
+      for (const key of filledSubjectKeys) {
         const label = SUBJECT_LABELS[key];
         scoreMaxValues[label] =
           key === 'chinese' || key === 'math' || key === 'english' ? coreMax : 100;
