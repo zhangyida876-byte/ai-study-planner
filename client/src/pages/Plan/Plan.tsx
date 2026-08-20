@@ -944,24 +944,26 @@ const Plan: React.FC = () => {
     if (!profile.updatedAt) return;
     applyingProfileRef.current = true;
     const fill = getPlanAutofillFromProfile(profile);
-    if (fill.selectedProvince) setSelectedProvince(fill.selectedProvince);
-    if (fill.selectedCity) setSelectedCity(fill.selectedCity);
-    if (fill.county) setCounty(fill.county);
+    setSelectedProvince(fill.selectedProvince || '');
+    setSelectedCity(fill.selectedCity || '');
+    setCounty(fill.county || '');
     if (fill.region) {
       setRegion(fill.region);
       fetchPolicies(fill.region);
+    } else {
+      setRegion('');
     }
-    if (fill.grade) setGrade(normalizeStageGrade(fill.grade, stageConfig.grades));
-    if (fill.targetSchool) {
-      setTargetSchool(fill.targetSchool);
-      targetSchoolFromProfileRef.current = true;
+    setGrade(fill.grade ? normalizeStageGrade(fill.grade, stageConfig.grades) : '');
+    setTargetSchool(fill.targetSchool || '');
+    targetSchoolFromProfileRef.current = Boolean(fill.targetSchool);
+    setTargetScore(fill.targetScore);
+    setCareerIntent(fill.careerIntent || '');
+    setBoardingType(fill.boardingType || '');
+    setExamMode(fill.examMode || '');
+    setScores(fill.scores || {});
+    if (fill.examYear) {
+      setExamYear(fill.examYear);
     }
-    if (fill.targetScore != null) setTargetScore(fill.targetScore);
-    if (fill.careerIntent) setCareerIntent(fill.careerIntent);
-    if (fill.boardingType) setBoardingType(fill.boardingType);
-    if (fill.examMode) setExamMode(fill.examMode);
-    if (fill.scores && Object.keys(fill.scores).length > 0) setScores(fill.scores);
-    if (fill.examYear) setExamYear(fill.examYear);
     queueMicrotask(() => {
       applyingProfileRef.current = false;
       hydratedRef.current = true;
@@ -1001,6 +1003,8 @@ const Plan: React.FC = () => {
   }, [region, targetSchool, stageConfig.slug]);
 
   useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (applyingProfileRef.current) return;
     saveModuleSession<PlanSessionState>(stageSlug, 'plan', {
       examType,
       grade,
@@ -1044,6 +1048,7 @@ const Plan: React.FC = () => {
   useEffect(() => {
     if (!hydratedRef.current) return;
     if (applyingProfileRef.current) return;
+    if (!profileDirty) return;
     const timer = setTimeout(() => {
       updateProfile({
         province: selectedProvince,
@@ -1072,6 +1077,7 @@ const Plan: React.FC = () => {
     boardingType,
     examMode,
     examYear,
+    profileDirty,
   ]);
 
   useEffect(() => {

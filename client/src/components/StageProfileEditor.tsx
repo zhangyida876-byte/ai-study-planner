@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, Loader2, MapPin, Save, Search, Target, User } from 'lucide-react';
 import { toast } from 'sonner';
 import WobblyCard from '@client/src/components/WobblyCard';
@@ -13,7 +13,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { StageConfig } from '@client/src/config/stages';
-import type { StageProfile } from '@client/src/types/stage-profile';
+import {
+  getProfileStorageKey,
+  type StageProfile,
+} from '@client/src/types/stage-profile';
 import { toSelectValue } from '@client/src/lib/utils';
 import {
   extractSubjectMaxHintsFromPolicyText,
@@ -108,10 +111,12 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   const [subjectMaxHints, setSubjectMaxHints] = useState<Record<string, number>>({});
   const [scoreHintFromAuthority, setScoreHintFromAuthority] = useState(false);
   const [selectedTextbookSubject, setSelectedTextbookSubject] = useState('数学');
+  const draftDirtyRef = useRef(false);
 
   useEffect(() => {
     setDraft(profile);
     setSchoolKeyword(profile.targetSchool || '');
+    draftDirtyRef.current = false;
   }, [profile.updatedAt]);
 
   const schoolSystem = draft.schoolSystem || '6-3';
@@ -128,9 +133,43 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     [effectiveProvince],
   );
 
+  const buildProfileForSave = useCallback(
+    (source: StageProfile): StageProfile => ({
+      ...source,
+      grade: gradeOptions.includes(source.grade) ? source.grade : '',
+      schoolSystem: stageConfig.slug === 'high' ? '' : schoolSystem,
+      examMode: stageConfig.slug === 'high' ? gaokaoModeMatch.mode : source.examMode,
+    }),
+    [gradeOptions, stageConfig.slug, schoolSystem, gaokaoModeMatch.mode],
+  );
+
   const patch = (partial: Partial<StageProfile>) => {
-    setDraft((prev) => ({ ...prev, ...partial }));
+    draftDirtyRef.current = true;
+    setDraft((prev) => {
+      const next: StageProfile = { ...prev, ...partial };
+      try {
+        localStorage.setItem(
+          getProfileStorageKey(stageConfig.slug),
+          JSON.stringify({
+            ...buildProfileForSave(next),
+            updatedAt: new Date().toISOString(),
+          }),
+        );
+      } catch {
+        // ignore local draft persistence failures
+      }
+      return next;
+    });
   };
+
+  useEffect(() => {
+    if (!draftDirtyRef.current) return;
+    const timer = setTimeout(() => {
+      draftDirtyRef.current = false;
+      onSave(buildProfileForSave(draft));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [draft, onSave, buildProfileForSave]);
 
   const handleProvinceTextChange = (next: string) => {
     const text = next.trim();
@@ -174,12 +213,8 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       toast.error('请选择城市');
       return;
     }
-    onSave({
-      ...draft,
-      grade: safeGrade,
-      schoolSystem: stageConfig.slug === 'high' ? '' : schoolSystem,
-      examMode: stageConfig.slug === 'high' ? gaokaoModeMatch.mode : draft.examMode,
-    });
+    draftDirtyRef.current = false;
+    onSave(buildProfileForSave(draft));
     toast.success('已保存个人信息，下面 4 个模块会自动带入');
   };
 

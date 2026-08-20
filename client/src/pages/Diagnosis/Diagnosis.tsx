@@ -118,6 +118,7 @@ const Diagnosis: React.FC = () => {
   }, [stageSlug, reportContent, studentInfo, majorInfoContent, formSnapshot]);
 
   useEffect(() => {
+    if (!profileDirty) return;
     if (!formSnapshot) return;
     const timer = setTimeout(() => {
       const parts = formSnapshot.region?.split(' ').filter(Boolean) ?? [];
@@ -143,7 +144,15 @@ const Diagnosis: React.FC = () => {
       setProfileDirty(false);
     }, 400);
     return () => clearTimeout(timer);
-  }, [formSnapshot, updateProfile, profile.province, profile.city, profile.county, profile.weeklyStudyHours]);
+  }, [
+    formSnapshot,
+    updateProfile,
+    profile.province,
+    profile.city,
+    profile.county,
+    profile.weeklyStudyHours,
+    profileDirty,
+  ]);
 
   const handleCopy = useCallback(async () => {
     try {
@@ -377,28 +386,28 @@ const Diagnosis: React.FC = () => {
           {isGenerating || reportContent ? (
             <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false}>
               <div className="p-5">
-                <div className="mb-5 rounded-lg border-2 border-dashed border-ink/15 bg-white/70 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
-                      <h2 className="font-marker mt-1 text-2xl font-bold">
-                        {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}诊断报告
-                      </h2>
-                    </div>
-                    {reportContent && (
-                      <Button variant="outline" size="sm" onClick={handleCopy} disabled={isGenerating}>
-                        {copied ? (
-                          <><Check className="mr-1 size-4" />已复制</>
-                        ) : (
-                          <><Copy className="mr-1 size-4" />复制全文</>
-                        )}
-                      </Button>
-                    )}
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
+                    <h2 className="font-marker mt-1 text-2xl font-bold">
+                      {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}诊断报告
+                    </h2>
                   </div>
+                  {reportContent && (
+                    <Button variant="outline" size="sm" onClick={handleCopy} disabled={isGenerating}>
+                      {copied ? (
+                        <><Check className="mr-1 size-4" />已复制</>
+                      ) : (
+                        <><Copy className="mr-1 size-4" />复制全文</>
+                      )}
+                    </Button>
+                  )}
+                </div>
 
+                <div className="mb-5 rounded-lg border-2 border-dashed border-ink/15 bg-white/70 p-4">
                   {/* Student info strip */}
                   {studentInfo && (
-                    <div className="font-hand mt-4 flex flex-wrap gap-2 text-sm text-ink/70">
+                    <div className="font-hand flex flex-wrap gap-2 text-sm text-ink/70">
                       {studentInfo.studentName && (
                         <span className="rounded-full border-2 border-ink/20 bg-card px-3 py-1">
                           {studentInfo.studentName}

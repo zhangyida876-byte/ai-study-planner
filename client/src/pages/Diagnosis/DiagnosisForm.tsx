@@ -266,6 +266,18 @@ const SUBJECT_LABEL_TO_FIELD: Partial<Record<string, keyof DiagnosisFormData>> =
   政治: 'politics',
 };
 
+const SCORE_FIELDS: Array<keyof DiagnosisFormData> = [
+  'chinese',
+  'math',
+  'english',
+  'physics',
+  'chemistry',
+  'biology',
+  'history',
+  'geography',
+  'politics',
+];
+
 const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   onSubmit,
   isGenerating,
@@ -335,13 +347,13 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     if (!stageProfile) return;
     if (profileSnapshotKey && profileSnapshotKey === lastAppliedProfileKeyRef.current) return;
     applyingProfileRef.current = true;
-    if (stageProfile.studentName) form.setValue('studentName', stageProfile.studentName);
-    if (stageProfile.grade) {
-      const safeGrade = allowedGrades?.includes(stageProfile.grade)
-        ? stageProfile.grade
-        : (allowedGrades?.[allowedGrades.length - 1] || stageProfile.grade);
-      form.setValue('grade', safeGrade);
-    }
+    form.setValue('studentName', stageProfile.studentName || '');
+    const safeGrade = stageProfile.grade && allowedGrades?.includes(stageProfile.grade)
+      ? stageProfile.grade
+      : stageProfile.grade
+        ? (allowedGrades?.[allowedGrades.length - 1] || stageProfile.grade)
+        : '';
+    form.setValue('grade', safeGrade);
     if (stageProfile.province) {
       setSelectedProvince(stageProfile.province);
       setSelectedCity(stageProfile.city || '');
@@ -353,17 +365,26 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
         city: stageProfile.city || '',
         county: stageProfile.county || '',
       });
+    } else {
+      setSelectedProvince('');
+      setSelectedCity('');
+      setCounty('');
+      setIsCustomRegion(false);
+      form.setValue('region', '');
+      onRegionPartsChange?.({ province: '', city: '', county: '' });
     }
     form.setValue('targetSchool', stageProfile.targetSchool || '');
     form.setValue('targetScore', stageProfile.targetScore);
     setScoreSuggested(stageProfile.targetScore != null);
-    if (stageProfile.targetMajor) form.setValue('targetMajor', stageProfile.targetMajor);
-    if (stageProfile.examDate) form.setValue('examDate', stageProfile.examDate);
-    if (stageProfile.boardingType) form.setValue('boardingType', stageProfile.boardingType);
-    if (stageProfile.examMode) form.setValue('examMode', stageProfile.examMode);
+    form.setValue('targetMajor', stageProfile.targetMajor || '');
+    form.setValue('examDate', stageProfile.examDate || '');
+    form.setValue('boardingType', stageProfile.boardingType || undefined);
+    form.setValue('examMode', stageProfile.examMode || undefined);
     if (stageProfile.weeklyStudyHours) {
       const weekly = parseFloat(stageProfile.weeklyStudyHours);
       if (!Number.isNaN(weekly)) form.setValue('monthlyStudyHours', Math.round(weekly * 4));
+    } else {
+      form.setValue('monthlyStudyHours', undefined);
     }
     if (stageProfile.weakSubjects || stageProfile.scoresOverview) {
       const hint = [
@@ -373,13 +394,14 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
       const current = form.getValues('problemDesc');
       if (!current?.trim()) form.setValue('problemDesc', hint);
     }
-    if (stageProfile.scoresOverview) {
-      const parsedScores = parseScoreOverviewToSubjectScores(stageProfile.scoresOverview);
-      for (const [label, score] of Object.entries(parsedScores)) {
-        const fieldName = SUBJECT_LABEL_TO_FIELD[label];
-        if (fieldName) {
-          form.setValue(fieldName, score);
-        }
+    for (const fieldName of SCORE_FIELDS) {
+      form.setValue(fieldName, undefined);
+    }
+    const parsedScores = parseScoreOverviewToSubjectScores(stageProfile.scoresOverview || '');
+    for (const [label, score] of Object.entries(parsedScores)) {
+      const fieldName = SUBJECT_LABEL_TO_FIELD[label];
+      if (fieldName) {
+        form.setValue(fieldName, score);
       }
     }
     queueMicrotask(() => {

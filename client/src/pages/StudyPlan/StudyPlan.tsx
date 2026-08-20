@@ -145,19 +145,19 @@ const StudyPlan: React.FC = () => {
     if (!profile.updatedAt) return;
     applyingProfileRef.current = true;
     const fill = getStudyPlanAutofillFromProfile(profile);
-    if (fill.grade) setGrade(fill.grade);
-    if (fill.region) setRegion(fill.region);
-    if (fill.school) setSchool(fill.school);
-    if (fill.targetSchool) setTargetSchool(fill.targetSchool);
-    if (fill.targetScore) setTargetScore(fill.targetScore);
-    if (fill.careerIntent) setCareerIntent(fill.careerIntent);
-    if (fill.examMode) setExamMode(fill.examMode);
-    if (fill.examDate) setExamDate(fill.examDate);
-    if (fill.currentScore) setCurrentScore(fill.currentScore);
-    if (fill.weakSubjects) setWeakSubjects(fill.weakSubjects);
-    if (fill.strongSubjects) setStrongSubjects(fill.strongSubjects);
-    if (fill.weeklyHours) setWeeklyHours(fill.weeklyHours);
-    if (fill.boardingType) setBoardingType(fill.boardingType);
+    setGrade(fill.grade || '');
+    setRegion(fill.region || '');
+    setSchool(fill.school || '');
+    setTargetSchool(fill.targetSchool || '');
+    setTargetScore(fill.targetScore || '');
+    setCareerIntent(fill.careerIntent || '');
+    setExamMode(fill.examMode || '');
+    setExamDate(fill.examDate || '');
+    setCurrentScore(fill.currentScore || '');
+    setWeakSubjects(fill.weakSubjects || '');
+    setStrongSubjects(fill.strongSubjects || '');
+    setWeeklyHours(fill.weeklyHours || '');
+    setBoardingType(fill.boardingType || '');
     queueMicrotask(() => {
       applyingProfileRef.current = false;
       hydratedRef.current = true;
@@ -165,6 +165,8 @@ const StudyPlan: React.FC = () => {
   }, [profile.updatedAt, profile]);
 
   useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (applyingProfileRef.current) return;
     saveModuleSession<StudyPlanSessionState>(stageSlug, 'study-plan', {
       grade,
       region,
@@ -208,6 +210,7 @@ const StudyPlan: React.FC = () => {
   useEffect(() => {
     if (!hydratedRef.current) return;
     if (applyingProfileRef.current) return;
+    if (!profileDirty) return;
     const timer = setTimeout(() => {
       updateProfile({
         grade,
@@ -240,6 +243,7 @@ const StudyPlan: React.FC = () => {
     strongSubjects,
     weeklyHours,
     boardingType,
+    profileDirty,
   ]);
 
   const markDirty = () => {

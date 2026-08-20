@@ -58,6 +58,7 @@ const Knowledge: React.FC = () => {
   const [chapterUnits, setChapterUnits] = useState<ChapterUnit[]>([]);
   const [hasQueried, setHasQueried] = useState(false);
   const hydratedRef = useRef(false);
+  const applyingProfileRef = useRef(false);
 
   const effectiveVersion = version === '__all__'
     ? (province ? REGION_VERSION_MAP[province] || '' : '')
@@ -195,19 +196,27 @@ const Knowledge: React.FC = () => {
 
   useEffect(() => {
     if (!profile.updatedAt) return;
+    applyingProfileRef.current = true;
     const fill = getKnowledgeAutofillFromProfile(profile);
-    if (fill.province) setProvince(fill.province);
-    if (fill.city) setCity(fill.city);
+    setProvince(fill.province || '');
+    setCity(fill.city || '');
     if (fill.region) {
       setRegion(fill.region);
       setIsCustomRegion(false);
       setCustomRegionText('');
+    } else {
+      setRegion('');
     }
-    if (fill.grade) setGrade(fill.grade);
-    hydratedRef.current = true;
+    setGrade(fill.grade || '');
+    queueMicrotask(() => {
+      applyingProfileRef.current = false;
+      hydratedRef.current = true;
+    });
   }, [profile.updatedAt, profile]);
 
   useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (applyingProfileRef.current) return;
     saveModuleSession<KnowledgeSessionState>(stageSlug, 'knowledge', {
       province,
       city,
@@ -240,6 +249,8 @@ const Knowledge: React.FC = () => {
 
   useEffect(() => {
     if (!hydratedRef.current) return;
+    if (applyingProfileRef.current) return;
+    if (!profileDirty) return;
     const timer = setTimeout(() => {
       updateProfile({
         province,
@@ -249,7 +260,7 @@ const Knowledge: React.FC = () => {
       setProfileDirty(false);
     }, 400);
     return () => clearTimeout(timer);
-  }, [updateProfile, province, city, grade]);
+  }, [updateProfile, province, city, grade, profileDirty]);
 
   const handleSyncProfileBack = useCallback(() => {
     updateProfile({
