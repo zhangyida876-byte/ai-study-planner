@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, type FieldErrors } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Loader2, FileText, Search, Sparkles } from 'lucide-react';
@@ -352,11 +352,12 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     if (profileSnapshotKey && profileSnapshotKey === lastAppliedProfileKeyRef.current) return;
     applyingProfileRef.current = true;
     form.setValue('studentName', stageProfile.studentName || '');
+    const fallbackGrade = allowedGrades?.[allowedGrades.length - 1] || '';
     const safeGrade = stageProfile.grade && allowedGrades?.includes(stageProfile.grade)
       ? stageProfile.grade
       : stageProfile.grade
         ? (allowedGrades?.[allowedGrades.length - 1] || stageProfile.grade)
-        : '';
+        : fallbackGrade;
     form.setValue('grade', safeGrade);
     if (stageProfile.province) {
       setSelectedProvince(stageProfile.province);
@@ -390,11 +391,8 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     } else {
       form.setValue('monthlyStudyHours', undefined);
     }
-    if (stageProfile.weakSubjects || stageProfile.scoresOverview) {
-      const hint = [
-        stageProfile.weakSubjects ? `薄弱科目：${stageProfile.weakSubjects}` : '',
-        stageProfile.scoresOverview ? `成绩概览：${stageProfile.scoresOverview}` : '',
-      ].filter(Boolean).join('；');
+    if (stageProfile.weakSubjects) {
+      const hint = `薄弱科目：${stageProfile.weakSubjects}`;
       const current = form.getValues('problemDesc');
       if (!current?.trim()) form.setValue('problemDesc', hint);
     }
@@ -783,6 +781,23 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     onSubmit(data);
   }, [onSubmit]);
 
+  const handleInvalidSubmit = useCallback((errors: FieldErrors<DiagnosisFormData>) => {
+    if (errors.grade) {
+      toast.error('缺少年级：请回到学段首页补齐年级，或刷新后再试');
+      return;
+    }
+    if (errors.region) {
+      toast.error('缺少地区：请回到学段首页补齐省市地区');
+      return;
+    }
+    const firstScoreError = ALL_SCORE_SUBJECTS.find((subject) => errors[subject.name]);
+    if (firstScoreError) {
+      toast.error(`${firstScoreError.label}分数超出范围，请按满分重新填写`);
+      return;
+    }
+    toast.error('表单信息不完整，请检查红色提示项');
+  }, []);
+
   const renderSubjectInput = (subject: { name: keyof DiagnosisFormData; label: string; max: number }) => {
     const effectiveMax = resolveSubjectMax(subject.label, subject.max, internetSubjectMaxHints);
     return (
@@ -825,7 +840,10 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+      <form
+        onSubmit={form.handleSubmit(handleFormSubmit, handleInvalidSubmit)}
+        className="space-y-4"
+      >
         <div className="rounded-xl border-2 border-dashed border-pen-blue/25 bg-pen-blue/5 p-4">
           <h3 className="font-marker text-base font-bold">首页档案已自动带入</h3>
           <p className="font-hand mt-1 text-xs text-ink/60">
