@@ -344,7 +344,6 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
       weeklyStudyHours: stageProfile.weeklyStudyHours,
       weakSubjects: stageProfile.weakSubjects,
       scoresOverview: stageProfile.scoresOverview,
-      updatedAt: stageProfile.updatedAt,
     });
   }, [stageProfile]);
 
