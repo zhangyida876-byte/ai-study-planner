@@ -195,6 +195,40 @@
   }
 }
 
+@layer components {
+  .report-readable {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.75;
+    color: var(--foreground);
+  }
+
+  .report-readable :is(h1, h2, h3, h4, p, li, th, td) {
+    font-family: var(--font-sans);
+    letter-spacing: 0;
+  }
+
+  .report-readable h1 {
+    font-size: 1.5rem;
+  }
+
+  .report-readable h2 {
+    margin-top: 2rem;
+    font-size: 1.25rem;
+  }
+
+  .report-readable h3 {
+    font-size: 1.125rem;
+  }
+
+  .report-readable table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: normal;
+  }
+}
+
 @layer utilities {
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;

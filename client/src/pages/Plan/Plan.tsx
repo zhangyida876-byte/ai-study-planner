@@ -6,6 +6,7 @@ import WobblyCard from '@client/src/components/WobblyCard';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { Button } from '@client/src/components/ui/button';
 import { Input } from '@client/src/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@client/src/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -690,6 +691,7 @@ const Plan: React.FC = () => {
   const [reportLoading, setReportLoading] = useState(false);
   const [timelineContent, setTimelineContent] = useState('');
   const [timelineLoading, setTimelineLoading] = useState(false);
+  const [activeOutput, setActiveOutput] = useState<'report' | 'timeline'>('report');
   const [targetSchool, setTargetSchool] = useState('');
   const [targetScore, setTargetScore] = useState<number | undefined>(undefined);
   const [careerIntent, setCareerIntent] = useState('');
@@ -1304,6 +1306,7 @@ const Plan: React.FC = () => {
   const handleGenerateReport = useCallback(async (): Promise<void> => {
     if (!region) { toast.error('请先选择地区'); return; }
     if (!hasScores) { toast.error('请先输入成绩'); return; }
+    setActiveOutput('report');
     setReportLoading(true);
     setReportContent('');
     try {
@@ -1385,6 +1388,7 @@ const Plan: React.FC = () => {
 
   const handleGenerateTimeline = useCallback(async (): Promise<void> => {
     if (!region) { toast.error('请先选择地区'); return; }
+    setActiveOutput('timeline');
     setTimelineLoading(true);
     setTimelineContent('');
     try {
@@ -1511,75 +1515,78 @@ const Plan: React.FC = () => {
           </div>
         </WobblyCard>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false} className="p-5">
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="font-marker text-xl font-bold text-ink">规划图 / 备考路线图</h2>
-                <p className="font-hand mt-1 text-sm text-ink/70">
-                  作用：把未来每个月要做什么、为什么重要、模拟考和关键节点列清楚，让家长看到时间紧迫感和执行节奏。
-                </p>
+        <Tabs
+          value={activeOutput}
+          onValueChange={(value) => setActiveOutput(value as 'report' | 'timeline')}
+          className="gap-4"
+        >
+          <TabsList className="h-12 w-full max-w-md border-2 border-ink bg-accent p-1 shadow-hard-sm">
+            <TabsTrigger value="report" className="h-full gap-2 data-[state=active]:bg-white">
+              <FileText className="size-4" />
+              升学报告
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="h-full gap-2 data-[state=active]:bg-postit-yellow">
+              <Clock className="size-4" />
+              备考路线图
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="report">
+            <WobblyCard variant="white" decoration="tape" wobblyIndex={2} hoverable={false} className="p-5 md:p-7">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b-2 border-dashed border-ink/15 pb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-ink">中长期升学路径报告</h2>
+                  <p className="mt-1 text-sm text-ink/65">中考定位、路径取舍、选科预测与专业就业影响</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {reportContent && (
+                    <Button variant="outline" size="sm" onClick={handleCopyReport} className="border-2 border-ink shadow-hard-sm">
+                      <Copy className="size-3.5" />
+                      复制全文
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleGenerateReport}
+                    disabled={reportLoading || !region || !hasScores}
+                    className="border-[3px] border-ink shadow-hard"
+                  >
+                    <FileText className="size-4" />
+                    {reportLoading ? '生成中...' : '生成升学报告'}
+                  </Button>
+                </div>
               </div>
+              {reportLoading && !reportContent ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="text-lg font-semibold text-ink animate-pulse">AI 正在分析规划方案...</div>
+                  <div className="mt-2 text-sm text-muted-foreground">根据首页档案、成绩和政策生成个性化升学规划</div>
+                </div>
+              ) : reportContent ? (
+                <div className="report-readable prose prose-sm max-w-none"><Streamdown>{reportContent}</Streamdown></div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <FileText className="mb-3 size-12 opacity-30" />
+                  <p>生成后将在这里展示报告</p>
+                </div>
+              )}
+            </WobblyCard>
+          </TabsContent>
+
+          <TabsContent value="timeline">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-ink/65">按月展开考试节点、学习任务与验收标准</p>
               <Button
                 variant="secondary"
                 onClick={handleGenerateTimeline}
                 disabled={timelineLoading || !region}
-                className="border-[3px] border-ink bg-postit-yellow font-hand shadow-hard"
+                className="border-[3px] border-ink bg-postit-yellow shadow-hard"
               >
                 <Clock className="size-4" />
-                {timelineLoading ? '生成中...' : '点击生成规划图'}
+                {timelineLoading ? '生成中...' : '生成备考路线图'}
               </Button>
             </div>
-            <p className="mb-3 rounded-md border-2 border-dashed border-ink/20 bg-white/70 px-3 py-2 text-xs text-ink/65">
-              必须点击右上角「点击生成规划图」，下方才会生成备考路线图。
-            </p>
             <PlanTimeline content={timelineContent} loading={timelineLoading} examType={examType} examDate={examDate} grade={grade} />
-          </WobblyCard>
-
-          <WobblyCard variant="white" decoration="tape" wobblyIndex={2} hoverable={false} className="p-5">
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="font-marker text-xl font-bold text-ink">升学报告</h2>
-                <p className="font-hand mt-1 text-sm text-ink/70">
-                  作用：把当前成绩、目标差距、升学路径和课程顾问可沟通的规划建议整理成一份报告，方便直接给家长讲。
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {reportContent && (
-                  <Button variant="outline" size="sm" onClick={handleCopyReport} className="border-2 border-ink font-hand shadow-hard-sm">
-                    <Copy className="size-3.5" />
-                    复制全文
-                  </Button>
-                )}
-                <Button
-                  onClick={handleGenerateReport}
-                  disabled={reportLoading || !region || !hasScores}
-                  className="border-[3px] border-ink font-hand shadow-hard"
-                >
-                  <FileText className="size-4" />
-                  {reportLoading ? '生成中...' : '点击生成升学报告'}
-                </Button>
-              </div>
-            </div>
-            <p className="mb-3 rounded-md border-2 border-dashed border-ink/20 bg-accent/50 px-3 py-2 text-xs text-ink/65">
-              必须点击右上角「点击生成升学报告」，下方才会生成可沟通的升学规划内容。
-            </p>
-            {reportLoading && !reportContent ? (
-              <div className="flex flex-col items-center justify-center py-16">
-                <div className="font-marker text-lg text-ink animate-pulse">AI 正在分析规划方案...</div>
-                <div className="mt-2 text-sm text-muted-foreground">根据首页档案、成绩和政策生成个性化升学规划</div>
-              </div>
-            ) : reportContent ? (
-              <div className="prose prose-sm max-w-none font-hand"><Streamdown>{reportContent}</Streamdown></div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                <FileText className="mb-3 size-12 opacity-30" />
-                <p>请点击「点击生成升学报告」</p>
-                <p className="text-sm">系统会自动读取首页档案，不需要在本页重复录入。</p>
-              </div>
-            )}
-          </WobblyCard>
-        </div>
+          </TabsContent>
+        </Tabs>
 
         <div className="hidden" aria-hidden="true">
         {/* Top Input Bar */}
