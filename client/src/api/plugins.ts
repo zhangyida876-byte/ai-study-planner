@@ -3,6 +3,7 @@ import { logger } from '@lark-apaas/client-toolkit/logger';
 import type { StageSlug } from '@client/src/config/stages';
 import { appendProfileAndStageRules } from '@client/src/config/stage-analysis-rules';
 import { getInternalMaterialContext } from '@client/src/config/internal-resource-library';
+import { buildProfessionalReportFramework } from '@client/src/config/report-prompt-templates';
 import { resolveZhongkaoProfile, type ZhongkaoScoreProfile } from '@client/src/data/zhongkao-score-profiles';
 import type { StageProfile } from '@client/src/types/stage-profile';
 
@@ -618,28 +619,39 @@ export async function* streamKnowledgeAnalysis(
   input: KnowledgeAnalysisInput,
   options?: PromptBuildOptions,
 ) {
-  let payload: Record<string, unknown> = { ...input };
-  if (options?.stageSlug) {
-    const internalMaterial = getInternalMaterialContext({
-      stageSlug: options.stageSlug,
-      module: 'knowledge',
-      limit: 10,
-    });
-    const appendix = appendProfileAndStageRules(
-      `【知识点】${input.knowledge_point}（${input.chapter}）`,
-      options.stageSlug,
-      options.profile,
-    );
-    payload = {
-      ...input,
-      knowledge_point: `${appendix}
+  const stageSlug = options?.stageSlug ?? 'middle';
+  const internalMaterial = getInternalMaterialContext({
+    stageSlug,
+    module: 'knowledge',
+    limit: 12,
+  });
+  const framework = buildProfessionalReportFramework('knowledge');
+  const studentContext = appendProfileAndStageRules(
+    `${framework}
 
-【内部资源库讲解素材（优先）】
-${internalMaterial}
+【本次知识点】
+教材版本：${input.textbook_version}
+学科：${input.subject}
+年级学期：${input.grade_semester}
+章节：${input.chapter}
+知识点：${input.knowledge_point}
 
-【融合要求】先按内部讲解话术组织表达，再结合最新公开教材/考情信息补充，输出必须可执行。`,
-    };
-  }
+【知识点专项补充规则】
+1. 先判断该知识点在本章节和升学考试中的位置，再结合学生档案判断风险；没有该生专项测评时，必须写“待验证”，不得把常见错因当成既成事实。
+2. 明确前置知识、当前核心题型、后续受影响章节，以及未来1-2学期可能出现的连锁失分。
+3. 给出3-5道诊断题/一次章节测评/近3套试卷错题的验证方案，并明确判定标准。
+4. 产品路径必须按“AI诊断 → 知识点课程补概念 → 同步课跟章节 → 解题/培优课练题型 → 阶段测评与错题复盘”组织。
+5. 禁止臆造本知识点的中考分值占比、命题概率、提分幅度或补救成本倍数；没有输入证据时只做定性判断。
+
+【内部资源库素材（优先使用）】
+${internalMaterial}`,
+    stageSlug,
+    options?.profile,
+  );
+  const payload: Record<string, unknown> = {
+    ...input,
+    student_context: studentContext,
+  };
   const stream = capabilityClient
     .load(PLUGIN_IDS.KNOWLEDGE_ANALYSIS)
     .callStream('textGenerate', payload);
@@ -660,6 +672,22 @@ export function buildScoresText(
       return max ? `${subject}: ${score}/${max}分（得分率${Math.round(score / max * 100)}%）` : `${subject}: ${score}分`;
     })
     .join('、');
+}
+
+function buildFilledScoreTotals(
+  scores: Record<string, number>,
+  maxValues?: Record<string, number>,
+): string {
+  const entries = Object.entries(scores);
+  const scoreTotal = entries.reduce((sum, [, score]) => sum + score, 0);
+  const hasAllMaxValues = entries.length > 0
+    && entries.every(([subject]) => Number.isFinite(maxValues?.[subject]));
+  if (!hasAllMaxValues || !maxValues) {
+    return `已填${entries.length}科合计：${scoreTotal}分（缺少部分满分，不能视为完整考试总分）`;
+  }
+  const maxTotal = entries.reduce((sum, [subject]) => sum + (maxValues[subject] || 0), 0);
+  const rate = maxTotal > 0 ? Math.round((scoreTotal / maxTotal) * 100) : 0;
+  return `已填${entries.length}科合计：${scoreTotal}/${maxTotal}分（得分率${rate}%）；仅代表已填科目，不自动等于完整考试总分`;
 }
 
 export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: PromptBuildOptions): string {
@@ -695,19 +723,25 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
     parts.push(`学生/家长自述痛点：${ctx.problemDesc.trim()}`);
   }
   const scoresText = buildScoresText(ctx.scores, ctx.scoreMaxValues);
+  const filledScoreTotals = buildFilledScoreTotals(ctx.scores, ctx.scoreMaxValues);
   const filledSubjectsText = (ctx.filledSubjects || Object.keys(ctx.scores)).join('、');
   const missingSubjectsText = (ctx.missingSubjects || []).join('、');
   const examLabel = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '小升初期末统考';
   const stageLabel = stage === 'high' ? '高中' : stage === 'middle' ? '初中' : '小学';
-  const base = `当前学段（强约束）：${stageLabel}
+  const framework = buildProfessionalReportFramework('diagnosis');
+  const base = `${framework}
+
+【当前诊断数据】
+当前学段（强约束）：${stageLabel}
 考试类型（强约束）：${examLabel}
 若输入年级与学段冲突，必须以当前学段为准；禁止切换为其他考试体系（小学=小升初，初中=中考，高中=高考）。
 各科成绩（含满分与得分率）：${scoresText}\n${parts.join('\n')}
+${filledScoreTotals}
 
 已填写科目：${filledSubjectsText || '未提供'}
 未填写科目：${missingSubjectsText || '无'}
 
-【诊断输出硬性要求】
+【诊断专项硬性要求】
 1. 必须使用“总-分-总”结构：先输出整体结论，再逐科展开，最后给综合收口和执行优先级。
 2. 只对“已填写科目”做分数评价，不得臆测未填写科目的具体分数表现。
 3. 已填写科目必须全部出现且逐科回答，禁止只挑一个科目分析。若已填写“数学、英语、物理”，报告必须分别出现“数学诊断”“英语诊断”“物理诊断”。
@@ -735,25 +769,9 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
 7. “预期收获”必须给时间范围和可观察指标，例如：2周内同类题正确率从60%拉到75%左右，4周内单科稳定提升5-8分。
 8. 若信息不足，必须用“需要补充一次近3套试卷错题后确认”，但仍要基于该分数段列出最需要验证的题型假设，不能只说信息不足。
 
-【强制输出结构：总-分-总】
-# 学情诊断结论
-## 一、总览结论
-- 3句话以内：整体风险、最拖分科目、先补顺序。
-- 必须点名所有已填写科目，说明哪科优先、哪科守住、哪科需要验证。
-
-## 二、分科诊断
-按已填写科目逐科输出，每科使用同一结构：
-### 科目名诊断
-- 当前表现：分数/满分/得分率/风险等级。
-- 主要卡点：列2-3个具体知识点或题型。
-- 失分原因：写清认知、步骤、审题、训练或习惯原因。
-- 不处理的后果：本学科后续影响 + 对其他科/升学总分的连锁影响。
-- 2周动作：题型、题量、频次、错题复盘方式、验收标准。
-
-## 三、综合收口
-- 2-4周提分路径：先做什么，再做什么，如何复查。
-- 本周必须先做的3件事：每件事写清题量、频次、验收标准。
-- 未填科目提醒：只提醒补数优先级，不做具体分数判断。
+【总-分-总补充规则】
+开头“核心结论”为总述；第一至五章逐科、逐问题展开；第六章用家长话术综合收口。
+“孩子当前学习水平判断”中必须按已填写科目逐科输出，每科包含：当前表现、2-3个待验证卡点、失分原因、后续影响、2周动作与验收标准。
 
 【内部资源库素材（优先使用）】
 ${internalMaterial}
@@ -776,7 +794,7 @@ export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBu
     module: 'plan',
     limit: 12,
   });
-  const parts: string[] = [];
+  const parts: string[] = [buildProfessionalReportFramework('plan')];
   const lockedExamType = stage === 'high' ? '高考' : stage === 'middle' ? '中考' : '小升初';
   parts.push(`升学类型（强约束）：${lockedExamType}`);
   parts.push('学段强约束：若输入年级与学段冲突，必须按当前学段输出，不得混入其他考试体系。');
@@ -798,6 +816,7 @@ export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBu
   }
   const scoresText = buildScoresText(ctx.scores, ctx.scoreMaxValues);
   parts.push(`各科成绩（含满分与得分率）：${scoresText}`);
+  parts.push(buildFilledScoreTotals(ctx.scores, ctx.scoreMaxValues));
   const latestYear = Math.max(new Date().getFullYear(), ctx.examYear || 0);
   if (stage === 'high') {
     parts.push('输出要求：以“能冲哪些大学、可选哪些专业、对应就业方向与风险”为主线；禁止按中考逻辑给建议');
@@ -805,12 +824,11 @@ export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBu
   } else {
     parts.push('输出要求：政策信息点到为止，重点回答“能上什么学校、差多少分、怎么补分、关键时间点”');
   }
-  parts.push('模块边界（最高优先级）：升学规划只回答“按当地政策和目标线，现在处在哪个梯队、差多少分、各科要补到多少、先抓哪科最划算、什么时间前必须看到变化”；禁止重复学情诊断里的知识漏洞长篇归因');
+  parts.push('模块边界（最高优先级）：升学规划围绕“按当地政策和目标线，现在处在哪个梯队、差多少分、各科要补到多少、先抓哪科最划算、什么时间前必须看到变化”；问题定位只保留支撑规划所需的关键证据');
   parts.push('输出必须具体：必须出现当前总分、目标线/梯度线、总分差距、至少2个科目的提分目标或风险说明；不得只写“夯实基础、加强训练、提升能力”等空泛表达');
   parts.push('顾问表达标准：先结论后依据，先把升学后果讲清楚，再给动作；每条动作都要绑定科目、分值目标、验收时间或题型方向');
-  parts.push('建议输出结构：# 升学规划结论；## 一句话定位；## 当地政策和目标线；## 当前分数对应梯队；## 目标差距与各科补分优先级；## 4-8周行动表；## 家长必须重视的风险');
-  parts.push('篇幅要求：整体控制在 600~900 字，先结论后依据，禁止同义重复');
-  parts.push('结构要求：最多 5 个小节，每节不超过 3 条要点');
+  parts.push('目标拆解要求：有目标分时必须输出“当前总分、目标总分、总分差、各科建议补分”；部分科目缺失时不得把已填科目合计冒充总分，要列出待补科目');
+  parts.push('篇幅要求：整体控制在 1200~1800 字，六个固定章节必须完整，禁止同义重复');
   parts.push(`时间要求：必须使用${latestYear}年及之后的最新时间节点，若缺少官方数据请明确说明`);
   parts.push('表达要求：用家长易懂的大白话，不使用晦涩术语');
   parts.push(`内部资源库素材（优先）：\n${internalMaterial}`);

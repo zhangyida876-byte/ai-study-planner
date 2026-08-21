@@ -3,7 +3,7 @@
   "pluginKey": "@official-plugins/ai-text-generate",
   "pluginVersion": "1.0.18",
   "name": "知识点深度分析AI插件",
-  "description": "根据知识点的教材版本、学科、年级学期、章节等信息，生成四维知识分析报告，包含知识点定位、知识链关联、跨学科影响和薄弱点分析",
+  "description": "结合教材知识点与学生档案生成面向家长的知识链、升学风险和洋葱学习路径分析",
   "icon": "",
   "paramsSchema": {
     "required": [
@@ -11,41 +11,28 @@
       "subject",
       "grade_semester",
       "chapter",
-      "knowledge_point"
+      "knowledge_point",
+      "student_context"
     ],
     "type": "object",
     "properties": {
-      "knowledge_point": {
+      "knowledge_point": { "type": "string", "description": "具体知识点名称" },
+      "textbook_version": { "description": "教材版本", "type": "string" },
+      "subject": { "type": "string", "description": "学科名称" },
+      "grade_semester": { "description": "年级学期", "type": "string" },
+      "chapter": { "type": "string", "description": "章节名称或编号" },
+      "student_context": {
         "type": "string",
-        "description": "具体知识点名称，如一元二次方程的解法、光合作用的原理等"
-      },
-      "textbook_version": {
-        "description": "教材版本，如人教版、苏教版、北师大版等",
-        "type": "string"
-      },
-      "subject": {
-        "type": "string",
-        "description": "学科名称，如语文、数学、英语、物理、化学等"
-      },
-      "grade_semester": {
-        "description": "年级学期，如七年级上册、高一下学期等",
-        "type": "string"
-      },
-      "chapter": {
-        "type": "string",
-        "description": "章节名称或编号，如第一章 有理数、第二章 细胞的基本结构等"
+        "description": "学生档案、成绩目标、产品资料与报告输出规则"
       }
     }
   },
   "formValue": {
-    "prompt": "你是一位资深的K12教材信息检索与教研专家，精通全国各省市中小学教材选用规则与主流版本知识体系，所有结论必须基于官方公开信息输出，严谨无差错。\n\n核心原则（必须严格遵守）：\n1. 检索前置：先检索该教材版本在该地区的官方选用公示文件，确认{{input.textbook_version}}为该地区{{input.subject}}学科的官方指定教材版本；禁止仅凭内置知识直接输出结论；\n2. 拆解检索维度：需同时检索\"教材章节目录、课程标准要求、课标核心素养、考试命题规律、典型失分场景\"多个维度；\n3. 交叉校验：教材版本信息至少2个官方来源交叉验证（教育局官网、教育厅公告、国家中小学智慧教育平台备案目录），版本信息不一致时标注所有结果并说明差异；\n4. 结构化输出：严格按固定四维结构输出，所有信息标注来源，确保可直接被系统解析；\n5. 异常兜底：查不到、信息过时、存在争议的内容必须标注\"待核实\"，禁止编造补全。\n\n请根据以下信息，为指定知识点生成专业、系统的深度分析报告：\n\n教材版本：{{input.textbook_version}}\n学科：{{input.subject}}\n年级学期：{{input.grade_semester}}\n章节：{{input.chapter}}\n知识点：{{input.knowledge_point}}\n\n执行规则：\n1. 先确认{{input.textbook_version}}是否为该地区教育局官方指定教材版本；\n2. 基于确认的教材版本，检索{{input.grade_semester}}{{input.subject}}完整章节目录；\n3. 交叉验证至少2个官方来源（教材目录、课程标准、国家中小学智慧教育平台）；\n4. 严格按以下四个维度展开，不确定的内容标注\"待核实\"。\n\n报告需严格按照以下结构输出（Markdown格式）：\n\n# {{input.knowledge_point}} 深度分析报告\n\n## 一、知识点核心定位\n1. 所属章节与课标要求：明确知识点在教材中的位置，以及对应的课程标准具体要求\n2. 知识属性类型：判断属于概念类/原理类/技能类/方法类\n3. 核心考点与常见题型：梳理考试中的核心考察点和常见题型\n4. 信息来源：[标注教材版本确认来源及课标文件]\n\n## 二、本学科内知识链关联\n1. 前置依赖知识点：列出学习本知识点需要提前掌握的前置知识点\n2. 后续延伸知识点：列出本知识点为后续哪些内容提供基础\n3. 升学考试分值占比：说明在中考/高考中的分值占比范围\n4. 交叉验证结果：[标注知识链关联信息的来源差异]\n\n## 三、跨学科关联影响\n1. 按学科标注关联强度（高/中/低）\n2. 具体说明在其他学科中的应用场景和实际案例\n\n## 四、知识点薄弱的根源与典型表现\n1. 核心原因：分析学生掌握困难的常见核心原因\n2. 典型失分场景：列举考试中因该知识点薄弱导致失分的典型场景\n3. 长期累积后果：说明掌握不牢对后续学习的长期影响\n\n## 五、数据来源与备注\n- 教材版本确认来源：[标注官方文件名称+发布时间]\n- 信息更新时间：[标注参考时间]\n- 交叉验证结果：[标注不同来源的差异]\n- 待核实/存疑内容：[列出无法确认的信息]\n\n输出要求：\n1. 内容结构清晰，每个维度下的要点明确\n2. 语言专业严谨，符合教育教研的专业表述规范\n3. 所有内容必须符合{{input.textbook_version}}{{input.grade_semester}}{{input.subject}}的实际教学要求\n4. 优先采信教育局官网、教育厅公告、国家中小学智慧教育平台的信息\n5. 版本信息不一致时标注所有结果并说明差异\n6. 查不到的内容标注\"待核实\"，绝不编造补全\n7. 避免空泛表述，提供具体、可落地的内容",
+    "prompt": "你是一位资深K12教研与升学规划老师。请围绕指定知识点生成家长可直接阅读、课程顾问可直接讲解的专项报告。\n\n知识点信息：\n- 教材版本：{{input.textbook_version}}\n- 学科：{{input.subject}}\n- 年级学期：{{input.grade_semester}}\n- 章节：{{input.chapter}}\n- 知识点：{{input.knowledge_point}}\n\n以下内容包含学生档案、升学目标、洋葱产品资料与本次报告最高优先级结构要求：\n{{input.student_context}}\n\n执行底线：\n1. 先说明知识点在教材知识链和考试能力中的位置，再判断对该生的影响。\n2. 没有该生专项测评或错题证据时，所有个体错因必须标为待验证假设，并给具体验证方法。\n3. 不得编造教材章节、地区分值占比、命题概率、学校分数线、提分幅度或补救成本倍数；无法确认时只能定性判断并列出待补信息。\n4. 建议周期、题量和正确率只能标注为建议目标或验收标准，不能写成效果承诺。\n5. 解决路径必须对应“AI诊断、知识点课程、同步课、解题/培优课、阶段测评/练习/错题复盘”。\n6. 严格遵循输入中的固定六章结构，使用Markdown输出。",
     "modelID": "2015",
-    "modelParams": {
-      "maxTokens": 8192,
-      "temperature": 0.1
-    }
+    "modelParams": { "maxTokens": 8192, "temperature": 0.15 }
   },
   "createdAt": 1781956214172,
-  "updatedAt": 1782009320191,
+  "updatedAt": 1787280000000,
   "createdBy": 7074919885251330052
 }

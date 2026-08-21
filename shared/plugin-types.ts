@@ -1,15 +1,15 @@
 // ---- plugin:exam_policy_search_1 ----
 // ============================================================
-// 插件 exam_policy_search_1 (中考考情政策搜索) 的类型定义
+// 插件 exam_policy_search_1 (升学政策搜索) 的类型定义
 // 由 get_plugin_ai_json 自动生成
 // ============================================================
 
 export interface ExamPolicySearchOneInput {
-  /** 中考所在地区（如北京市、上海市、广东省等） */
+  /** 升学所在地区 */
   region: string;
-  /** 中考年份（如2025年、2026年等） */
+  /** 目标升学年份 */
   year: string;
-  /** 补充搜索关键词（如政策调整、考纲变化、报名时间等，可选） */
+  /** 考试类型及补充检索关键词 */
   keyword?: string;
 }
 
@@ -31,10 +31,12 @@ export interface ExamPolicySearchOneOutput {
 // ============================================================
 
 export interface ExamScheduleTimelineGeneratorOneInput {
-  /** 学生当前年级（如：初一、初二、初三） */
+  /** 学生当前年级 */
   current_grade: string;
-  /** 学生所在地区（如：北京市、广东省、上海市） */
+  /** 学生所在地区 */
   region: string;
+  /** 目标考试年份 */
+  exam_year?: string;
 }
 
 /**
@@ -57,11 +59,11 @@ export interface ExamScheduleTimelineGeneratorOneOutput {
 // ============================================================
 
 export interface StudyPlanReportGenerateOneInput {
-  /** 学生其他相关信息（如年级、偏好专业、意向学校等，可选） */
-  student_additional_info?: string;
-  /** 学生当前各科成绩明细，包含科目名称、分数、满分值 */
+  /** 学生档案、目标、时间约束、产品资料与报告输出规则 */
+  student_additional_info: string;
+  /** 学生全部已填科目的分数、满分与得分率 */
   student_scores: string;
-  /** 目标地区升学政策及各批次学校录取分数线数据 */
+  /** 目标地区升学政策、总分构成和录取分数线数据 */
   region_admission_policy: string;
 }
 
@@ -163,16 +165,18 @@ export interface HighSchoolAdmissionScoreQueryOneOutput {
 // ============================================================
 
 export interface KnowledgePointDeepAnalysisOneInput {
-  /** 具体知识点名称，如一元二次方程的解法、光合作用的原理等 */
+  /** 具体知识点名称 */
   knowledge_point: string;
-  /** 教材版本，如人教版、苏教版、北师大版等 */
+  /** 教材版本 */
   textbook_version: string;
-  /** 学科名称，如语文、数学、英语、物理、化学等 */
+  /** 学科名称 */
   subject: string;
-  /** 年级学期，如七年级上册、高一下学期等 */
+  /** 年级学期 */
   grade_semester: string;
-  /** 章节名称或编号，如第一章 有理数、第二章 细胞的基本结构等 */
+  /** 章节名称或编号 */
   chapter: string;
+  /** 学生档案、成绩目标、产品资料与报告输出规则 */
+  student_context: string;
 }
 
 /**

@@ -192,7 +192,7 @@ const AIAnalysisSection: React.FC<{
       {isAnalyzing && !analysisContent && (
         <div className="flex items-center gap-2 py-6 font-hand text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
-          正在进行四维知识分析...
+          正在生成六部分知识点专项分析...
         </div>
       )}
 
@@ -204,7 +204,7 @@ const AIAnalysisSection: React.FC<{
 
       {!analysisContent && !isAnalyzing && (
         <p className="font-hand mt-2 text-xs text-muted-foreground">
-          点击“生成分析”获取知识点定位、知识链关联、跨学科影响和薄弱点分析
+          点击“生成分析”获取水平判断、升学定位、问题风险和学习路径建议
         </p>
       )}
     </WobblyCard>
