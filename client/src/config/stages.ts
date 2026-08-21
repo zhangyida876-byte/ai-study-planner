@@ -2,7 +2,13 @@ import type { EducationStage } from '@client/src/api/plugins';
 
 export type StageSlug = 'elementary' | 'middle' | 'high';
 
-export type FeatureSlug = 'diagnosis' | 'plan' | 'knowledge' | 'study-plan' | 'advice';
+export type FeatureSlug =
+  | 'diagnosis'
+  | 'plan'
+  | 'knowledge'
+  | 'study-plan'
+  | 'advice'
+  | 'history';
 
 export interface StageFeatureConfig {
   slug: FeatureSlug;
@@ -33,21 +39,9 @@ const FEATURES: StageFeatureConfig[] = [
     pathSuffix: 'diagnosis',
   },
   {
-    slug: 'plan',
-    label: '升学规划',
-    description: '政策、分数线、目标差距与备考时间轴',
-    pathSuffix: 'plan',
-  },
-  {
-    slug: 'knowledge',
-    label: '知识点&痛点查询',
-    description: '按地区/年级/版本查询知识点，并定位学习卡点',
-    pathSuffix: 'knowledge',
-  },
-  {
     slug: 'study-plan',
-    label: '个性化学习规划',
-    description: '结合课表与时间生成可执行周计划与日安排',
+    label: '学习规划',
+    description: '关联诊断问题、回家时间和学习科目生成执行表',
     pathSuffix: 'study-plan',
   },
   {
@@ -55,6 +49,12 @@ const FEATURES: StageFeatureConfig[] = [
     label: '话术百宝库',
     description: '汇总四大模块结果，生成可直接沟通的话术建议',
     pathSuffix: 'advice',
+  },
+  {
+    slug: 'history',
+    label: '历史档案',
+    description: '按学生和日期查看、搜索与删除历史生成内容',
+    pathSuffix: 'history',
   },
 ];
 

@@ -36,10 +36,11 @@ import {
   BookOpen,
   CalendarDays,
   MessageCircleMore,
+  Archive,
   LogOut,
   LogIn,
   Pen,
-  School,
+  ChevronDown,
 } from 'lucide-react';
 import { Image } from '@/components/ui/image';
 import {
@@ -60,6 +61,7 @@ const FEATURE_ICONS: Record<FeatureSlug, React.FC<{ className?: string }>> = {
   knowledge: BookOpen,
   'study-plan': CalendarDays,
   advice: MessageCircleMore,
+  history: Archive,
 };
 
 function resolveFeatureFromPath(pathname: string, stage: StageSlug | null): FeatureSlug | null {
@@ -69,6 +71,7 @@ function resolveFeatureFromPath(pathname: string, stage: StageSlug | null): Feat
   if (pathname.includes('/knowledge')) return 'knowledge';
   if (pathname.includes('/study-plan')) return 'study-plan';
   if (pathname.includes('/advice')) return 'advice';
+  if (pathname.includes('/history')) return 'history';
   return null;
 }
 
@@ -80,8 +83,6 @@ const LayoutContent: React.FC = () => {
   const stageSlug = parseStageSlugFromPathname(pathname);
   const stageConfig = stageSlug ? STAGE_CONFIGS[stageSlug] : null;
   const featureSlug = resolveFeatureFromPath(pathname, stageSlug);
-  const isStageHome = stageSlug != null && pathname.replace(/\/+$/, '').endsWith(`/${stageSlug}`);
-
   const handleLogout = async () => {
     const { getDataloom } = await import('@lark-apaas/client-toolkit/dataloom');
     const dataloom = await getDataloom();
@@ -133,38 +134,27 @@ const LayoutContent: React.FC = () => {
 
         <SidebarContent>
           <SidebarGroup>
+            <SidebarGroupLabel className="font-marker text-xs">当前学段</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === '/'} tooltip="首页">
-                    <Link to="/">
-                      <Home className="size-4" />
-                      <span className="font-hand">选择学段</span>
-                    </Link>
-                  </SidebarMenuButton>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <SidebarMenuButton tooltip="切换学段">
+                        <Home className="size-4" />
+                        <span className="font-hand">{stageConfig?.label || '选择学段'}</span>
+                        <ChevronDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+                      </SidebarMenuButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="right" align="start" className="w-40 border-2 border-ink">
+                      {STAGE_LIST.map((stage) => (
+                        <DropdownMenuItem key={stage.slug} asChild>
+                          <Link to={stagePath(stage.slug, 'diagnosis')}>{stage.label}</Link>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          <SidebarGroup>
-            <SidebarGroupLabel className="font-marker text-xs">学段入口</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {STAGE_LIST.map((stage) => (
-                  <SidebarMenuItem key={stage.slug}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={stageSlug === stage.slug && isStageHome}
-                      tooltip={stage.label}
-                    >
-                      <Link to={stagePath(stage.slug)}>
-                        <School className="size-4" />
-                        <span className="font-hand">{stage.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

@@ -4,14 +4,16 @@ import {
 } from '../../client/src/config/report-prompt-templates';
 
 describe('report prompt templates', () => {
-  it('keeps diagnosis focused on level, causes and future impact', () => {
+  it('keeps diagnosis focused on current level, target gap and urgency', () => {
     const prompt = buildProfessionalReportFramework('diagnosis');
 
-    expect(prompt).toContain('## 一、当前水平定位');
-    expect(prompt).toContain('## 二、逐科问题定位');
-    expect(prompt).toContain('## 四、接下来的影响');
-    expect(prompt).toContain('不展开学校梯度');
-    expect(prompt).toContain('不生成长期课表');
+    expect(prompt).toContain('## 一、单科学情诊断');
+    expect(prompt).toContain('## 二、多科综合判断');
+    expect(prompt).toContain('## 三、目标学校与差距');
+    expect(prompt).toContain('## 四、核心危机链');
+    expect(prompt).toContain('## 五、备考时间图');
+    expect(prompt).toContain('## 六、给家长的危机沟通话术');
+    expect(prompt).toContain('这里不输出每日课表');
   });
 
   it('extends planning through subject selection, majors and employment', () => {

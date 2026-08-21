@@ -180,3 +180,59 @@ export interface ChapterUnit {
 export interface ChapterListResponse {
   items: ChapterUnit[];
 }
+
+/* ===== Case Archive 学生案例归档 ===== */
+export type CaseArtifactType = 'diagnosis' | 'study_plan' | 'advice';
+
+export interface CaseArchiveRecord {
+  id: string;
+  studentName: string;
+  stage: string;
+  grade: string;
+  region: string;
+  targetSchool: string;
+  targetScore: number | null;
+  artifactType: CaseArtifactType;
+  title: string;
+  content: string;
+  inputSnapshot: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface CaseArchiveListItem {
+  id: string;
+  studentName: string;
+  stage: string;
+  grade: string;
+  region: string;
+  targetSchool: string;
+  artifactType: CaseArtifactType;
+  title: string;
+  createdAt: string;
+}
+
+export interface CreateCaseArchiveRequest {
+  studentName: string;
+  stage: string;
+  grade: string;
+  region: string;
+  targetSchool?: string;
+  targetScore?: number;
+  artifactType: CaseArtifactType;
+  title: string;
+  content: string;
+  inputSnapshot?: Record<string, unknown>;
+}
+
+export interface CaseArchiveListResponse {
+  items: CaseArchiveListItem[];
+  total: number;
+}
+
+export interface CaseArchiveCreateResponse {
+  id: string;
+}
+
+export interface CaseArchiveDeleteResponse {
+  success: boolean;
+}

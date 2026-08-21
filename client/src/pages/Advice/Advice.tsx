@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '@lark-apaas/client-toolkit/logger';
 import WobblyCard from '@client/src/components/WobblyCard';
 import ObjectionHandlingPanel from '@client/src/components/ObjectionHandlingPanel';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import {
   getInternalScriptAnchor,
 } from '@client/src/config/internal-resource-library';
 import { streamDiagnosisReport, streamPolicySearch } from '@client/src/api/plugins';
+import { caseArchive as caseArchiveApi } from '@client/src/api';
 import { buildPromptTemplate } from '@client/src/utils/advice-engine';
 
 interface DiagnosisSessionState {
@@ -126,7 +128,7 @@ const Advice: React.FC = () => {
       scene: string;
       baseMaterial: string;
       onChunk: (next: string) => void;
-    }) => {
+    }): Promise<string> => {
       const internetContext = await fetchInternetContext(
         `${input.query} 洋葱 课程 功能 升学政策`,
       );
@@ -154,6 +156,7 @@ const Advice: React.FC = () => {
         full += chunk;
         input.onChunk(full);
       }
+      return full;
     },
     [
       fetchInternetContext,
@@ -180,18 +183,55 @@ const Advice: React.FC = () => {
     setLoadingCustom(true);
     setCustomAnswer('');
     try {
-      await generateAdviceByQuery({
+      const full = await generateAdviceByQuery({
         query: customQuery.trim(),
         scene: '自定义问题查询',
         baseMaterial: internalMaterial,
         onChunk: setCustomAnswer,
       });
+      try {
+        await caseArchiveApi.createCaseArchive({
+          studentName: profile.studentName || '未命名学生',
+          stage: stageSlug,
+          grade: profile.grade || stageConfig.label,
+          region: [profile.province, profile.city, profile.county].filter(Boolean).join(' ') || '未填写',
+          targetSchool: profile.targetSchool,
+          targetScore: profile.targetScore,
+          artifactType: 'advice',
+          title: `话术：${customQuery.trim().slice(0, 24)}`,
+          content: full,
+          inputSnapshot: {
+            query: customQuery.trim(),
+            linkedDiagnosis: Boolean(diagnosisSession?.reportContent),
+            linkedStudyPlan: Boolean(studyPlanSession?.report),
+          },
+        });
+        toast.success('话术已生成并自动归档');
+      } catch (archiveError) {
+        logger.error('话术自动归档失败', String(archiveError));
+        toast.warning('话术已生成，但自动归档失败');
+      }
     } catch {
       toast.error('自定义问题查询失败，请重试');
     } finally {
       setLoadingCustom(false);
     }
-  }, [customQuery, generateAdviceByQuery, internalMaterial]);
+  }, [
+    customQuery,
+    diagnosisSession?.reportContent,
+    generateAdviceByQuery,
+    internalMaterial,
+    profile.city,
+    profile.county,
+    profile.grade,
+    profile.province,
+    profile.studentName,
+    profile.targetSchool,
+    profile.targetScore,
+    stageConfig.label,
+    stageSlug,
+    studyPlanSession?.report,
+  ]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">

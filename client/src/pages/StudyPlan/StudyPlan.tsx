@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Loader2, Copy, Check, AlertCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '@lark-apaas/client-toolkit/logger';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import {
 } from '@client/src/api/plugins';
 import { toSelectValue } from '@client/src/lib/utils';
 import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
+import { caseArchive as caseArchiveApi } from '@client/src/api';
 
 function parseTargetScore(value: string): number | undefined {
   const trimmed = value.trim();
@@ -84,11 +86,19 @@ interface StudyPlanSessionState {
   weakSubjects: string;
   strongSubjects: string;
   weeklyHours: string;
+  weekdayHomeTime: string;
+  weekendStudyTime: string;
+  homeworkMinutes: string;
+  selectedSubjects: string;
   boardingType: string;
   eveningStudy: string;
   extracurricular: string;
   customNotes: string;
   report: string;
+}
+
+interface DiagnosisSessionState {
+  reportContent: string;
 }
 
 const StudyPlan: React.FC = () => {
@@ -106,6 +116,10 @@ const StudyPlan: React.FC = () => {
   const [weakSubjects, setWeakSubjects] = useState('');
   const [strongSubjects, setStrongSubjects] = useState('');
   const [weeklyHours, setWeeklyHours] = useState('');
+  const [weekdayHomeTime, setWeekdayHomeTime] = useState('');
+  const [weekendStudyTime, setWeekendStudyTime] = useState('');
+  const [homeworkMinutes, setHomeworkMinutes] = useState('');
+  const [selectedSubjects, setSelectedSubjects] = useState('');
   const [boardingType, setBoardingType] = useState('');
   const [eveningStudy, setEveningStudy] = useState('');
   const [extracurricular, setExtracurricular] = useState('');
@@ -117,6 +131,8 @@ const StudyPlan: React.FC = () => {
   const applyingProfileRef = useRef(false);
   const hydratedRef = useRef(false);
   const reportRef = useRef<HTMLDivElement | null>(null);
+  const diagnosisContext = loadModuleSession<DiagnosisSessionState>(stageSlug, 'diagnosis')
+    ?.reportContent?.trim();
 
   useEffect(() => {
     const cached = loadModuleSession<StudyPlanSessionState>(stageSlug, 'study-plan');
@@ -133,6 +149,10 @@ const StudyPlan: React.FC = () => {
     setWeakSubjects(cached.weakSubjects || '');
     setStrongSubjects(cached.strongSubjects || '');
     setWeeklyHours(cached.weeklyHours || '');
+    setWeekdayHomeTime(cached.weekdayHomeTime || '');
+    setWeekendStudyTime(cached.weekendStudyTime || '');
+    setHomeworkMinutes(cached.homeworkMinutes || '');
+    setSelectedSubjects(cached.selectedSubjects || '');
     setBoardingType(cached.boardingType || '');
     setEveningStudy(cached.eveningStudy || '');
     setExtracurricular(cached.extracurricular || '');
@@ -180,6 +200,10 @@ const StudyPlan: React.FC = () => {
       weakSubjects,
       strongSubjects,
       weeklyHours,
+      weekdayHomeTime,
+      weekendStudyTime,
+      homeworkMinutes,
+      selectedSubjects,
       boardingType,
       eveningStudy,
       extracurricular,
@@ -200,6 +224,10 @@ const StudyPlan: React.FC = () => {
     weakSubjects,
     strongSubjects,
     weeklyHours,
+    weekdayHomeTime,
+    weekendStudyTime,
+    homeworkMinutes,
+    selectedSubjects,
     boardingType,
     eveningStudy,
     extracurricular,
@@ -272,7 +300,7 @@ const StudyPlan: React.FC = () => {
   const validate = (): string | null => {
     if (!grade) return '请选择年级';
     if (!region.trim()) return '请填写所在地区';
-    if (!weakSubjects.trim() && !currentScore.trim()) return '请填写薄弱科目或当前成绩';
+    if (!selectedSubjects.trim() && !weakSubjects.trim()) return '请填写本次规划科目';
     if (!weeklyHours.trim()) return '请填写每周可支配学习时长';
     if (!boardingType) return '请选择走读或住读';
     return null;
@@ -300,22 +328,54 @@ const StudyPlan: React.FC = () => {
         targetScore: targetScore.trim(),
         careerIntent: careerIntent.trim(),
         examMode: examMode.trim(),
-        weakSubjects: weakSubjects.trim(),
+        weakSubjects: selectedSubjects.trim() || weakSubjects.trim(),
         strongSubjects: strongSubjects.trim(),
         weeklyHours: weeklyHours.trim(),
         dailyHours: '',
         boardingType,
         eveningStudy,
         extracurricular,
-        weeklySchedule: '',
-        timetableNotes: '',
+        weeklySchedule: [
+          weekdayHomeTime ? `工作日回家时间：${weekdayHomeTime}` : '',
+          weekendStudyTime ? `周末可学习时段：${weekendStudyTime}` : '',
+        ].filter(Boolean).join('\n'),
+        timetableNotes: [
+          homeworkMinutes ? `学校作业预计用时：${homeworkMinutes}分钟/天` : '',
+          extracurricular ? `固定占用时间：${extracurricular}` : '',
+        ].filter(Boolean).join('\n'),
         customNotes: customNotes.trim(),
+        diagnosisContext: diagnosisContext?.slice(0, 5000),
       };
 
       let full = '';
       for await (const chunk of streamPersonalizedLearningPlan(input, { stageSlug, profile })) {
         full += chunk;
         setReport(full);
+      }
+      try {
+        await caseArchiveApi.createCaseArchive({
+          studentName: profile.studentName || '未命名学生',
+          stage: stageSlug,
+          grade,
+          region: region.trim(),
+          targetSchool: targetSchool.trim(),
+          targetScore: parseTargetScore(targetScore),
+          artifactType: 'study_plan',
+          title: `${grade}学习规划`,
+          content: full,
+          inputSnapshot: {
+            selectedSubjects: selectedSubjects.trim() || weakSubjects.trim(),
+            weekdayHomeTime,
+            weekendStudyTime,
+            homeworkMinutes,
+            weeklyHours,
+            linkedDiagnosis: Boolean(diagnosisContext),
+          },
+        });
+        toast.success('学习规划已生成并自动归档');
+      } catch (archiveError) {
+        logger.error('学习规划自动归档失败', String(archiveError));
+        toast.warning('学习规划已生成，但自动归档失败');
       }
       setTimeout(() => reportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
     } catch {
@@ -327,7 +387,8 @@ const StudyPlan: React.FC = () => {
     boardingType, currentScore, customNotes, eveningStudy, examDate,
     extracurricular, grade, region, school, stageConfig.label, stageSlug,
     strongSubjects, targetSchool, targetScore, careerIntent, examMode, weakSubjects,
-    weeklyHours, profile,
+    weeklyHours, weekdayHomeTime, weekendStudyTime, homeworkMinutes, selectedSubjects,
+    diagnosisContext, profile,
   ]);
 
   const handleCopy = async () => {
@@ -386,10 +447,10 @@ const StudyPlan: React.FC = () => {
           </Link>
         </Button>
         <h1 className="font-marker text-2xl font-bold">
-          {stageConfig.label} · 个性化学习规划
+          {stageConfig.label} · 学习规划
         </h1>
         <p className="font-hand mt-1 text-sm text-muted-foreground">
-          根据年级、地区、目标与时间约束，生成可执行的周计划与日安排（表格+时间轴）
+          关联学情诊断中的问题，并按回家时间和学习科目生成可执行规划表
         </p>
       </div>
 
@@ -436,12 +497,55 @@ const StudyPlan: React.FC = () => {
         <WobblyCard variant="yellow" wobblyIndex={1} hoverable={false} className="p-4 space-y-4">
           <h2 className="font-marker font-bold">时间与课表</h2>
           <p className="font-hand text-sm text-ink/70">
-            这里只保留最关键的时间约束和个性化说明，避免重复填写过细课表。
+            填写真实可用时间和本次规划科目，系统会把诊断问题拆成每天可执行的任务。
           </p>
+          <div className="rounded-md border-2 border-dashed border-pen-blue/25 bg-pen-blue/5 px-3 py-2 text-sm text-ink/75">
+            {diagnosisContext
+              ? '已关联最近一次学情诊断，规划会优先处理诊断中的高优先级问题。'
+              : '尚未找到本学段的诊断结果，将先按档案和本页信息生成；建议先完成学情诊断。'}
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="font-hand">本次规划科目 *</Label>
+              <Input
+                value={selectedSubjects}
+                onChange={(e) => setSelectedSubjects(e.target.value)}
+                placeholder={weakSubjects || '如：数学、英语、物理'}
+                className="font-hand mt-1"
+              />
+            </div>
             <div>
               <Label className="font-hand">每周可支配时长(小时) *</Label>
               <Input value={weeklyHours} onChange={(e) => { markDirty(); setWeeklyHours(e.target.value); }} className="font-hand mt-1" />
+            </div>
+            <div>
+              <Label className="font-hand">工作日回家时间</Label>
+              <Input
+                type="time"
+                value={weekdayHomeTime}
+                onChange={(e) => setWeekdayHomeTime(e.target.value)}
+                className="font-hand mt-1"
+              />
+            </div>
+            <div>
+              <Label className="font-hand">学校作业预计用时（分钟/天）</Label>
+              <Input
+                type="number"
+                min="0"
+                value={homeworkMinutes}
+                onChange={(e) => setHomeworkMinutes(e.target.value)}
+                placeholder="如：90"
+                className="font-hand mt-1"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <Label className="font-hand">周末可学习时段</Label>
+              <Input
+                value={weekendStudyTime}
+                onChange={(e) => setWeekendStudyTime(e.target.value)}
+                placeholder="如：周六 9:00-11:00，周日 19:00-20:30"
+                className="font-hand mt-1"
+              />
             </div>
             <div>
               <Label className="font-hand">走读/住读 *</Label>

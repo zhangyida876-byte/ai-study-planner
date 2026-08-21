@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Copy, Check, Loader2, Clock, Target, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@lark-apaas/client-toolkit/logger';
-import { diagnosis as diagnosisApi } from '@client/src/api';
+import { caseArchive as caseArchiveApi, diagnosis as diagnosisApi } from '@client/src/api';
 import { streamDiagnosisReport, buildScoresText, buildDiagnosisPrompt, getEducationStage, type DiagnosisFormContext } from '@client/src/api/plugins';
 import WobblyCard from '@client/src/components/WobblyCard';
 import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
@@ -174,6 +174,10 @@ const Diagnosis: React.FC = () => {
       ? data.grade
       : stageConfig.grades[stageConfig.grades.length - 1];
     const normalizedData: DiagnosisFormData = { ...data, grade: safeGrade };
+    if (!normalizedData.targetSchool?.trim() && normalizedData.targetScore == null) {
+      toast.error('请先填写目标学校或目标分数');
+      return;
+    }
     setStudentInfo(normalizedData);
 
     const scores: Record<string, number> = {};
@@ -256,7 +260,28 @@ const Diagnosis: React.FC = () => {
         });
       }
 
-      toast.success('诊断报告生成完成');
+      try {
+        await caseArchiveApi.createCaseArchive({
+          studentName: normalizedData.studentName || profile.studentName || '未命名学生',
+          stage: stageSlug,
+          grade: normalizedData.grade,
+          region: normalizedData.region,
+          targetSchool: normalizedData.targetSchool,
+          targetScore: normalizedData.targetScore,
+          artifactType: 'diagnosis',
+          title: `${normalizedData.grade}学情诊断`,
+          content: fullContent,
+          inputSnapshot: {
+            scores,
+            problemDesc: normalizedData.problemDesc || '',
+            examDate: normalizedData.examDate || '',
+          },
+        });
+        toast.success('诊断报告已生成并自动归档');
+      } catch (archiveError) {
+        logger.error('诊断报告自动归档失败', String(archiveError));
+        toast.warning('报告已生成，但自动归档失败');
+      }
     } catch (error) {
       logger.error('诊断报告生成失败', String(error));
       toast.error('诊断报告生成失败，请重试');

@@ -117,6 +117,37 @@ export const fileAttachmentArray = customType<{
   },
 });
 
+export const caseArchive = pgTable("case_archive", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentName: varchar("student_name", { length: 100 }).notNull(),
+  stage: varchar("stage", { length: 20 }).notNull(),
+  grade: varchar("grade", { length: 50 }).notNull(),
+  region: varchar("region", { length: 100 }).notNull(),
+  targetSchool: varchar("target_school", { length: 200 }),
+  targetScore: integer("target_score"),
+  artifactType: varchar("artifact_type", { length: 30 }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  content: text("content").notNull(),
+  /**
+   * @type Record<string, unknown>
+   */
+  inputSnapshot: jsonb("input_snapshot").notNull().default('{}'),
+  // System field: Creation time (auto-filled, do not modify)
+  createdAt: customTimestamptz("_created_at", { precision: 3 }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  // System field: Creator (auto-filled, do not modify)
+  createdBy: userProfile("_created_by").default(sql`CASE
+    WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
+  // System field: Update time (auto-filled, do not modify)
+  updatedAt: customTimestamptz("_updated_at", { precision: 3 }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  // System field: Updater (auto-filled, do not modify)
+  updatedBy: userProfile("_updated_by").default(sql`CASE
+    WHEN (current_setting('app.user_id'::text, true) = ''::text) THEN NULL`),
+}, (table) => [
+  index("idx_case_archive_created_at").on(table.createdAt),
+  index("idx_case_archive_student_name").on(table.studentName),
+  index("idx_case_archive_artifact_type").on(table.artifactType),
+]);
+
 export const resourceLibrary = pgTable("resource_library", {
   id: text("id").primaryKey().default(sql`md5(((random())`),
   sourceUrl: text("source_url").notNull().unique(),
@@ -358,6 +389,7 @@ export const diagnosisRecord = pgTable("diagnosis_record", {
 
 // table aliases
 export const admissionPolicyTable = admissionPolicy;
+export const caseArchiveTable = caseArchive;
 export const diagnosisRecordTable = diagnosisRecord;
 export const knowledgePointTable = knowledgePoint;
 export const learningPlanRecordTable = learningPlanRecord;

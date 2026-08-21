@@ -8,6 +8,7 @@ import { DiagnosisModule } from './modules/diagnosis/diagnosis.module';
 import { PlanModule } from './modules/plan/plan.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { PolicyModule } from './modules/policy/policy.module';
+import { CaseArchiveModule } from './modules/case-archive/case-archive.module';
 import { ViewModule } from './modules/view/view.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { ViewModule } from './modules/view/view.module';
     PlanModule,
     KnowledgeModule,
     PolicyModule,
+    CaseArchiveModule,
     // ====== @route-section: business-modules END ======
 
     // ⚠️ @route-order: last

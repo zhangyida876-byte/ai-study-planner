@@ -10,6 +10,7 @@ import Plan from './pages/Plan/Plan';
 import Knowledge from './pages/Knowledge/Knowledge';
 import StudyPlan from './pages/StudyPlan/StudyPlan';
 import Advice from './pages/Advice/Advice';
+import History from './pages/History/History';
 import { isStageSlug } from './config/stages';
 
 const StageGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -70,6 +71,14 @@ const RoutesComponent = () => {
           element={
             <StageGuard>
               <Advice />
+            </StageGuard>
+          }
+        />
+        <Route
+          path=":stage/history"
+          element={
+            <StageGuard>
+              <History />
             </StageGuard>
           }
         />
