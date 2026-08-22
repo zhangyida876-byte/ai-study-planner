@@ -20,6 +20,7 @@ import {
 import WobblyCard from '@client/src/components/WobblyCard';
 import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
 import ReferenceScriptCard from '@client/src/components/ReferenceScriptCard';
+import DiagnosisRoadmapChart from '@client/src/components/DiagnosisRoadmapChart';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { Button } from '@/components/ui/button';
 import DiagnosisForm, { type DiagnosisFormData } from './DiagnosisForm';
@@ -30,6 +31,8 @@ import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-s
 import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
 import { getInternalScriptAnchor } from '@client/src/config/internal-resource-library';
 import { buildMiddleSchoolBenchmarkContext } from '@client/src/utils/school-benchmarks';
+import { formatDiagnosisDate, getAcademicPeriod } from '@client/src/utils/diagnosis-timing';
+import { getVersionForProvinceSubject } from '@client/src/pages/Knowledge/KnowledgeFilterPanel';
 
 /* ===== Helpers ===== */
 
@@ -295,6 +298,14 @@ const Diagnosis: React.FC = () => {
         targetScore: stage === 'elementary' ? undefined : normalizedData.targetScore,
         examDate: normalizedData.examDate,
         schoolReferenceContext,
+        diagnosisDate: formatDiagnosisDate(),
+        academicPeriod: getAcademicPeriod(),
+        textbookVersions: Object.fromEntries(
+          filledSubjects.map((subject) => [
+            subject,
+            getVersionForProvinceSubject(normalizedData.region, subject === '政治&道法' ? '政治' : subject),
+          ]),
+        ),
       };
       const scoresText = buildScoresText(scores, scoreMaxValues);
       const learningProblems = buildDiagnosisPrompt(formCtx, {
@@ -395,6 +406,16 @@ const Diagnosis: React.FC = () => {
       ).reduce((sum, key) => sum + ((studentInfo[key as keyof DiagnosisFormData] as number) || 0), 0)
     : 0;
   const scoreGap = (studentInfo?.targetScore != null && studentStage !== 'elementary') ? studentInfo.targetScore - totalScore : null;
+  const prioritySubject = studentInfo
+    ? resolveFilledSubjects(studentInfo)
+        .map((key) => {
+          const score = studentInfo[key];
+          const coreMax = studentStage === 'elementary' ? 100 : studentStage === 'middle' ? 120 : 150;
+          const max = CORE_SUBJECT_KEYS.includes(key) ? coreMax : 100;
+          return { label: SUBJECT_LABELS[key], rate: typeof score === 'number' ? score / max : 1 };
+        })
+        .sort((a, b) => a.rate - b.rate)[0]?.label
+    : undefined;
   const buildDiagnosisReferenceScript = useCallback(() => {
     if (!studentInfo) return '';
     const name = studentInfo.studentName || '孩子';
@@ -444,7 +465,7 @@ const Diagnosis: React.FC = () => {
           onSyncBack={handleSyncProfileBack}
         />
 
-      <div className="grid gap-6 xl:grid-cols-[460px_minmax(0,1fr)]">
+      <div className="space-y-6">
         <div className="min-w-0">
           <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false}>
             <div className="space-y-5 p-5">
@@ -579,6 +600,15 @@ const Diagnosis: React.FC = () => {
                   )}
                 </div>
 
+                {studentInfo && reportContent && (
+                  <DiagnosisRoadmapChart
+                    grade={studentInfo.grade}
+                    stage={studentStage}
+                    examDate={studentInfo.examDate}
+                    prioritySubject={prioritySubject}
+                  />
+                )}
+
                 {isGenerating && !reportContent && (
                   <div className="flex items-center gap-3 py-12 font-hand text-xl text-muted-foreground">
                     <Loader2 className="size-5 animate-spin" />
@@ -599,7 +629,7 @@ const Diagnosis: React.FC = () => {
                 <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
                 <p className="font-marker mt-2 text-2xl font-bold text-ink">生成学情诊断报告</p>
                 <p className="font-hand mt-2 max-w-md text-sm text-muted-foreground">
-                  左侧确认基础信息和各科成绩后，点击“生成诊断报告”，这里会展示完整诊断结果。
+                  在上方确认基础信息和各科成绩后，点击“生成诊断报告”，这里会展示宽版诊断结果和备考危机时间轴。
                 </p>
               </div>
             </WobblyCard>

@@ -16,6 +16,10 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('这里不输出每日课表');
     expect(prompt).toContain('未填写时不得停止生成');
     expect(prompt).toContain('普通高中、重点高中各1所');
+    expect(prompt).toContain('当前教学阶段和教材版本依据');
+    expect(prompt).toContain('重难点与常见错法');
+    expect(prompt).toContain('页面会根据当前年级和日期显示可视化时间轴');
+    expect(prompt).toContain('每段最多2句话');
   });
 
   it('extends planning through subject selection, majors and employment', () => {

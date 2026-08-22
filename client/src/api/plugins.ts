@@ -75,6 +75,9 @@ export interface DiagnosisFormContext {
   careerIntent?: string;
   examDate?: string;
   schoolReferenceContext?: string;
+  diagnosisDate?: string;
+  academicPeriod?: string;
+  textbookVersions?: Record<string, string>;
 }
 
 export interface PlanReportInput {
@@ -702,6 +705,14 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
     limit: 12,
   });
   const parts: string[] = [];
+  if (ctx.diagnosisDate) parts.push(`诊断日期：${ctx.diagnosisDate}`);
+  if (ctx.academicPeriod) parts.push(`当前教学阶段：${ctx.academicPeriod}`);
+  if (ctx.textbookVersions && Object.keys(ctx.textbookVersions).length > 0) {
+    const versionText = Object.entries(ctx.textbookVersions)
+      .map(([subject, version]) => `${subject}${version}`)
+      .join('、');
+    parts.push(`地区教材版本参考：${versionText}（版本按地区常用教材推测，需用学生教材封面或目录核实）`);
+  }
   const boardingLabel = ctx.boardingType === 'day' ? '走读' : ctx.boardingType === 'boarding' ? '住读' : '';
   if (boardingLabel) parts.push(`学习模式：${boardingLabel}${ctx.monthlyStudyHours ? `，每月自主学习约${ctx.monthlyStudyHours}小时` : ''}`);
 
@@ -757,6 +768,10 @@ ${filledScoreTotals}
 6. 每个已填写科目回答：当前分/满分/得分率、水平等级、最需验证的1-2类题型或能力问题、对总分和后续学习的影响。
 7. 用户填写目标时，以该目标学校和分数线为准；用户未填写时，不得卡住生成，必须使用系统提供的本地参照，初中至少展示普通高中、重点高中各1所及其分数线和年份。
 8. 表达要家长易懂、顾问可直接口播，避免官话和模板腔。
+9. 必须把诊断日期、年级、当前教学阶段和教材版本放在分析依据中；禁止写成脱离时间的通用学科建议。
+10. 每个已填科目必须给出2-3个与“当前年级 + 当前教学阶段 + 教材版本”匹配的具体章节、知识点或题型，写清重难点、常见错法和验证证据。不能只写“英语基础要打牢”“数学多练题”等空话。
+11. 教材进度未由用户或学校确认时，必须写“按地区常用版本和校历推测”，并提示用教材目录、最近作业或试卷核实；不得把推测写成已确认事实。
+12. 当前处于寒暑假或开学衔接期时，分析必须同时覆盖“上一学期关键漏洞复盘”和“新学期前置知识”，不能照搬学期中进度。
 
 【本模块边界】
 0. 下面的模块边界和建议输出结构优先级高于插件默认模板；如默认模板要求输出长篇政策/完整规划，应主动压缩或省略。
@@ -765,6 +780,7 @@ ${filledScoreTotals}
 3. 必须把分数差距翻译成家长听得懂的具体风险，例如“数学再卡在90分上下，会把总分拉开约20分”。
 4. 不输出每日课表、周训练表或完整产品使用方案；结尾只引导进入“学习规划”生成具体安排。
 5. 输出优先采用当地课程顾问口吻：先说现状，再对照目标，说明危机链和时间窗口，最后给出下一步。
+6. 第一至五章优先使用短结论、表格和节点，不得连续输出超过120字的大段文字；危机话术按“认可、定位、风险、行动”四个短段落输出，每段最多2句话。
 
 【问题定位证据规则】
 1. 分数只能用于提出“待验证的问题假设”，不能仅凭单次分数断言具体知识点已经失分。
