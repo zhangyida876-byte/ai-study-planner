@@ -96,6 +96,26 @@ async function resolveAutomaticTargetContext(
   ].filter(Boolean).join('\n');
 }
 
+async function resolveWithTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  fallback: T,
+): Promise<T> {
+  return new Promise<T>((resolve) => {
+    const timer = window.setTimeout(() => resolve(fallback), timeoutMs);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        window.clearTimeout(timer);
+        resolve(fallback);
+      },
+    );
+  });
+}
+
 type DiagnosisSubjectKey =
   | 'chinese'
   | 'math'
@@ -152,6 +172,8 @@ const Diagnosis: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
   const { profile, regionText, updateProfile } = useStageProfile(stageSlug);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationPhase, setGenerationPhase] = useState('');
+  const [generationError, setGenerationError] = useState('');
   const [reportContent, setReportContent] = useState('');
   const [copied, setCopied] = useState(false);
   const [studentInfo, setStudentInfo] = useState<DiagnosisFormData | null>(null);
@@ -253,25 +275,38 @@ const Diagnosis: React.FC = () => {
 
     setIsGenerating(true);
     setReportContent('');
+    setGenerationError('');
+    setGenerationPhase('正在保存诊断信息...');
 
     let recordId: string | null = null;
     try {
-      const createRes = await diagnosisApi.createDiagnosisRecord({
-        studentName: normalizedData.studentName || '',
-        grade: normalizedData.grade,
-        region: normalizedData.region,
-        scores,
-        problemDesc: normalizedData.problemDesc || '',
-      });
-      recordId = createRes.id;
+      try {
+        const createRes = await diagnosisApi.createDiagnosisRecord({
+          studentName: normalizedData.studentName || '',
+          grade: normalizedData.grade,
+          region: normalizedData.region,
+          scores,
+          problemDesc: normalizedData.problemDesc || '',
+        });
+        recordId = createRes.id;
+      } catch (saveError) {
+        logger.error('诊断记录预保存失败，继续生成报告', String(saveError));
+      }
 
       const stage = getEducationStage(normalizedData.grade);
       const hasExplicitTarget = Boolean(
         normalizedData.targetSchool?.trim() || normalizedData.targetScore != null,
       );
+      setGenerationPhase(
+        hasExplicitTarget ? '正在整理诊断依据...' : '正在匹配本地学校参照...',
+      );
       const schoolReferenceContext = hasExplicitTarget
         ? ''
-        : await resolveAutomaticTargetContext(normalizedData.region, stage);
+        : await resolveWithTimeout(
+            resolveAutomaticTargetContext(normalizedData.region, stage),
+            15000,
+            '学校参照检索超时，本次先基于已有成绩完成诊断；具体学校与分数线待核实。',
+          );
       const coreMax = stage === 'elementary' ? 100 : stage === 'middle' ? 120 : 150;
       const scoreMaxValues: Record<string, number> = {};
       for (const key of filledSubjectKeys) {
@@ -319,17 +354,27 @@ const Diagnosis: React.FC = () => {
         learning_problems: learningProblems,
       });
 
+      setGenerationPhase('正在生成诊断报告...');
       let fullContent = '';
       for await (const chunk of generator) {
         fullContent += chunk;
         setReportContent(fullContent);
       }
 
+      if (!fullContent.trim()) {
+        throw new Error('诊断服务未返回内容');
+      }
+
       if (recordId) {
-        await diagnosisApi.updateDiagnosisRecord(recordId, {
-          status: 'completed',
-          report: fullContent,
-        });
+        setGenerationPhase('正在整理并归档报告...');
+        try {
+          await diagnosisApi.updateDiagnosisRecord(recordId, {
+            status: 'completed',
+            report: fullContent,
+          });
+        } catch (updateError) {
+          logger.error('诊断记录更新失败，继续归档报告', String(updateError));
+        }
       }
 
       try {
@@ -356,7 +401,11 @@ const Diagnosis: React.FC = () => {
       }
     } catch (error) {
       logger.error('诊断报告生成失败', String(error));
-      toast.error('诊断报告生成失败，请重试');
+      const message = error instanceof Error && error.message === '诊断服务未返回内容'
+        ? '诊断服务暂未返回内容，请稍后重试'
+        : '诊断报告生成失败，请稍后重试';
+      setGenerationError(message);
+      toast.error(message);
       if (recordId) {
         try {
           await diagnosisApi.updateDiagnosisRecord(recordId, { status: 'failed' });
@@ -366,6 +415,7 @@ const Diagnosis: React.FC = () => {
       }
     } finally {
       setIsGenerating(false);
+      setGenerationPhase('');
     }
   }, [stageSlug, profile, stageConfig.grades]);
 
@@ -480,6 +530,8 @@ const Diagnosis: React.FC = () => {
                 <DiagnosisForm
                   onSubmit={onSubmit}
                   isGenerating={isGenerating}
+                  generationPhase={generationPhase}
+                  generationError={generationError}
                   onMajorInfoChange={setMajorInfoContent}
                   allowedGrades={stageConfig.grades}
                   stageLabel={stageConfig.label}

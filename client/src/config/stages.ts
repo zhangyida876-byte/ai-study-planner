@@ -46,7 +46,7 @@ const FEATURES: StageFeatureConfig[] = [
   },
   {
     slug: 'knowledge',
-    label: '知识点查询',
+    label: '版本及知识点查询',
     description: '按教材、年级和科目查询知识点并生成深度分析',
     pathSuffix: 'knowledge',
   },

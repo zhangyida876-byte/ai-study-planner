@@ -9,7 +9,7 @@ export class AnnouncementService {
         {
           id: '1',
           title: '系统上线通知',
-          content: '学情顾问系统正式上线，支持学情诊断、升学规划、知识点查询三大核心功能。',
+          content: '学情顾问系统正式上线，支持学情诊断、升学规划、版本及知识点查询三大核心功能。',
           createdAt: '2026-06-20T00:00:00.000Z',
         },
         {

@@ -695,7 +695,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t-2 border-dashed border-ink/15 pt-4">
         <p className="font-hand text-xs text-muted-foreground">
-          保存后将同步到学情诊断、升学规划、知识点查询和学习计划。
+          保存后将同步到学情诊断、升学规划、版本及知识点查询和学习计划。
           {countdownDays != null && draft.examDate ? ` 距${stageConfig.examLabel} ${countdownDays} 天。` : ''}
         </p>
         <Button className="font-hand" onClick={handleSave}>

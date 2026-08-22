@@ -3,7 +3,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type FieldErrors } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Loader2, FileText, Search, Sparkles } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  FileText,
+  Search,
+  Sparkles,
+} from 'lucide-react';
 import { axiosForBackend } from '@lark-apaas/client-toolkit/utils/getAxiosForBackend';
 
 import { capabilityClient } from '@lark-apaas/client-toolkit';
@@ -250,6 +257,8 @@ function buildRegionText(province: string, city: string, county: string): string
 interface DiagnosisFormProps {
   onSubmit: (data: DiagnosisFormData) => void;
   isGenerating: boolean;
+  generationPhase?: string;
+  generationError?: string;
   onMajorInfoChange?: (content: string) => void;
   allowedGrades?: string[];
   stageLabel?: string;
@@ -286,6 +295,8 @@ const SCORE_FIELDS: Array<keyof DiagnosisFormData> = [
 const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   onSubmit,
   isGenerating,
+  generationPhase,
+  generationError,
   onMajorInfoChange,
   allowedGrades,
   stageLabel,
@@ -313,6 +324,8 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   const [scoreSuggested, setScoreSuggested] = useState(false);
   const [majorInfoContent, setMajorInfoContent] = useState('');
   const [majorInfoLoading, setMajorInfoLoading] = useState(false);
+  const [showAllSubjects, setShowAllSubjects] = useState(false);
+  const [formFeedback, setFormFeedback] = useState('');
   const [internetSubjectMaxHints, setInternetSubjectMaxHints] = useState<Record<string, number>>({});
   const customRegionRef = useRef('');
   const applyingProfileRef = useRef(false);
@@ -524,11 +537,23 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   const watchedHistory = form.watch('history');
   const watchedRegion = form.watch('region');
   const watchedMajor = form.watch('targetMajor');
+  const watchedScores = form.watch(SCORE_FIELDS);
   const isHighSchool = ['高一', '高二', '高三'].includes(watchedGrade);
   const isMiddleSchool = ['初一', '初二', '初三'].includes(watchedGrade);
   const isElementary = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'].includes(watchedGrade);
 
   const watchedSchool = form.watch('targetSchool');
+  const stageSubjects = getStageSubjects(watchedGrade);
+  const filledScoreFields = new Set(
+    SCORE_FIELDS.filter((field, index) => typeof watchedScores[index] === 'number'),
+  );
+  const compactStageSubjects = showAllSubjects
+    ? stageSubjects
+    : stageSubjects.filter((subject) => (
+        CORE_SUBJECTS.some((coreSubject) => coreSubject.name === subject.name)
+        || filledScoreFields.has(subject.name)
+      ));
+  const hiddenSubjectCount = stageSubjects.length - compactStageSubjects.length;
 
   useEffect(() => {
     if (!watchedRegion || !watchedGrade) return;
@@ -774,28 +799,32 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     }
 
     if (Object.keys(scores).length === 0) {
-      toast.error('请至少填写一科成绩');
+      const message = '请至少填写一科成绩后再生成报告';
+      setFormFeedback(message);
+      toast.error(message);
       return;
     }
 
+    setFormFeedback('');
     onSubmit(data);
   }, [onSubmit]);
 
   const handleInvalidSubmit = useCallback((errors: FieldErrors<DiagnosisFormData>) => {
+    let message = '表单信息不完整，请检查红色提示项';
     if (errors.grade) {
-      toast.error('缺少年级：请回到学段首页补齐年级，或刷新后再试');
-      return;
+      message = '缺少年级：请回到学段首页补齐年级，或刷新后再试';
+    } else if (errors.region) {
+      message = '缺少地区：请回到学段首页补齐省市地区';
+    } else {
+      const firstScoreError = ALL_SCORE_SUBJECTS.find(
+        (subject) => errors[subject.name],
+      );
+      if (firstScoreError) {
+        message = `${firstScoreError.label}分数超出范围，请按满分重新填写`;
+      }
     }
-    if (errors.region) {
-      toast.error('缺少地区：请回到学段首页补齐省市地区');
-      return;
-    }
-    const firstScoreError = ALL_SCORE_SUBJECTS.find((subject) => errors[subject.name]);
-    if (firstScoreError) {
-      toast.error(`${firstScoreError.label}分数超出范围，请按满分重新填写`);
-      return;
-    }
-    toast.error('表单信息不完整，请检查红色提示项');
+    setFormFeedback(message);
+    toast.error(message);
   }, []);
 
   const renderSubjectInput = (subject: { name: keyof DiagnosisFormData; label: string; max: number }) => {
@@ -806,13 +835,14 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
       control={form.control}
       name={subject.name}
       render={({ field }) => (
-        <FormItem>
-          <FormLabel className="text-sm">
+        <FormItem className="space-y-1">
+          <FormLabel className="text-xs">
             {subject.label}
             <span className="ml-1 text-xs font-normal text-ink/50">(满分{effectiveMax})</span>
           </FormLabel>
           <FormControl>
             <Input
+              className="h-10"
               type="number"
               placeholder={`0-${effectiveMax}`}
               min={0}
@@ -842,14 +872,14 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(handleFormSubmit, handleInvalidSubmit)}
-        className="space-y-4"
+        className="space-y-3"
       >
-        <div className="rounded-xl border-2 border-dashed border-pen-blue/25 bg-pen-blue/5 p-4">
+        <div className="rounded-xl border-2 border-dashed border-pen-blue/25 bg-pen-blue/5 p-3">
           <h3 className="font-marker text-base font-bold">首页档案已自动带入</h3>
           <p className="font-hand mt-1 text-xs text-ink/60">
             这里不再重复编辑基础信息；目标学校和分数均可不填，系统会自动匹配本地升学参照。
           </p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {[
               ['学生', form.getValues('studentName') || stageProfile?.studentName || '未填写'],
               ['年级', watchedGrade || stageProfile?.grade || '未填写'],
@@ -1282,22 +1312,39 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
         </div>
 
         {/* Subject Scores */}
-        <div className="rounded-xl border-2 border-dashed border-ink/15 bg-accent/40 p-4">
-          <div className="mb-3">
+        <div className="rounded-xl border-2 border-dashed border-ink/15 bg-accent/40 p-3">
+          <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
+            <div>
             <FormLabel className="block">各科成绩</FormLabel>
             <p className="font-hand mt-1 text-xs text-ink/60">
               首页成绩已自动带入，可只补充或修正本次要诊断的科目。
             </p>
+            </div>
+            {(!isHighSchool || !watchedMode) && (hiddenSubjectCount > 0 || showAllSubjects) && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 font-hand text-xs text-pen-blue"
+                onClick={() => setShowAllSubjects((current) => !current)}
+              >
+                {showAllSubjects ? (
+                  <><ChevronUp className="mr-1 size-3.5" />收起选填科目</>
+                ) : (
+                  <><ChevronDown className="mr-1 size-3.5" />添加其他科目（{hiddenSubjectCount}）</>
+                )}
+              </Button>
+            )}
           </div>
 
           {isHighSchool && watchedMode ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Core: 3 required */}
               <div>
                 <p className="font-hand mb-2 text-xs font-semibold text-pen-blue">
                   必考（3科，满分各150）
                 </p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                   {CORE_SUBJECTS.map(renderSubjectInput)}
                 </div>
               </div>
@@ -1309,7 +1356,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
                     <p className="font-hand mb-2 text-xs font-semibold text-pen-blue">
                       首选科目（二选一）
                     </p>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                       {PREFERRED_12.map(renderSubjectInput)}
                     </div>
                   </div>
@@ -1319,7 +1366,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
                       <p className="font-hand mb-2 text-xs font-semibold text-pen-blue">
                         再选科目（四选二，填写2科即可）
                       </p>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                         {ELECTIVE_12.map(renderSubjectInput)}
                       </div>
                     </div>
@@ -1332,21 +1379,21 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
                   <p className="font-hand mb-2 text-xs font-semibold text-pen-blue">
                     选考科目（六选三，填写3科即可）
                   </p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                     {ALL_ELECTIVES.map(renderSubjectInput)}
                   </div>
                 </div>
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {getStageSubjects(watchedGrade).map(renderSubjectInput)}
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {compactStageSubjects.map(renderSubjectInput)}
             </div>
           )}
         </div>
 
         {/* Problem Description */}
-        <div className="rounded-xl border-2 border-dashed border-ink/15 bg-white/70 p-4">
+        <div className="rounded-xl border-2 border-dashed border-ink/15 bg-white/70 p-3">
         <FormField
           control={form.control}
           name="problemDesc"
@@ -1356,7 +1403,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
               <FormControl>
                 <Textarea
                   placeholder="可补充错题表现、听课状态、做题习惯，例如：数学压轴题不会列式，英语完形总靠感觉"
-                  className="min-h-[80px] resize-none"
+                  className="min-h-[64px] resize-none"
                   value={field.value ?? ''}
                   onChange={field.onChange}
                   name={field.name}
@@ -1382,6 +1429,18 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
             </>
           )}
         </Button>
+        {(formFeedback || generationError || generationPhase) && (
+          <div
+            role={formFeedback || generationError ? 'alert' : 'status'}
+            className={`rounded-md border px-3 py-2 font-hand text-sm ${
+              formFeedback || generationError
+                ? 'border-marker-red/40 bg-marker-red/5 text-marker-red'
+                : 'border-pen-blue/30 bg-pen-blue/5 text-pen-blue'
+            }`}
+          >
+            {formFeedback || generationError || generationPhase}
+          </div>
+        )}
       </form>
     </Form>
   );

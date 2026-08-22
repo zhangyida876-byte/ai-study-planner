@@ -384,7 +384,7 @@ const Knowledge: React.FC = () => {
           </Link>
         </Button>
         <h1 className="mb-2 font-marker text-3xl font-bold">
-          {stageConfig.label} · 知识点&痛点查询
+          {stageConfig.label} · 版本及知识点查询
         </h1>
         <p className="font-hand mb-4 text-sm text-muted-foreground">
           按地区/年级/版本查询，或输入知识点反向检索

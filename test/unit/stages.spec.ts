@@ -6,7 +6,7 @@ describe('stage feature navigation', () => {
     (stage) => {
       const knowledge = STAGE_CONFIGS[stage].features.find((feature) => feature.slug === 'knowledge');
 
-      expect(knowledge?.label).toBe('知识点查询');
+      expect(knowledge?.label).toBe('版本及知识点查询');
       expect(stagePath(stage, 'knowledge')).toBe(`/${stage}/knowledge`);
     },
   );
