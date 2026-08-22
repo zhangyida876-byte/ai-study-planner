@@ -74,6 +74,7 @@ export interface DiagnosisFormContext {
   targetMajor?: string;
   careerIntent?: string;
   examDate?: string;
+  schoolReferenceContext?: string;
 }
 
 export interface PlanReportInput {
@@ -721,6 +722,10 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
     parts.push(`升学方向：小升初（免试就近入学、公民同招）`);
   }
 
+  if (ctx.schoolReferenceContext) {
+    parts.push(`用户未填写具体目标，系统自动匹配的本地升学参照：\n${ctx.schoolReferenceContext}`);
+  }
+
   if (ctx.problemDesc && ctx.problemDesc.trim()) {
     parts.push(`学生/家长自述痛点：${ctx.problemDesc.trim()}`);
   }
@@ -750,7 +755,7 @@ ${filledScoreTotals}
 4. 对未填写科目只说明“需要补充该科成绩后判断”，不得扩写假设性结论。
 5. 若只填写1-2科，必须强调“当前结论为局部诊断”，并列出为了判断目标差距最需要补齐的数据。
 6. 每个已填写科目回答：当前分/满分/得分率、水平等级、最需验证的1-2类题型或能力问题、对总分和后续学习的影响。
-7. 目标学校、录取线、当前总分和差距必须放在同一张表中；资料不足要明确标注待核实项。
+7. 用户填写目标时，以该目标学校和分数线为准；用户未填写时，不得卡住生成，必须使用系统提供的本地参照，初中至少展示普通高中、重点高中各1所及其分数线和年份。
 8. 表达要家长易懂、顾问可直接口播，避免官话和模板腔。
 
 【本模块边界】
@@ -804,6 +809,15 @@ export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBu
   if (ctx.targetScore != null) {
     const label = stage === 'high' ? '该校近年投档线' : '该校最新录取线';
     parts.push(`${label}：${ctx.targetScore}分`);
+  }
+  if (!ctx.targetSchool && ctx.targetScore == null) {
+    if (stage === 'middle') {
+      parts.push('用户未填写目标学校和目标分数：必须从“地区录取政策”中自动选择普通高中、重点高中各1所，列出学校名称、分数线、年份及与当前成绩的差距；不得要求用户返回补填后才生成');
+    } else if (stage === 'high') {
+      parts.push('用户未填写目标院校和目标分数：必须从“地区录取政策”中给出稳妥、冲刺两个院校层级参照及可核验投档线；不得停止生成');
+    } else {
+      parts.push('用户未填写目标初中：基于本地入学政策给出稳妥与进阶两类学校参考，不得虚构录取分数线或停止生成');
+    }
   }
   if (stage !== 'elementary' && ctx.careerIntent) {
     parts.push(`学生未来意向方向：${ctx.careerIntent}`);

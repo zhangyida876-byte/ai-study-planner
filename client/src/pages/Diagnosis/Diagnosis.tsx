@@ -3,8 +3,20 @@ import { Link } from 'react-router-dom';
 import { Copy, Check, Loader2, Clock, Target, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@lark-apaas/client-toolkit/logger';
-import { caseArchive as caseArchiveApi, diagnosis as diagnosisApi } from '@client/src/api';
-import { streamDiagnosisReport, buildScoresText, buildDiagnosisPrompt, getEducationStage, type DiagnosisFormContext } from '@client/src/api/plugins';
+import {
+  caseArchive as caseArchiveApi,
+  diagnosis as diagnosisApi,
+  policy as policyApi,
+} from '@client/src/api';
+import {
+  streamDiagnosisReport,
+  streamPolicySearch,
+  buildScoresText,
+  buildDiagnosisPrompt,
+  getEducationStage,
+  type DiagnosisFormContext,
+  type EducationStage,
+} from '@client/src/api/plugins';
 import WobblyCard from '@client/src/components/WobblyCard';
 import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
 import ReferenceScriptCard from '@client/src/components/ReferenceScriptCard';
@@ -17,6 +29,7 @@ import { stagePath } from '@client/src/config/stages';
 import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
 import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
 import { getInternalScriptAnchor } from '@client/src/config/internal-resource-library';
+import { buildMiddleSchoolBenchmarkContext } from '@client/src/utils/school-benchmarks';
 
 /* ===== Helpers ===== */
 
@@ -33,6 +46,51 @@ function getExamLabel(grade: string): string {
   if (stage === 'high') return '高考';
   if (stage === 'middle') return '中考';
   return '小升初';
+}
+
+async function resolveAutomaticTargetContext(
+  region: string,
+  stage: EducationStage,
+): Promise<string> {
+  const currentYear: string = String(new Date().getFullYear());
+  let databaseContext = '';
+
+  if (stage === 'middle') {
+    try {
+      const result = await policyApi.searchSchools(region, '中考');
+      const benchmark = buildMiddleSchoolBenchmarkContext(result.schools, result.year);
+      databaseContext = benchmark.text;
+      if (benchmark.complete) return databaseContext;
+    } catch {
+      databaseContext = '';
+    }
+  }
+
+  const keyword = stage === 'middle'
+    ? '普通高中和重点高中各1所 学校名称 官方录取分数线 年份'
+    : stage === 'high'
+      ? '稳妥院校和冲刺院校各1所 官方投档线 年份'
+      : '本地代表性公办初中和优质初中 入学政策';
+  let internetContext = '';
+  try {
+    for await (const chunk of streamPolicySearch({
+      region,
+      year: currentYear,
+      keyword,
+    })) {
+      internetContext += chunk;
+    }
+  } catch {
+    internetContext = '';
+  }
+
+  return [
+    databaseContext,
+    internetContext ? `联网补充参考：\n${internetContext.slice(0, 3000)}` : '',
+    !databaseContext && !internetContext
+      ? '未检索到可核验的学校与分数线，报告中必须标注待核实，不得编造学校或分数。'
+      : '',
+  ].filter(Boolean).join('\n');
 }
 
 type DiagnosisSubjectKey =
@@ -174,10 +232,6 @@ const Diagnosis: React.FC = () => {
       ? data.grade
       : stageConfig.grades[stageConfig.grades.length - 1];
     const normalizedData: DiagnosisFormData = { ...data, grade: safeGrade };
-    if (!normalizedData.targetSchool?.trim() && normalizedData.targetScore == null) {
-      toast.error('请先填写目标学校或目标分数');
-      return;
-    }
     setStudentInfo(normalizedData);
 
     const scores: Record<string, number> = {};
@@ -209,6 +263,12 @@ const Diagnosis: React.FC = () => {
       recordId = createRes.id;
 
       const stage = getEducationStage(normalizedData.grade);
+      const hasExplicitTarget = Boolean(
+        normalizedData.targetSchool?.trim() || normalizedData.targetScore != null,
+      );
+      const schoolReferenceContext = hasExplicitTarget
+        ? ''
+        : await resolveAutomaticTargetContext(normalizedData.region, stage);
       const coreMax = stage === 'elementary' ? 100 : stage === 'middle' ? 120 : 150;
       const scoreMaxValues: Record<string, number> = {};
       for (const key of filledSubjectKeys) {
@@ -234,6 +294,7 @@ const Diagnosis: React.FC = () => {
         careerIntent: profile.careerIntent,
         targetScore: stage === 'elementary' ? undefined : normalizedData.targetScore,
         examDate: normalizedData.examDate,
+        schoolReferenceContext,
       };
       const scoresText = buildScoresText(scores, scoreMaxValues);
       const learningProblems = buildDiagnosisPrompt(formCtx, {

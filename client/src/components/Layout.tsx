@@ -149,7 +149,7 @@ const LayoutContent: React.FC = () => {
                     <DropdownMenuContent side="right" align="start" className="w-40 border-2 border-ink">
                       {STAGE_LIST.map((stage) => (
                         <DropdownMenuItem key={stage.slug} asChild>
-                          <Link to={stagePath(stage.slug, 'diagnosis')}>{stage.label}</Link>
+                          <Link to={stagePath(stage.slug)}>{stage.label}</Link>
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
@@ -166,6 +166,18 @@ const LayoutContent: React.FC = () => {
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.replace(/\/+$/, '') === stagePath(stageSlug!)}
+                      tooltip="主页档案"
+                    >
+                      <Link to={stagePath(stageSlug!)}>
+                        <Home className="size-4" />
+                        <span className="font-hand">主页档案</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                   {stageConfig.features.map((feature) => {
                     const Icon = FEATURE_ICONS[feature.slug];
                     const href = stagePath(stageSlug!, feature.slug);

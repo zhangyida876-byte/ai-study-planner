@@ -140,6 +140,9 @@ function buildCompactPolicyContext(input: {
     }))
     .sort((a, b) => a.diff - b.diff)
     .slice(0, 5);
+  const descendingLines = [...policy.admissionLines].sort((a, b) => b.score - a.score);
+  const keyReference = descendingLines[0];
+  const ordinaryReference = descendingLines[Math.floor(descendingLines.length / 2)];
 
   const structure = Object.entries(policy.scoreStructure)
     .map(([subject, score]) => `${subject}${score}分`)
@@ -167,8 +170,14 @@ function buildCompactPolicyContext(input: {
     `${examType}总分：${policy.totalScore}分`,
     `科目结构：${structure}`,
     `与你当前分数最相关录取线：${lineText}`,
+    !targetScore && examType === '中考' && keyReference
+      ? `重点高中参考候选：${keyReference.school} ${keyReference.score}分（${policy.year}年）`
+      : '',
+    !targetScore && examType === '中考' && ordinaryReference
+      ? `普通高中参考候选：${ordinaryReference.school} ${ordinaryReference.score}分（${policy.year}年；系统按收录分数线中位样本初步分层，非官方学校等级认定）`
+      : '',
     `政策关键点：${policySummary || '以官方最新发布为准'}`,
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 function buildElementaryTimelineMarkdown(input: {
@@ -1775,7 +1784,7 @@ const Plan: React.FC = () => {
             <div className="rounded-xl border border-ink/10 bg-background/80 p-4">
               <div className="grid gap-3 md:grid-cols-3">
                 <div className={isGaokao ? '' : 'md:col-span-2'}>
-                  <label className="mb-1 block text-sm font-bold text-ink">{stageConfig.targetLabel}</label>
+                  <label className="mb-1 block text-sm font-bold text-ink">{stageConfig.targetLabel}（选填）</label>
                   <Input
                     value={targetSchool}
                     onChange={(e) => {
@@ -1783,7 +1792,7 @@ const Plan: React.FC = () => {
                       targetSchoolFromProfileRef.current = false;
                       setTargetSchool(e.target.value);
                     }}
-                    placeholder={stageConfig.slug === 'elementary' ? '目标初中' : stageConfig.slug === 'middle' ? '目标高中' : '目标院校'}
+                    placeholder={stageConfig.slug === 'elementary' ? '不填则自动给学校参考' : stageConfig.slug === 'middle' ? '不填则匹配普高和重点高中' : '不填则匹配稳妥和冲刺层级'}
                     className="font-hand"
                   />
                 </div>
@@ -1800,7 +1809,7 @@ const Plan: React.FC = () => {
                 )}
                 {stageConfig.slug !== 'elementary' && (
                   <div>
-                    <label className="mb-1 block text-sm font-bold text-ink">匹配分数线</label>
+                    <label className="mb-1 block text-sm font-bold text-ink">匹配分数线（选填）</label>
                     <Input
                       value={targetScore != null ? String(targetScore) : ''}
                       onChange={(e) => {
@@ -1808,7 +1817,7 @@ const Plan: React.FC = () => {
                         const value = e.target.value.trim();
                         setTargetScore(value ? Number(value) : undefined);
                       }}
-                      placeholder="自动匹配"
+                      placeholder="不填则自动匹配参考线"
                       className="font-hand"
                     />
                   </div>

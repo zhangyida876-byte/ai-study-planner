@@ -847,15 +847,15 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
         <div className="rounded-xl border-2 border-dashed border-pen-blue/25 bg-pen-blue/5 p-4">
           <h3 className="font-marker text-base font-bold">首页档案已自动带入</h3>
           <p className="font-hand mt-1 text-xs text-ink/60">
-            这里不再重复编辑基础信息；如需修改姓名、地区、目标学校，请回到学段首页改档案。
+            这里不再重复编辑基础信息；目标学校和分数均可不填，系统会自动匹配本地升学参照。
           </p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {[
               ['学生', form.getValues('studentName') || stageProfile?.studentName || '未填写'],
               ['年级', watchedGrade || stageProfile?.grade || '未填写'],
               ['地区', watchedRegion || '未填写'],
-              [isElementary ? '目标初中' : isHighSchool ? '目标大学' : '目标学校', watchedSchool || stageProfile?.targetSchool || '未填写'],
-              ['目标分数线', form.getValues('targetScore') != null ? `${form.getValues('targetScore')}分` : '未填写'],
+              [isElementary ? '目标初中（选填）' : isHighSchool ? '目标大学（选填）' : '目标学校（选填）', watchedSchool || stageProfile?.targetSchool || '自动匹配'],
+              ['目标分数线（选填）', form.getValues('targetScore') != null ? `${form.getValues('targetScore')}分` : '自动匹配'],
               ['考试时间', form.getValues('examDate') || '未填写'],
             ].map(([label, value]) => (
               <div key={label} className="rounded-lg border border-ink/10 bg-white/80 px-3 py-2">

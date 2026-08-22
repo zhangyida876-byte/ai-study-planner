@@ -14,6 +14,8 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('## 五、备考时间图');
     expect(prompt).toContain('## 六、给家长的危机沟通话术');
     expect(prompt).toContain('这里不输出每日课表');
+    expect(prompt).toContain('未填写时不得停止生成');
+    expect(prompt).toContain('普通高中、重点高中各1所');
   });
 
   it('extends planning through subject selection, majors and employment', () => {
