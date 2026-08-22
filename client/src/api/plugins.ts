@@ -159,7 +159,7 @@ export function buildPersonalizedLearningPlanPrompt(
   const internalMaterial = getInternalMaterialContext({
     stageSlug: inferredStageSlug,
     module: 'study-plan',
-    limit: 12,
+    limit: 8,
   });
   const boarding = input.boardingType === 'day' ? '走读' : input.boardingType === 'boarding' ? '住读' : '未说明';
   const lines = [
@@ -192,7 +192,7 @@ export function buildPersonalizedLearningPlanPrompt(
 ${internalMaterial}
 
 【本模块边界】
-1. 你生成的是“个性化课表学习执行方案”，不是学情诊断报告，也不是升学规划报告。
+1. 你生成的是“个性化学习规划报告”，不是学情诊断报告，也不是升学规划报告。
 2. 禁止输出“# 学情诊断报告”“# 升学规划报告”等标题。
 3. 不要重复分析成绩水平定位、知识漏洞溯源、升学风险；这些内容只作为课表安排依据。
 4. 必须围绕课表、时间段、任务安排、完成标准、复盘清单输出。
@@ -209,19 +209,17 @@ ${internalMaterial}
 4. 每项任务必须有：完成标准、检测方式、优先级。
 5. 政策/分数线/院校信息查不到须标注「暂无官方确认信息」，禁止编造。
 6. 若为高中学段，必须以“大学-专业-就业能力”主线输出，禁止套用中考提分模板；可回溯初中知识点仅用于定位成因。
-7. 默认输出连续7天执行表，每天根据实际可用时段安排1-3个任务；不为显得充实而硬塞任务。
-8. 每个任务必须写清楚：做什么题/背什么内容、做多少、用多久、错了怎么处理、谁来检查。
-9. 必须额外输出“家长/老师检查表”和“未完成降级方案”，方便直接复制给家长执行。
+7. 默认输出连续7天执行表，每天只保留1个主任务，必要时增加1个短复盘任务；不为显得充实而硬塞任务。
+8. 每个任务必须简要写清：做什么、用多久、怎么验收。
+9. 全文控制在700-1000个中文字符（Markdown表格符号不计），约为原输出的60%；同一动作不得在不同章节重复。
 
 【输出结构】必须 Markdown，且包含以下章节与表格：
-# 个性化课表学习执行方案
-## 一、可用时间盘点
-## 二、连续7天学习规划表（表格：日期|回家/可用时间|学习时段|科目|对应诊断问题|具体任务|洋葱功能|预计用时|完成标准）
-## 三、每日固定执行模板
-## 四、薄弱科目专项安排
-## 五、家长/老师每日检查表（表格：检查项|合格标准|记录方式）
-## 六、课表冲突与调整规则（保底版/标准版/加量版）
-## 七、下周复盘清单`;
+# 个性化学习规划报告
+> 规划结论：最多3条，说明本周重点、时间分配和验收目标。
+## 一、时间与任务原则（最多4条）
+## 二、连续7天学习规划表（每天1行：日期|可用时间|科目|对应问题|具体动作与洋葱功能|用时|验收标准）
+## 三、薄弱科目与调整规则（最多3条，合并保底/标准方案）
+## 四、家长检查与下周复盘（最多5条）`;
 
   const slug = options?.stageSlug ?? input.stageSlug;
   return appendProfileAndStageRules(base, slug, options?.profile ?? null);
@@ -702,7 +700,7 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
   const internalMaterial = getInternalMaterialContext({
     stageSlug: currentStageSlug,
     module: 'diagnosis',
-    limit: 12,
+    limit: 8,
   });
   const parts: string[] = [];
   if (ctx.diagnosisDate) parts.push(`诊断日期：${ctx.diagnosisDate}`);
@@ -807,7 +805,7 @@ export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBu
   const internalMaterial = getInternalMaterialContext({
     stageSlug: currentStageSlug,
     module: 'plan',
-    limit: 12,
+    limit: 8,
   });
   const parts: string[] = [buildProfessionalReportFramework('plan')];
   const lockedExamType = stage === 'high' ? '高考' : stage === 'middle' ? '中考' : '小升初';
@@ -855,7 +853,7 @@ export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBu
   parts.push('输出必须具体：必须出现当前总分、目标线/梯度线、总分差距、至少2个科目的提分目标或风险说明；不得只写“夯实基础、加强训练、提升能力”等空泛表达');
   parts.push('顾问表达标准：先结论后依据，先把升学后果讲清楚，再给动作；每条动作都要绑定科目、分值目标、验收时间或题型方向');
   parts.push('目标拆解要求：有目标分时必须输出“当前总分、目标总分、总分差、各科建议补分”；部分科目缺失时不得把已填科目合计冒充总分，要列出待补科目');
-  parts.push('篇幅要求：整体控制在 1000~1500 字，优先用表格做路径对比，六个固定章节必须完整，禁止同义重复');
+  parts.push('篇幅要求（最高优先级）：整体控制在700~1000个中文字符，约为原报告的60%；必须按新的五章正式报告结构输出，优先用表格，禁止同义重复或恢复旧六章长模板');
   parts.push(`时间要求：必须使用${latestYear}年及之后的最新时间节点，若缺少官方数据请明确说明`);
   parts.push('表达要求：用家长易懂的大白话，不使用晦涩术语');
   parts.push(`内部资源库素材（优先）：\n${internalMaterial}`);

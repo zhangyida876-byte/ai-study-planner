@@ -7,19 +7,17 @@ describe('report prompt templates', () => {
   it('keeps diagnosis focused on current level, target gap and urgency', () => {
     const prompt = buildProfessionalReportFramework('diagnosis');
 
-    expect(prompt).toContain('## 一、单科学情诊断');
-    expect(prompt).toContain('## 二、多科综合判断');
-    expect(prompt).toContain('## 三、目标学校与差距');
-    expect(prompt).toContain('## 四、核心危机链');
-    expect(prompt).toContain('## 五、备考时间图');
-    expect(prompt).toContain('## 六、给家长的危机沟通话术');
-    expect(prompt).toContain('这里不输出每日课表');
+    expect(prompt).toContain('## 一、现状与单科定位');
+    expect(prompt).toContain('## 二、综合判断与目标差距');
+    expect(prompt).toContain('## 三、危机链与备考窗口');
+    expect(prompt).toContain('## 四、报告结论与家长沟通话术');
+    expect(prompt).toContain('700-1000个中文字符');
     expect(prompt).toContain('未填写时不得停止生成');
     expect(prompt).toContain('普通高中、重点高中各1所');
-    expect(prompt).toContain('当前教学阶段和教材版本依据');
-    expect(prompt).toContain('重难点与常见错法');
-    expect(prompt).toContain('页面会根据当前年级和日期显示可视化时间轴');
-    expect(prompt).toContain('每段最多2句话');
+    expect(prompt).toContain('教学阶段和教材版本依据');
+    expect(prompt).toContain('最需验证的错法');
+    expect(prompt).toContain('页面已有可视化时间轴');
+    expect(prompt).toContain('每句不超过60字');
   });
 
   it('extends planning through subject selection, majors and employment', () => {
@@ -28,11 +26,11 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('## 二、可选升学路径对比');
     expect(prompt).toContain('重点高中、普通高中、中职/职教高考');
     expect(prompt).toContain('“5:5分流”不得当作全国统一比例');
-    expect(prompt).toContain('## 三、高中选科预测');
-    expect(prompt).toContain('## 四、大学专业与就业方向影响');
+    expect(prompt).toContain('## 三、选科、专业与就业影响');
+    expect(prompt).toContain('## 五、报告结论');
     expect(prompt).toContain('禁止用“物理差/历史差”直接推导');
     expect(prompt).toContain('禁止输出逐月日程');
-    expect(prompt).toContain('独立的备考路线图');
+    expect(prompt).toContain('700-1000个中文字符');
   });
 
   it('keeps knowledge analysis within the requested knowledge point', () => {

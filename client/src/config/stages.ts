@@ -45,6 +45,12 @@ const FEATURES: StageFeatureConfig[] = [
     pathSuffix: 'study-plan',
   },
   {
+    slug: 'knowledge',
+    label: '知识点查询',
+    description: '按教材、年级和科目查询知识点并生成深度分析',
+    pathSuffix: 'knowledge',
+  },
+  {
     slug: 'advice',
     label: '话术百宝库',
     description: '汇总四大模块结果，生成可直接沟通的话术建议',
