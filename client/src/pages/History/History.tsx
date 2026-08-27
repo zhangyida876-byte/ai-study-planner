@@ -37,7 +37,7 @@ import type {
 
 const ARTIFACT_LABELS: Record<CaseArtifactType, string> = {
   diagnosis: '学情诊断',
-  study_plan: '学习规划',
+  study_plan: '执行课表',
   advice: '个性化话术',
 };
 
@@ -141,7 +141,7 @@ const History: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold text-ink">历史档案</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          诊断、学习规划和个性化话术生成完成后自动归档
+          诊断、执行课表和个性化话术生成完成后自动归档
         </p>
       </div>
 
@@ -161,7 +161,7 @@ const History: React.FC = () => {
             <SelectContent>
               <SelectItem value="all">全部内容</SelectItem>
               <SelectItem value="diagnosis">学情诊断</SelectItem>
-              <SelectItem value="study_plan">学习规划</SelectItem>
+              <SelectItem value="study_plan">执行课表</SelectItem>
               <SelectItem value="advice">个性化话术</SelectItem>
             </SelectContent>
           </Select>

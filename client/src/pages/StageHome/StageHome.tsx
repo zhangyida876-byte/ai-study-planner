@@ -1,12 +1,36 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRight, LibraryBig, MessagesSquare, Stethoscope } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
 import StageProfileEditor from '@client/src/components/StageProfileEditor';
-import ObjectionHandlingPanel from '@client/src/components/ObjectionHandlingPanel';
 import { Button } from '@/components/ui/button';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
+import { stagePath } from '@client/src/config/stages';
+
+const SECTION_ENTRIES = [
+  {
+    key: 'learning',
+    title: '学情类',
+    description: '诊断问题、查知识点、做未来规划并回看档案',
+    feature: 'diagnosis' as const,
+    icon: Stethoscope,
+  },
+  {
+    key: 'cases',
+    title: '案例类',
+    description: '按学段、年级和沟通场景查找真实案例',
+    feature: 'materials' as const,
+    icon: LibraryBig,
+  },
+  {
+    key: 'scripts',
+    title: '话术类',
+    description: '集中使用异议处理、每日话术和自定义提问',
+    feature: 'scripts' as const,
+    icon: MessagesSquare,
+  },
+];
 
 const StageHome: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
@@ -59,12 +83,32 @@ const StageHome: React.FC = () => {
       <section className="space-y-3">
         <div>
           <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
-          <h2 className="font-marker text-xl font-bold">电话异议随查</h2>
+          <h2 className="font-marker text-xl font-bold">选择工作板块</h2>
           <p className="font-hand mt-1 text-sm text-muted-foreground">
-            放在档案下方便于通话时随查；话术百宝库里也有同一套「异议处理｜随查随打」。
+            档案已作为后续模块的共用起点，按当前沟通任务进入对应板块。
           </p>
         </div>
-        <ObjectionHandlingPanel compact />
+        <div className="grid gap-4 md:grid-cols-3">
+          {SECTION_ENTRIES.map((entry, index) => {
+            const Icon = entry.icon;
+            return (
+              <WobblyCard key={entry.key} variant="white" wobblyIndex={index + 1} hoverable className="p-4">
+                <Link to={stagePath(stageSlug, entry.feature)} className="block space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <Icon className="size-6 text-pen-blue" />
+                    <ArrowRight className="size-4 text-ink/50" />
+                  </div>
+                  <div>
+                    <h3 className="font-marker text-lg font-bold">{entry.title}</h3>
+                    <p className="font-hand mt-1 text-sm leading-relaxed text-muted-foreground">
+                      {entry.description}
+                    </p>
+                  </div>
+                </Link>
+              </WobblyCard>
+            );
+          })}
+        </div>
       </section>
     </div>
   );

@@ -9,13 +9,23 @@ export type FeatureSlug =
   | 'materials'
   | 'study-plan'
   | 'advice'
+  | 'future'
+  | 'scripts'
   | 'history';
+
+export type FeatureGroupSlug = 'learning' | 'cases' | 'scripts';
+
+export interface FeatureGroupConfig {
+  slug: FeatureGroupSlug;
+  label: string;
+}
 
 export interface StageFeatureConfig {
   slug: FeatureSlug;
   label: string;
   description: string;
   pathSuffix: string;
+  group: FeatureGroupSlug;
 }
 
 export interface StageConfig {
@@ -38,37 +48,49 @@ const FEATURES: StageFeatureConfig[] = [
     label: '学情诊断',
     description: '按学段差异化分析薄弱点、失分原因与升学影响',
     pathSuffix: 'diagnosis',
-  },
-  {
-    slug: 'study-plan',
-    label: '学习规划',
-    description: '关联诊断问题、回家时间和学习科目生成执行表',
-    pathSuffix: 'study-plan',
+    group: 'learning',
   },
   {
     slug: 'knowledge',
-    label: '版本及知识点查询',
+    label: '知识点查询',
     description: '按教材、年级和科目查询知识点并生成深度分析',
     pathSuffix: 'knowledge',
+    group: 'learning',
   },
   {
-    slug: 'materials',
-    label: '案例素材库',
-    description: '按学段、年级和沟通场景检索真实案例素材与推荐话术',
-    pathSuffix: 'materials',
-  },
-  {
-    slug: 'advice',
-    label: '话术百宝库',
-    description: '汇总四大模块结果，生成可直接沟通的话术建议',
-    pathSuffix: 'advice',
+    slug: 'future',
+    label: '未来规划',
+    description: '统一承接升学路径与可执行的学习课表',
+    pathSuffix: 'future',
+    group: 'learning',
   },
   {
     slug: 'history',
     label: '历史档案',
     description: '按学生和日期查看、搜索与删除历史生成内容',
     pathSuffix: 'history',
+    group: 'learning',
   },
+  {
+    slug: 'materials',
+    label: '案例素材库',
+    description: '按学段、年级和沟通场景检索真实案例素材与推荐话术',
+    pathSuffix: 'materials',
+    group: 'cases',
+  },
+  {
+    slug: 'scripts',
+    label: '话术中心',
+    description: '集中使用异议处理、每日黄金话术与自定义提问',
+    pathSuffix: 'scripts',
+    group: 'scripts',
+  },
+];
+
+export const FEATURE_GROUPS: FeatureGroupConfig[] = [
+  { slug: 'learning', label: '学情类' },
+  { slug: 'cases', label: '案例类' },
+  { slug: 'scripts', label: '话术类' },
 ];
 
 export const STAGE_CONFIGS: Record<StageSlug, StageConfig> = {

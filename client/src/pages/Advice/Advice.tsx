@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,7 +11,7 @@ import { Streamdown } from '@client/src/components/ui/streamdown';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import { stagePath } from '@client/src/config/stages';
-import { loadModuleSession } from '@client/src/utils/module-session';
+import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
 import {
   getInternalMaterialContext,
   getInternalScriptAnchor,
@@ -35,6 +35,16 @@ interface KnowledgeSessionState {
   keyword: string;
 }
 
+interface AdviceSessionState {
+  customQuery: string;
+  customAnswer: string;
+}
+
+interface AdviceProps {
+  embedded?: boolean;
+  showObjection?: boolean;
+}
+
 function pickKeySentences(text: string, limit: number): string[] {
   if (!text.trim()) return [];
   const pieces = text
@@ -45,12 +55,28 @@ function pickKeySentences(text: string, limit: number): string[] {
   return pieces.slice(0, limit);
 }
 
-const Advice: React.FC = () => {
+const Advice: React.FC<AdviceProps> = ({ embedded = false, showObjection = true }) => {
   const { stageSlug, stageConfig } = useRequiredStage();
   const { profile } = useStageProfile(stageSlug);
   const [customQuery, setCustomQuery] = useState('');
   const [customAnswer, setCustomAnswer] = useState('');
   const [loadingCustom, setLoadingCustom] = useState(false);
+  const hydratingRef = useRef(false);
+
+  useEffect(() => {
+    hydratingRef.current = true;
+    const cached = loadModuleSession<AdviceSessionState>(stageSlug, 'advice');
+    setCustomQuery(cached?.customQuery || '');
+    setCustomAnswer(cached?.customAnswer || '');
+    window.setTimeout(() => {
+      hydratingRef.current = false;
+    }, 0);
+  }, [stageSlug]);
+
+  useEffect(() => {
+    if (hydratingRef.current) return;
+    saveModuleSession(stageSlug, 'advice', { customQuery, customAnswer });
+  }, [stageSlug, customQuery, customAnswer]);
 
   const diagnosisSession = loadModuleSession<DiagnosisSessionState>(stageSlug, 'diagnosis');
   const planSession = loadModuleSession<PlanSessionState>(stageSlug, 'plan');
@@ -235,20 +261,20 @@ const Advice: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div>
+      {!embedded && <div>
         <Button variant="ghost" size="sm" className="font-hand mb-2 -ml-2" asChild>
           <Link to={stagePath(stageSlug)}>
             <ArrowLeft className="mr-1 size-4" />
             返回{stageConfig.label}主页
           </Link>
         </Button>
-        <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 话术百宝库</h1>
+        <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 话术中心</h1>
         <p className="font-hand mt-1 text-sm text-muted-foreground">
-          含异议处理随查随打与自定义查询；异议处理与学段主页为同一套能力，两处都能用。
+          集中使用异议处理与自定义提问能力。
         </p>
-      </div>
+      </div>}
 
-      <ObjectionHandlingPanel />
+      {showObjection && <ObjectionHandlingPanel />}
 
       <WobblyCard variant="white" decoration="tape" wobblyIndex={7} hoverable={false} className="p-5">
         <h3 className="font-marker mb-3 text-lg font-bold">自定义问题查询</h3>

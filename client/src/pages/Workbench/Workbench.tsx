@@ -18,7 +18,7 @@ const Workbench: React.FC = () => {
             洋葱课程顾问学情&升学工作台
           </h1>
           <p className="font-hand mt-2 text-lg text-ink/60">
-            请先选择学段，再进入学情诊断、升学规划、版本及知识点查询或个性化学习规划
+            请先选择学段，再围绕学情、案例和话术开展家长沟通
           </p>
         </div>
         <Button className="font-hand" variant="outline" asChild>

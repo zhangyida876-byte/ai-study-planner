@@ -6,14 +6,17 @@ import NotFound from './pages/NotFound/NotFound';
 import Workbench from './pages/Workbench/Workbench';
 import StageHome from './pages/StageHome/StageHome';
 import Diagnosis from './pages/Diagnosis/Diagnosis';
-import Plan from './pages/Plan/Plan';
 import Knowledge from './pages/Knowledge/Knowledge';
-import StudyPlan from './pages/StudyPlan/StudyPlan';
-import Advice from './pages/Advice/Advice';
 import History from './pages/History/History';
 import { isStageSlug } from './config/stages';
 
 const CaseMaterials = React.lazy(() => import('./pages/CaseMaterials/CaseMaterials'));
+const Future = React.lazy(() => import('./pages/Future/Future'));
+const Scripts = React.lazy(() => import('./pages/Scripts/Scripts'));
+
+const PageLoader: React.FC = () => (
+  <div className="font-hand p-6 text-muted-foreground">正在加载页面...</div>
+);
 
 const StageGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { stage } = useParams<{ stage: string }>();
@@ -21,6 +24,15 @@ const StageGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;
+};
+
+const StageLegacyRedirect: React.FC<{
+  target: 'future' | 'scripts';
+  tab: string;
+}> = ({ target, tab }) => {
+  const { stage } = useParams<{ stage: string }>();
+  if (!isStageSlug(stage)) return <Navigate to="/" replace />;
+  return <Navigate to={`/${stage}/${target}?tab=${tab}`} replace />;
 };
 
 const RoutesComponent = () => {
@@ -45,10 +57,12 @@ const RoutesComponent = () => {
           }
         />
         <Route
-          path=":stage/plan"
+          path=":stage/future"
           element={
             <StageGuard>
-              <Plan />
+              <Suspense fallback={<PageLoader />}>
+                <Future />
+              </Suspense>
             </StageGuard>
           }
         />
@@ -64,25 +78,19 @@ const RoutesComponent = () => {
           path=":stage/materials"
           element={
             <StageGuard>
-              <Suspense fallback={<div className="font-hand p-6 text-muted-foreground">正在加载案例素材...</div>}>
+              <Suspense fallback={<PageLoader />}>
                 <CaseMaterials />
               </Suspense>
             </StageGuard>
           }
         />
         <Route
-          path=":stage/study-plan"
+          path=":stage/scripts"
           element={
             <StageGuard>
-              <StudyPlan />
-            </StageGuard>
-          }
-        />
-        <Route
-          path=":stage/advice"
-          element={
-            <StageGuard>
-              <Advice />
+              <Suspense fallback={<PageLoader />}>
+                <Scripts />
+              </Suspense>
             </StageGuard>
           }
         />
@@ -94,9 +102,14 @@ const RoutesComponent = () => {
             </StageGuard>
           }
         />
+        <Route path=":stage/plan" element={<StageLegacyRedirect target="future" tab="path" />} />
+        <Route path=":stage/study-plan" element={<StageLegacyRedirect target="future" tab="schedule" />} />
+        <Route path=":stage/advice" element={<StageLegacyRedirect target="scripts" tab="objection" />} />
         {/* 旧路径兼容 */}
         <Route path="diagnosis" element={<Navigate to="/middle/diagnosis" replace />} />
-        <Route path="plan" element={<Navigate to="/middle/plan" replace />} />
+        <Route path="plan" element={<Navigate to="/middle/future?tab=path" replace />} />
+        <Route path="study-plan" element={<Navigate to="/middle/future?tab=schedule" replace />} />
+        <Route path="advice" element={<Navigate to="/middle/scripts?tab=objection" replace />} />
         <Route path="knowledge" element={<Navigate to="/middle/knowledge" replace />} />
         <Route path="materials" element={<Navigate to="/middle/materials" replace />} />
       </Route>

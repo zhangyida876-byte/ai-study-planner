@@ -648,7 +648,11 @@ function buildParentCommunicationTemplate(input: {
   ];
 }
 
-const Plan: React.FC = () => {
+interface PlanProps {
+  embedded?: boolean;
+}
+
+const Plan: React.FC<PlanProps> = ({ embedded = false }) => {
   const { stageSlug, stageConfig } = useRequiredStage();
   const { profile, regionText, updateProfile } = useStageProfile(stageSlug);
   const [examType, setExamType] = useState<ExamType>(stageConfig.examType);
@@ -1460,21 +1464,21 @@ const Plan: React.FC = () => {
   }, [hasScores, totalScore, targetScore, reportContent, timelineContent, targetSchool]);
 
   return (
-    <div className="min-h-screen bg-paper-dots p-6 font-hand">
+    <div className={embedded ? 'font-hand' : 'min-h-screen bg-paper-dots p-6 font-hand'}>
       <div className="mx-auto max-w-6xl space-y-6">
         {/* Header + Tabs */}
-        <div className="flex flex-wrap items-center gap-3">
+        {!embedded && <div className="flex flex-wrap items-center gap-3">
           <Button variant="ghost" size="sm" className="font-hand -ml-2" asChild>
             <Link to={stagePath(stageSlug)}>
               <ArrowLeft className="mr-1 size-4" />
               返回{stageConfig.label}主页
             </Link>
           </Button>
-          <h1 className="font-marker text-3xl font-bold text-ink">{stageConfig.label} · 升学规划</h1>
+          <h1 className="font-marker text-3xl font-bold text-ink">{stageConfig.label} · 升学路径</h1>
           <span className="rounded-full border-2 border-ink bg-postit-yellow px-3 py-0.5 text-sm font-bold">
             {examType}
           </span>
-        </div>
+        </div>}
 
         <ProfileAutofillBanner
           stageSlug={stageSlug}
@@ -1567,7 +1571,7 @@ const Plan: React.FC = () => {
               {reportLoading && !reportContent ? (
                 <div className="flex flex-col items-center justify-center py-16">
                   <div className="text-lg font-semibold text-ink animate-pulse">AI 正在分析规划方案...</div>
-                  <div className="mt-2 text-sm text-muted-foreground">根据首页档案、成绩和政策生成个性化升学规划</div>
+                  <div className="mt-2 text-sm text-muted-foreground">根据首页档案、成绩和政策生成个性化升学路径</div>
                 </div>
               ) : reportContent ? (
                 <div className="report-readable prose prose-sm max-w-none"><Streamdown>{reportContent}</Streamdown></div>
@@ -2134,7 +2138,7 @@ const Plan: React.FC = () => {
             {/* AI Report */}
             <WobblyCard variant="white" decoration="tape" wobblyIndex={4} hoverable={false} className="p-5" rotate={0.3}>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="font-marker text-xl font-bold text-ink">AI 升学规划报告</h2>
+                <h2 className="font-marker text-xl font-bold text-ink">AI 升学路径报告</h2>
                 {reportContent && (
                   <Button variant="outline" size="sm" onClick={handleCopyReport} className="border-2 border-ink font-hand shadow-hard-sm">
                     <Copy className="size-3.5" />
@@ -2145,7 +2149,7 @@ const Plan: React.FC = () => {
               {reportLoading && !reportContent ? (
                 <div className="flex flex-col items-center justify-center py-16">
                   <div className="font-marker text-lg text-ink animate-pulse">AI 正在分析规划方案...</div>
-                  <div className="mt-2 text-sm text-muted-foreground">根据成绩和政策为您生成个性化升学规划</div>
+                  <div className="mt-2 text-sm text-muted-foreground">根据成绩和政策为您生成个性化升学路径</div>
                 </div>
               ) : reportContent ? (
                 <div className="prose prose-sm max-w-none font-hand"><Streamdown>{reportContent}</Streamdown></div>
@@ -2160,7 +2164,7 @@ const Plan: React.FC = () => {
 
             <ReferenceScriptCard
               onGenerate={buildPlanReferenceScript}
-              hint="基于当前升学规划结果生成可直接沟通的话术（300字内）。"
+              hint="基于当前升学路径结果生成可直接沟通的话术（300字内）。"
               wobblyIndex={14}
             />
           </div>

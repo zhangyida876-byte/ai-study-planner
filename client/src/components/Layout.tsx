@@ -38,6 +38,8 @@ import {
   CalendarDays,
   MessageCircleMore,
   Archive,
+  Signpost,
+  MessagesSquare,
   LogOut,
   LogIn,
   Pen,
@@ -47,6 +49,7 @@ import { Image } from '@/components/ui/image';
 import {
   STAGE_LIST,
   STAGE_CONFIGS,
+  FEATURE_GROUPS,
   parseStageSlugFromPathname,
   stagePath,
   getFeatureLabel,
@@ -63,17 +66,19 @@ const FEATURE_ICONS: Record<FeatureSlug, React.FC<{ className?: string }>> = {
   materials: LibraryBig,
   'study-plan': CalendarDays,
   advice: MessageCircleMore,
+  future: Signpost,
+  scripts: MessagesSquare,
   history: Archive,
 };
 
 function resolveFeatureFromPath(pathname: string, stage: StageSlug | null): FeatureSlug | null {
   if (!stage) return null;
   if (pathname.includes('/diagnosis')) return 'diagnosis';
-  if (pathname.includes('/plan') && !pathname.includes('/study-plan')) return 'plan';
+  if (pathname.includes('/future') || pathname.includes('/plan')) return 'future';
   if (pathname.includes('/knowledge')) return 'knowledge';
   if (pathname.includes('/materials')) return 'materials';
-  if (pathname.includes('/study-plan')) return 'study-plan';
-  if (pathname.includes('/advice')) return 'advice';
+  if (pathname.includes('/study-plan')) return 'future';
+  if (pathname.includes('/scripts') || pathname.includes('/advice')) return 'scripts';
   if (pathname.includes('/history')) return 'history';
   return null;
 }
@@ -164,9 +169,7 @@ const LayoutContent: React.FC = () => {
 
           {stageConfig && (
             <SidebarGroup>
-              <SidebarGroupLabel className="font-marker text-xs">
-                {stageConfig.label} · 功能
-              </SidebarGroupLabel>
+              <SidebarGroupLabel className="font-marker text-xs">主页档案</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
@@ -181,28 +184,40 @@ const LayoutContent: React.FC = () => {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                  {stageConfig.features.map((feature) => {
-                    const Icon = FEATURE_ICONS[feature.slug];
-                    const href = stagePath(stageSlug!, feature.slug);
-                    return (
-                      <SidebarMenuItem key={feature.slug}>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={pathname === href || pathname.startsWith(`${href}/`)}
-                          tooltip={feature.label}
-                        >
-                          <Link to={href}>
-                            <Icon className="size-4" />
-                            <span className="font-hand">{feature.label}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
           )}
+
+          {stageConfig && FEATURE_GROUPS.map((group) => (
+            <SidebarGroup key={group.slug}>
+              <SidebarGroupLabel className="font-marker text-xs">{group.label}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {stageConfig.features
+                    .filter((feature) => feature.group === group.slug)
+                    .map((feature) => {
+                      const Icon = FEATURE_ICONS[feature.slug];
+                      const href = stagePath(stageSlug!, feature.slug);
+                      return (
+                        <SidebarMenuItem key={feature.slug}>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={pathname === href || pathname.startsWith(`${href}/`)}
+                            tooltip={feature.label}
+                          >
+                            <Link to={href}>
+                              <Icon className="size-4" />
+                              <span className="font-hand">{feature.label}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
         </SidebarContent>
 
         <SidebarFooter className="border-t-2 border-dashed border-ink/20">

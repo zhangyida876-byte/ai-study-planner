@@ -101,7 +101,11 @@ interface DiagnosisSessionState {
   reportContent: string;
 }
 
-const StudyPlan: React.FC = () => {
+interface StudyPlanProps {
+  embedded?: boolean;
+}
+
+const StudyPlan: React.FC<StudyPlanProps> = ({ embedded = false }) => {
   const { stageSlug, stageConfig } = useRequiredStage();
   const { profile, regionText, updateProfile } = useStageProfile(stageSlug);
   const [grade, setGrade] = useState('');
@@ -361,7 +365,7 @@ const StudyPlan: React.FC = () => {
           targetSchool: targetSchool.trim(),
           targetScore: parseTargetScore(targetScore),
           artifactType: 'study_plan',
-          title: `${grade}学习规划`,
+          title: `${grade}执行课表`,
           content: full,
           inputSnapshot: {
             selectedSubjects: selectedSubjects.trim() || weakSubjects.trim(),
@@ -372,10 +376,10 @@ const StudyPlan: React.FC = () => {
             linkedDiagnosis: Boolean(diagnosisContext),
           },
         });
-        toast.success('学习规划已生成并自动归档');
+        toast.success('执行课表已生成并自动归档');
       } catch (archiveError) {
-        logger.error('学习规划自动归档失败', String(archiveError));
-        toast.warning('学习规划已生成，但自动归档失败');
+        logger.error('执行课表自动归档失败', String(archiveError));
+        toast.warning('执行课表已生成，但自动归档失败');
       }
       setTimeout(() => reportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
     } catch {
@@ -439,7 +443,7 @@ const StudyPlan: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div>
+      {!embedded && <div>
         <Button variant="ghost" size="sm" className="font-hand mb-2 -ml-2" asChild>
           <Link to={stagePath(stageSlug)}>
             <ArrowLeft className="mr-1 size-4" />
@@ -447,12 +451,12 @@ const StudyPlan: React.FC = () => {
           </Link>
         </Button>
         <h1 className="font-marker text-2xl font-bold">
-          {stageConfig.label} · 学习规划
+          {stageConfig.label} · 执行课表
         </h1>
         <p className="font-hand mt-1 text-sm text-muted-foreground">
           关联学情诊断中的问题，并按回家时间和学习科目生成可执行规划表
         </p>
-      </div>
+      </div>}
 
       <ProfileAutofillBanner
         stageSlug={stageSlug}
@@ -594,7 +598,7 @@ const StudyPlan: React.FC = () => {
           <WobblyCard variant="white" decoration="tape" wobblyIndex={2} hoverable={false} className="p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h2 className="font-marker font-bold">学习规划方案</h2>
+                <h2 className="font-marker font-bold">执行课表方案</h2>
                 <p className="font-hand mt-1 text-sm text-muted-foreground">
                   生成后会完整展示个性化执行方案，重点包含周课表、每日任务、检查标准和复盘安排。
                 </p>

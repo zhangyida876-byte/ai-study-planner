@@ -81,6 +81,14 @@ interface ObjectionHandlingScript {
   relatedQueries?: string[];
 }
 
+export interface ObjectionScriptCatalogItem {
+  id: string;
+  title: string;
+  stageLabel: string;
+  source: string;
+  content: string;
+}
+
 const OBJECTION_HANDLING_SCRIPTS: ObjectionHandlingScript[] = [
   {
     id: 'busy-driving-meeting-call-later',
@@ -1179,4 +1187,22 @@ export function getObjectionHandlingMaterial(limit = 8): string {
   return OBJECTION_HANDLING_DOC.slice(0, limit)
     .map((line, index) => `${index + 1}. ${line}`)
     .join('\n');
+}
+
+export function getObjectionScriptCatalog(): ObjectionScriptCatalogItem[] {
+  return OBJECTION_HANDLING_SCRIPTS.map((script) => ({
+    id: script.id,
+    title: script.title,
+    stageLabel: script.stageLabel || '通用',
+    source: script.source,
+    content: script.content,
+  }));
+}
+
+export function getInternalResourceCatalog(stageSlug: StageSlug): string[] {
+  return [
+    ...COMMON_MATERIALS,
+    ...(STAGE_MATERIALS[stageSlug] || []),
+    ...(MODULE_RULES.advice || []),
+  ];
 }
