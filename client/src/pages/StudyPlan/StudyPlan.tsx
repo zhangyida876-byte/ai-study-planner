@@ -91,6 +91,8 @@ interface StudyPlanSessionState {
   homeworkMinutes: string;
   selectedSubjects: string;
   boardingType: string;
+  boardingReturnFrequency: string;
+  schoolDeviceAccess: string;
   eveningStudy: string;
   extracurricular: string;
   customNotes: string;
@@ -125,6 +127,8 @@ const StudyPlan: React.FC<StudyPlanProps> = ({ embedded = false }) => {
   const [homeworkMinutes, setHomeworkMinutes] = useState('');
   const [selectedSubjects, setSelectedSubjects] = useState('');
   const [boardingType, setBoardingType] = useState('');
+  const [boardingReturnFrequency, setBoardingReturnFrequency] = useState('');
+  const [schoolDeviceAccess, setSchoolDeviceAccess] = useState('');
   const [eveningStudy, setEveningStudy] = useState('');
   const [extracurricular, setExtracurricular] = useState('');
   const [customNotes, setCustomNotes] = useState('');
@@ -158,6 +162,8 @@ const StudyPlan: React.FC<StudyPlanProps> = ({ embedded = false }) => {
     setHomeworkMinutes(cached.homeworkMinutes || '');
     setSelectedSubjects(cached.selectedSubjects || '');
     setBoardingType(cached.boardingType || '');
+    setBoardingReturnFrequency(cached.boardingReturnFrequency || '');
+    setSchoolDeviceAccess(cached.schoolDeviceAccess || '');
     setEveningStudy(cached.eveningStudy || '');
     setExtracurricular(cached.extracurricular || '');
     setCustomNotes(cached.customNotes || '');
@@ -209,6 +215,8 @@ const StudyPlan: React.FC<StudyPlanProps> = ({ embedded = false }) => {
       homeworkMinutes,
       selectedSubjects,
       boardingType,
+      boardingReturnFrequency,
+      schoolDeviceAccess,
       eveningStudy,
       extracurricular,
       customNotes,
@@ -233,6 +241,8 @@ const StudyPlan: React.FC<StudyPlanProps> = ({ embedded = false }) => {
     homeworkMinutes,
     selectedSubjects,
     boardingType,
+    boardingReturnFrequency,
+    schoolDeviceAccess,
     eveningStudy,
     extracurricular,
     customNotes,
@@ -307,6 +317,8 @@ const StudyPlan: React.FC<StudyPlanProps> = ({ embedded = false }) => {
     if (!selectedSubjects.trim() && !weakSubjects.trim()) return '请填写本次规划科目';
     if (!weeklyHours.trim()) return '请填写每周可支配学习时长';
     if (!boardingType) return '请选择走读或住读';
+    if (boardingType === 'boarding' && !boardingReturnFrequency) return '请选择住读回家频次';
+    if (boardingType === 'boarding' && !schoolDeviceAccess) return '请选择在校学习设备条件';
     return null;
   };
 
@@ -337,15 +349,23 @@ const StudyPlan: React.FC<StudyPlanProps> = ({ embedded = false }) => {
         weeklyHours: weeklyHours.trim(),
         dailyHours: '',
         boardingType,
+        boardingReturnFrequency,
+        schoolDeviceAccess,
         eveningStudy,
         extracurricular,
         weeklySchedule: [
           weekdayHomeTime ? `工作日回家时间：${weekdayHomeTime}` : '',
           weekendStudyTime ? `周末可学习时段：${weekendStudyTime}` : '',
+          boardingType === 'boarding' && boardingReturnFrequency
+            ? `住读回家频次：${boardingReturnFrequency}`
+            : '',
         ].filter(Boolean).join('\n'),
         timetableNotes: [
           homeworkMinutes ? `学校作业预计用时：${homeworkMinutes}分钟/天` : '',
           extracurricular ? `固定占用时间：${extracurricular}` : '',
+          boardingType === 'boarding' && schoolDeviceAccess
+            ? `在校学习设备条件：${schoolDeviceAccess}`
+            : '',
         ].filter(Boolean).join('\n'),
         customNotes: customNotes.trim(),
         diagnosisContext: diagnosisContext?.slice(0, 5000),
@@ -373,6 +393,9 @@ const StudyPlan: React.FC<StudyPlanProps> = ({ embedded = false }) => {
             weekendStudyTime,
             homeworkMinutes,
             weeklyHours,
+            boardingType,
+            boardingReturnFrequency,
+            schoolDeviceAccess,
             linkedDiagnosis: Boolean(diagnosisContext),
           },
         });
@@ -388,7 +411,7 @@ const StudyPlan: React.FC<StudyPlanProps> = ({ embedded = false }) => {
       setLoading(false);
     }
   }, [
-    boardingType, currentScore, customNotes, eveningStudy, examDate,
+    boardingType, boardingReturnFrequency, schoolDeviceAccess, currentScore, customNotes, eveningStudy, examDate,
     extracurricular, grade, region, school, stageConfig.label, stageSlug,
     strongSubjects, targetSchool, targetScore, careerIntent, examMode, weakSubjects,
     weeklyHours, weekdayHomeTime, weekendStudyTime, homeworkMinutes, selectedSubjects,
@@ -571,6 +594,33 @@ const StudyPlan: React.FC<StudyPlanProps> = ({ embedded = false }) => {
                 </SelectContent>
               </Select>
             </div>
+            {boardingType === 'boarding' && (
+              <>
+                <div>
+                  <Label className="font-hand">住读回家频次 *</Label>
+                  <Select value={toSelectValue(boardingReturnFrequency)} onValueChange={setBoardingReturnFrequency}>
+                    <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="请选择" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="每周回家">每周回家</SelectItem>
+                      <SelectItem value="每两周回家">每两周回家</SelectItem>
+                      <SelectItem value="每月回家">每月回家</SelectItem>
+                      <SelectItem value="仅寒暑假或长假回家">仅寒暑假或长假回家</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="font-hand">在校学习设备条件 *</Label>
+                  <Select value={toSelectValue(schoolDeviceAccess)} onValueChange={setSchoolDeviceAccess}>
+                    <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="请选择" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="每天可使用学习设备">每天可使用</SelectItem>
+                      <SelectItem value="仅周末可使用学习设备">仅周末可使用</SelectItem>
+                      <SelectItem value="在校不能使用学习设备">在校不能使用</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
             <div>
               <Label className="font-hand">课外班/固定占用时间</Label>
               <Input value={extracurricular} onChange={(e) => setExtracurricular(e.target.value)} className="font-hand mt-1" />

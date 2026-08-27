@@ -143,6 +143,8 @@ export interface PersonalizedLearningPlanInput {
   weeklyHours?: string;
   dailyHours?: string;
   boardingType?: string;
+  boardingReturnFrequency?: string;
+  schoolDeviceAccess?: string;
   eveningStudy?: string;
   extracurricular?: string;
   weeklySchedule?: string;
@@ -176,6 +178,8 @@ export function buildPersonalizedLearningPlanPrompt(
     input.weakSubjects ? `薄弱科目：${input.weakSubjects}` : '',
     input.strongSubjects ? `优势科目：${input.strongSubjects}` : '',
     `学习模式：${boarding}`,
+    input.boardingReturnFrequency ? `住读回家频次：${input.boardingReturnFrequency}` : '',
+    input.schoolDeviceAccess ? `在校学习设备条件：${input.schoolDeviceAccess}` : '',
     input.weeklyHours ? `每周可支配学习时长：${input.weeklyHours}小时` : '',
     input.dailyHours ? `每天可学习时长：${input.dailyHours}小时` : '',
     input.eveningStudy === 'yes' ? '有晚自习' : input.eveningStudy === 'no' ? '无晚自习' : '',
@@ -205,11 +209,11 @@ ${internalMaterial}
 【生成规则】
 1. 按${input.stage}学段特点制定，禁止泛泛而谈。
 2. 时间分配按目标差距与关联诊断中的P0/P1问题加权，禁止平均分配。
-3. 走读需考虑通勤/作业/晚饭；住读需利用晚自习与周末，禁止生成不匹配的模式。
+3. 走读学生的任务只能放在实际回家时间之后，并先扣除作业、通勤和吃饭时间；住读学生必须按回家频次形成周期计划，在校不能使用设备时安排纸笔练习、错题整理和复述验收，把同步课/知识点课集中到可使用设备或回家时段。
 4. 每项任务必须有：完成标准、检测方式、优先级。
 5. 政策/分数线/院校信息查不到须标注「暂无官方确认信息」，禁止编造。
 6. 若为高中学段，必须以“大学-专业-就业能力”主线输出，禁止套用中考提分模板；可回溯初中知识点仅用于定位成因。
-7. 默认输出连续7天执行表，每天只保留1个主任务，必要时增加1个短复盘任务；不为显得充实而硬塞任务。
+7. 走读或每周回家的住读生输出连续7天执行表；每两周回家输出14天周期表；每月或仅长假回家输出4周循环表。每天只保留1个主任务，必要时增加1个短复盘任务。
 8. 每个任务必须简要写清：做什么、用多久、怎么验收。
 9. 全文控制在700-1000个中文字符（Markdown表格符号不计），约为原输出的60%；同一动作不得在不同章节重复。
 
@@ -217,7 +221,7 @@ ${internalMaterial}
 # 个性化学习规划报告
 > 规划结论：最多3条，说明本周重点、时间分配和验收目标。
 ## 一、时间与任务原则（最多4条）
-## 二、连续7天学习规划表（每天1行：日期|可用时间|科目|对应问题|具体动作与洋葱功能|用时|验收标准）
+## 二、学习周期执行表（按真实回家频次输出；每行：周期/日期|可用时间|科目|对应问题|具体动作与洋葱功能|用时|验收标准）
 ## 三、薄弱科目与调整规则（最多3条，合并保底/标准方案）
 ## 四、家长检查与下周复盘（最多5条）`;
 

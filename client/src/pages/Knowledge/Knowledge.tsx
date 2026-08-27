@@ -149,13 +149,22 @@ const Knowledge: React.FC = () => {
   }, [effectiveVersion, effectiveSubject, selectedChapter, grade, semester]);
 
   useEffect(() => {
-    if (effectiveVersion || effectiveSubject || grade || semester) {
+    if (keyword) return;
+    if (grade && effectiveSubject) {
       setHasQueried(true);
       setPage(1);
       setSelectedChapter('');
+      setSelectedId(null);
+      setDetail(null);
       fetchList(1);
+    } else {
+      setItems([]);
+      setTotal(0);
+      setHasQueried(false);
+      setSelectedId(null);
+      setDetail(null);
     }
-  }, [effectiveVersion, effectiveSubject, grade, semester]);
+  }, [effectiveVersion, effectiveSubject, grade, semester, keyword]);
 
   useEffect(() => {
     if (selectedChapter) {
@@ -359,7 +368,7 @@ const Knowledge: React.FC = () => {
     setHasQueried(false);
   }, []);
 
-  const handleSelectItem = async (id: string) => {
+  const handleSelectItem = useCallback(async (id: string) => {
     setSelectedId(id);
     setDetailLoading(true);
     try {
@@ -370,13 +379,20 @@ const Knowledge: React.FC = () => {
     } finally {
       setDetailLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const firstItem = items[0];
+    if (!loading && firstItem && !selectedId) {
+      void handleSelectItem(firstItem.id);
+    }
+  }, [handleSelectItem, items, loading, selectedId]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="min-h-screen bg-paper-dots p-4 lg:p-6">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-7xl">
         <Button variant="ghost" size="sm" className="font-hand mb-2 -ml-2" asChild>
           <Link to={stagePath(stageSlug)}>
             <ArrowLeft className="mr-1 size-4" />
@@ -432,8 +448,8 @@ const Knowledge: React.FC = () => {
           />
         </WobblyCard>
 
-        <div className="flex flex-col gap-6 lg:flex-row">
-          <div className="min-w-0 flex-1">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+          <div className="min-w-0 lg:w-[330px] lg:shrink-0">
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <p className="font-hand text-lg text-muted-foreground">
@@ -515,7 +531,7 @@ const Knowledge: React.FC = () => {
               <div className="flex flex-col items-center justify-center py-20">
                 <BookOpen className="mb-4 size-12 text-muted-foreground" />
                 <p className="text-center font-hand text-lg text-muted-foreground">
-                  选择筛选条件或搜索关键词开始查询
+                  请选择年级和科目，或直接搜索具体知识点
                 </p>
               </div>
             ) : (
@@ -549,7 +565,7 @@ const Knowledge: React.FC = () => {
                     (item: KnowledgePointListItem, idx: number) => (
                       <div
                         key={item.id}
-                        className={`group cursor-pointer px-5 py-4 transition-all duration-200 hover:translate-x-1 hover:bg-accent/50 ${
+                        className={`group cursor-pointer px-3 py-3 transition-all duration-200 hover:translate-x-1 hover:bg-accent/50 ${
                           idx !== items.length - 1
                             ? 'border-b-2 border-dashed border-ink/20'
                             : ''
@@ -562,7 +578,7 @@ const Knowledge: React.FC = () => {
                       >
                         <div className="flex items-center justify-between">
                           <div className="min-w-0 flex-1">
-                            <h3 className="font-marker text-base font-bold group-hover:text-marker-red">
+                            <h3 className="font-marker text-sm font-bold leading-5 group-hover:text-marker-red">
                               {item.name}
                             </h3>
                             <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -572,12 +588,10 @@ const Knowledge: React.FC = () => {
                               <span className="inline-block rounded-sm border border-ink/40 bg-pen-blue/10 px-1.5 py-0.5 font-hand text-xs rotate-1">
                                 {item.subject}
                               </span>
-                              <span className="inline-block rounded-sm border border-ink/40 bg-accent px-1.5 py-0.5 font-hand text-xs -rotate-0.5">
-                                {item.chapter}
-                              </span>
+                              <span className="font-hand line-clamp-1 text-xs text-ink/55">{item.chapter}</span>
                             </div>
                           </div>
-                          <ArrowRight className="ml-3 size-5 shrink-0 text-muted-foreground transition-all duration-200 group-hover:translate-x-1 group-hover:text-marker-red" />
+                          <ArrowRight className="ml-2 size-4 shrink-0 text-muted-foreground transition-all duration-200 group-hover:translate-x-1 group-hover:text-marker-red" />
                         </div>
                       </div>
                     )
@@ -637,7 +651,7 @@ const Knowledge: React.FC = () => {
             )}
           </div>
 
-          <div className="hidden w-96 shrink-0 lg:block">
+          <div className="hidden min-w-0 flex-1 lg:block">
             <div className="sticky top-6">
               <WobblyCard
                 hoverable={false}

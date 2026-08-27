@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Copy, Check, Loader2, Clock, Target, ArrowLeft } from 'lucide-react';
+import { Copy, Check, Loader2, Clock, Target, ArrowLeft, CalendarCheck2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import {
@@ -18,7 +18,6 @@ import {
   type EducationStage,
 } from '@client/src/api/plugins';
 import WobblyCard from '@client/src/components/WobblyCard';
-import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
 import ReferenceScriptCard from '@client/src/components/ReferenceScriptCard';
 import DiagnosisRoadmapChart from '@client/src/components/DiagnosisRoadmapChart';
 import { Streamdown } from '@client/src/components/ui/streamdown';
@@ -33,6 +32,10 @@ import { getInternalScriptAnchor } from '@client/src/config/internal-resource-li
 import { buildMiddleSchoolBenchmarkContext } from '@client/src/utils/school-benchmarks';
 import { formatDiagnosisDate, getAcademicPeriod } from '@client/src/utils/diagnosis-timing';
 import { getVersionForProvinceSubject } from '@client/src/pages/Knowledge/KnowledgeFilterPanel';
+import {
+  buildDiagnosisRegionSnapshot,
+  isDiagnosisRegionSnapshotCompatible,
+} from '@client/src/utils/diagnosis-region';
 
 /* ===== Helpers ===== */
 
@@ -170,7 +173,7 @@ function resolveFilledSubjects(data: DiagnosisFormData): DiagnosisSubjectKey[] {
 
 const Diagnosis: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
-  const { profile, regionText, updateProfile } = useStageProfile(stageSlug);
+  const { profile, updateProfile } = useStageProfile(stageSlug);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationPhase, setGenerationPhase] = useState('');
   const [generationError, setGenerationError] = useState('');
@@ -195,6 +198,21 @@ const Diagnosis: React.FC = () => {
     setMajorInfoContent(cached.majorInfoContent || '');
     setFormSnapshot(cached.formSnapshot || null);
   }, [stageSlug]);
+
+  useEffect(() => {
+    if (!profile.updatedAt || !studentInfo) return;
+    const compatible = isDiagnosisRegionSnapshotCompatible(studentInfo.region, {
+      province: profile.province,
+      city: profile.city,
+    });
+    if (compatible) return;
+
+    setStudentInfo(null);
+    setReportContent('');
+    setMajorInfoContent('');
+    setFormSnapshot(null);
+    toast.warning('首页地区已变化，旧诊断已清除，请按当前档案重新生成');
+  }, [profile.updatedAt, profile.province, profile.city, studentInfo]);
 
   useEffect(() => {
     saveModuleSession(stageSlug, 'diagnosis', {
@@ -256,7 +274,20 @@ const Diagnosis: React.FC = () => {
     const safeGrade = stageConfig.grades.includes(data.grade)
       ? data.grade
       : stageConfig.grades[stageConfig.grades.length - 1];
-    const normalizedData: DiagnosisFormData = { ...data, grade: safeGrade };
+    const regionSnapshot = buildDiagnosisRegionSnapshot(
+      data.region,
+      regionPartsRef.current,
+      {
+        province: profile.province,
+        city: profile.city,
+        county: profile.county,
+      },
+    );
+    const normalizedData: DiagnosisFormData = {
+      ...data,
+      grade: safeGrade,
+      region: regionSnapshot,
+    };
     setStudentInfo(normalizedData);
 
     const scores: Record<string, number> = {};
@@ -419,31 +450,6 @@ const Diagnosis: React.FC = () => {
     }
   }, [stageSlug, profile, stageConfig.grades]);
 
-  const handleSyncProfileBack = useCallback(() => {
-    const snapshot = formSnapshot || studentInfo;
-    if (!snapshot) {
-      toast.error('请先填写或修改表单信息后再同步');
-      return;
-    }
-    updateProfile({
-      province: regionPartsRef.current.province || profile.province,
-      city: regionPartsRef.current.city || profile.city,
-      county: regionPartsRef.current.county || profile.county,
-      grade: snapshot.grade,
-      targetSchool: snapshot.targetSchool || '',
-      targetMajor: snapshot.targetMajor || '',
-      targetScore: snapshot.targetScore,
-      examDate: snapshot.examDate || '',
-      boardingType: (snapshot.boardingType as '' | 'day' | 'boarding') || '',
-      examMode: snapshot.examMode || '',
-      weeklyStudyHours: snapshot.monthlyStudyHours
-        ? String(Math.round(snapshot.monthlyStudyHours / 4))
-        : profile.weeklyStudyHours,
-    });
-    toast.success('已同步回学段主页档案');
-    setProfileDirty(false);
-  }, [formSnapshot, studentInfo, updateProfile, profile]);
-
   const countdown = studentInfo?.examDate ? getCountdown(studentInfo.examDate) : null;
   const examLabel = studentInfo ? getExamLabel(studentInfo.grade) : '';
   const studentStage = studentInfo ? getEducationStage(studentInfo.grade) : 'middle';
@@ -507,19 +513,11 @@ const Diagnosis: React.FC = () => {
           </p>
         </div>
 
-        <ProfileAutofillBanner
-          stageSlug={stageSlug}
-          profile={profile}
-          regionText={regionText}
-          showSyncBack={profileDirty}
-          onSyncBack={handleSyncProfileBack}
-        />
-
       <div className="space-y-6">
         <div className="min-w-0">
           <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false}>
-            <div className="space-y-5 p-5">
-              <div className="border-b-2 border-dashed border-ink/15 pb-4">
+            <div className="space-y-3 p-4">
+              <div className="border-b-2 border-dashed border-ink/15 pb-3">
                 <p className="font-hand text-xs font-bold text-marker-red">STEP 1</p>
                 <h2 className="font-marker mt-1 text-xl font-bold">填写诊断信息</h2>
                 <p className="font-hand mt-1 text-sm text-ink/60">
@@ -669,15 +667,28 @@ const Diagnosis: React.FC = () => {
                 )}
 
                 {reportContent && (
-                  <div className="font-hand prose-headings:font-marker rounded-lg bg-white/70 p-4">
-                    <Streamdown>{reportContent}</Streamdown>
-                  </div>
+                  <>
+                    <div className="font-hand prose-headings:font-marker rounded-lg bg-white/70 p-4">
+                      <Streamdown>{reportContent}</Streamdown>
+                    </div>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t-2 border-dashed border-ink/15 pt-4">
+                      <p className="font-hand text-sm text-ink/65">
+                        诊断结论已保存，可直接带入目标差距和真实时间约束生成执行方案。
+                      </p>
+                      <Button asChild>
+                        <Link to={`${stagePath(stageSlug, 'future')}?tab=schedule`}>
+                          <CalendarCheck2 className="mr-2 size-4" />
+                          带入未来规划
+                        </Link>
+                      </Button>
+                    </div>
+                  </>
                 )}
               </div>
             </WobblyCard>
           ) : (
             <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false}>
-              <div className="flex min-h-[360px] flex-col items-center justify-center p-8 text-center">
+              <div className="flex min-h-[220px] flex-col items-center justify-center p-6 text-center">
                 <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
                 <p className="font-marker mt-2 text-2xl font-bold text-ink">生成学情诊断报告</p>
                 <p className="font-hand mt-2 max-w-md text-sm text-muted-foreground">

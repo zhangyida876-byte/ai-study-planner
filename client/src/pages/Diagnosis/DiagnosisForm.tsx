@@ -874,26 +874,22 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
         onSubmit={form.handleSubmit(handleFormSubmit, handleInvalidSubmit)}
         className="space-y-3"
       >
-        <div className="rounded-xl border-2 border-dashed border-pen-blue/25 bg-pen-blue/5 p-3">
-          <h3 className="font-marker text-base font-bold">首页档案已自动带入</h3>
-          <p className="font-hand mt-1 text-xs text-ink/60">
-            这里不再重复编辑基础信息；目标学校和分数均可不填，系统会自动匹配本地升学参照。
-          </p>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              ['学生', form.getValues('studentName') || stageProfile?.studentName || '未填写'],
-              ['年级', watchedGrade || stageProfile?.grade || '未填写'],
-              ['地区', watchedRegion || '未填写'],
-              [isElementary ? '目标初中（选填）' : isHighSchool ? '目标大学（选填）' : '目标学校（选填）', watchedSchool || stageProfile?.targetSchool || '自动匹配'],
-              ['目标分数线（选填）', form.getValues('targetScore') != null ? `${form.getValues('targetScore')}分` : '自动匹配'],
-              ['考试时间', form.getValues('examDate') || '未填写'],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-lg border border-ink/10 bg-white/80 px-3 py-2">
-                <p className="font-hand text-[11px] text-ink/50">{label}</p>
-                <p className="font-marker mt-0.5 text-sm font-bold text-ink">{value}</p>
-              </div>
-            ))}
-          </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-2 border-dashed border-pen-blue/25 bg-pen-blue/5 px-3 py-2">
+          <span className="font-marker text-sm font-bold">首页档案</span>
+          {[
+            ['student', form.getValues('studentName') || stageProfile?.studentName || '学生未填写'],
+            ['grade', watchedGrade || stageProfile?.grade || '年级未填写'],
+            ['region', watchedRegion || '地区未填写'],
+          ].map(([key, value]) => (
+            <span key={key} className="border-l border-ink/15 pl-4 font-hand text-sm text-ink/75">
+              {value}
+            </span>
+          ))}
+          <span className="font-hand ml-auto text-xs text-ink/55">
+            {watchedSchool || stageProfile?.targetSchool
+              ? `目标：${watchedSchool || stageProfile?.targetSchool}`
+              : `${isElementary ? '目标初中' : isHighSchool ? '目标大学' : '目标学校'}未填，生成时自动匹配本地参照`}
+          </span>
         </div>
 
         <div className="hidden" aria-hidden="true">
