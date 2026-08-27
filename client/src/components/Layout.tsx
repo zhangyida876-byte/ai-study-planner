@@ -34,6 +34,7 @@ import {
   Stethoscope,
   GraduationCap,
   BookOpen,
+  LibraryBig,
   CalendarDays,
   MessageCircleMore,
   Archive,
@@ -59,6 +60,7 @@ const FEATURE_ICONS: Record<FeatureSlug, React.FC<{ className?: string }>> = {
   diagnosis: Stethoscope,
   plan: GraduationCap,
   knowledge: BookOpen,
+  materials: LibraryBig,
   'study-plan': CalendarDays,
   advice: MessageCircleMore,
   history: Archive,
@@ -69,6 +71,7 @@ function resolveFeatureFromPath(pathname: string, stage: StageSlug | null): Feat
   if (pathname.includes('/diagnosis')) return 'diagnosis';
   if (pathname.includes('/plan') && !pathname.includes('/study-plan')) return 'plan';
   if (pathname.includes('/knowledge')) return 'knowledge';
+  if (pathname.includes('/materials')) return 'materials';
   if (pathname.includes('/study-plan')) return 'study-plan';
   if (pathname.includes('/advice')) return 'advice';
   if (pathname.includes('/history')) return 'history';

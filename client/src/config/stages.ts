@@ -6,6 +6,7 @@ export type FeatureSlug =
   | 'diagnosis'
   | 'plan'
   | 'knowledge'
+  | 'materials'
   | 'study-plan'
   | 'advice'
   | 'history';
@@ -49,6 +50,12 @@ const FEATURES: StageFeatureConfig[] = [
     label: '版本及知识点查询',
     description: '按教材、年级和科目查询知识点并生成深度分析',
     pathSuffix: 'knowledge',
+  },
+  {
+    slug: 'materials',
+    label: '案例素材库',
+    description: '按学段、年级和沟通场景检索真实案例素材与推荐话术',
+    pathSuffix: 'materials',
   },
   {
     slug: 'advice',

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Route, Routes, Navigate, useParams } from 'react-router-dom';
 
 import Layout from './components/Layout';
@@ -12,6 +12,8 @@ import StudyPlan from './pages/StudyPlan/StudyPlan';
 import Advice from './pages/Advice/Advice';
 import History from './pages/History/History';
 import { isStageSlug } from './config/stages';
+
+const CaseMaterials = React.lazy(() => import('./pages/CaseMaterials/CaseMaterials'));
 
 const StageGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { stage } = useParams<{ stage: string }>();
@@ -59,6 +61,16 @@ const RoutesComponent = () => {
           }
         />
         <Route
+          path=":stage/materials"
+          element={
+            <StageGuard>
+              <Suspense fallback={<div className="font-hand p-6 text-muted-foreground">正在加载案例素材...</div>}>
+                <CaseMaterials />
+              </Suspense>
+            </StageGuard>
+          }
+        />
+        <Route
           path=":stage/study-plan"
           element={
             <StageGuard>
@@ -86,6 +98,7 @@ const RoutesComponent = () => {
         <Route path="diagnosis" element={<Navigate to="/middle/diagnosis" replace />} />
         <Route path="plan" element={<Navigate to="/middle/plan" replace />} />
         <Route path="knowledge" element={<Navigate to="/middle/knowledge" replace />} />
+        <Route path="materials" element={<Navigate to="/middle/materials" replace />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

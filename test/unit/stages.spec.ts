@@ -10,4 +10,16 @@ describe('stage feature navigation', () => {
       expect(stagePath(stage, 'knowledge')).toBe(`/${stage}/knowledge`);
     },
   );
+
+  it.each(['elementary', 'middle', 'high'] as const)(
+    'includes the case material library for the %s stage',
+    (stage) => {
+      const materials = STAGE_CONFIGS[stage].features.find(
+        (feature) => feature.slug === 'materials',
+      );
+
+      expect(materials?.label).toBe('案例素材库');
+      expect(stagePath(stage, 'materials')).toBe(`/${stage}/materials`);
+    },
+  );
 });
