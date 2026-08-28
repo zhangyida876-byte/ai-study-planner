@@ -10,7 +10,7 @@ describe('stage feature navigation', () => {
     (stage) => {
       const knowledge = STAGE_CONFIGS[stage].features.find((feature) => feature.slug === 'knowledge');
 
-      expect(knowledge?.label).toBe('知识点查询');
+      expect(knowledge?.label).toBe('学情及知识点查询');
       expect(stagePath(stage, 'knowledge')).toBe(`/${stage}/knowledge`);
     },
   );
@@ -37,14 +37,17 @@ describe('stage feature navigation', () => {
         '案例类',
         '话术类',
       ]);
-      expect(features.map((feature) => feature.slug)).toEqual([
+      expect(features.filter((feature) => feature.sidebarVisible !== false).map((feature) => feature.slug)).toEqual([
         'diagnosis',
         'knowledge',
-        'future',
         'history',
         'materials',
         'scripts',
       ]);
+      expect(features.find((feature) => feature.slug === 'diagnosis')?.label)
+        .toBe('学情诊断与规划');
+      expect(features.find((feature) => feature.slug === 'future')?.sidebarVisible)
+        .toBe(false);
       expect(stagePath(stage, 'future')).toBe(`/${stage}/future`);
       expect(stagePath(stage, 'scripts')).toBe(`/${stage}/scripts`);
     },

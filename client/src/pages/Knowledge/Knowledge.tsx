@@ -400,10 +400,10 @@ const Knowledge: React.FC = () => {
           </Link>
         </Button>
         <h1 className="mb-2 font-marker text-3xl font-bold">
-          {stageConfig.label} · 知识点查询
+          {stageConfig.label} · 学情及知识点查询
         </h1>
         <p className="font-hand mb-4 text-sm text-muted-foreground">
-          按地区/年级/版本查询，或输入知识点反向检索
+          查询共性学情、重难点、易错卡点和知识点影响，不替代个性化诊断报告
         </p>
 
         <ProfileAutofillBanner

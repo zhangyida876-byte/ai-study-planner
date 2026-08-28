@@ -12,7 +12,7 @@ const SECTION_ENTRIES = [
   {
     key: 'learning',
     title: '学情类',
-    description: '诊断问题、查知识点、做未来规划并回看档案',
+    description: '一份报告完成诊断与规划，也可查询学情及知识点',
     feature: 'diagnosis' as const,
     icon: Stethoscope,
   },

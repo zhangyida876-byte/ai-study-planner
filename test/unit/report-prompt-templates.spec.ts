@@ -4,20 +4,21 @@ import {
 } from '../../client/src/config/report-prompt-templates';
 
 describe('report prompt templates', () => {
-  it('keeps diagnosis focused on current level, target gap and urgency', () => {
+  it('unifies diagnosis, target gap and executable planning', () => {
     const prompt = buildProfessionalReportFramework('diagnosis');
 
-    expect(prompt).toContain('## 一、现状与单科定位');
-    expect(prompt).toContain('## 二、综合判断与目标差距');
-    expect(prompt).toContain('## 三、危机链与备考窗口');
-    expect(prompt).toContain('## 四、报告结论与家长沟通话术');
-    expect(prompt).toContain('700-1000个中文字符');
-    expect(prompt).toContain('未填写时不得停止生成');
+    expect(prompt).toContain('## 1. 一句话判断');
+    expect(prompt).toContain('## 3. 最值得先讲给家长的3个问题');
+    expect(prompt).toContain('## 5. 给家长的钩子');
+    expect(prompt).toContain('## 6. 家长可执行方案');
+    expect(prompt).toContain('未来一周');
+    expect(prompt).toContain('开学第一周');
+    expect(prompt).toContain('开学第一个月');
+    expect(prompt).toContain('## 7. 洋葱学园承接方案');
+    expect(prompt).toContain('## 8. 课程顾问转述话术');
+    expect(prompt).toContain('1200-1800个中文字符');
     expect(prompt).toContain('普通高中、重点高中各1所');
-    expect(prompt).toContain('教学阶段和教材版本依据');
-    expect(prompt).toContain('最需验证的错法');
-    expect(prompt).toContain('页面已有可视化时间轴');
-    expect(prompt).toContain('每句不超过60字');
+    expect(prompt).toContain('家长怎么检查');
   });
 
   it('extends planning through subject selection, majors and employment', () => {
@@ -36,9 +37,10 @@ describe('report prompt templates', () => {
   it('keeps knowledge analysis within the requested knowledge point', () => {
     const prompt = buildProfessionalReportFramework('knowledge');
 
-    expect(prompt).toContain('## 一、知识点位置与掌握标准');
-    expect(prompt).toContain('## 五、诊断验证方案');
-    expect(prompt).toContain('不展开学校梯度、志愿、选科或就业规划');
+    expect(prompt).toContain('## 一、本学期共性学情与知识点位置');
+    expect(prompt).toContain('## 五、通用家长沟通口径');
+    expect(prompt).toContain('## 六、通用一周学习动作');
+    expect(prompt).toContain('不对某个孩子下最终升学结论');
   });
 
   it.each(['diagnosis', 'plan', 'knowledge'] as const)(

@@ -195,7 +195,9 @@ const LayoutContent: React.FC = () => {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {stageConfig.features
-                    .filter((feature) => feature.group === group.slug)
+                    .filter((feature) => (
+                      feature.group === group.slug && feature.sidebarVisible !== false
+                    ))
                     .map((feature) => {
                       const Icon = FEATURE_ICONS[feature.slug];
                       const href = stagePath(stageSlug!, feature.slug);
@@ -205,6 +207,7 @@ const LayoutContent: React.FC = () => {
                             asChild
                             isActive={pathname === href || pathname.startsWith(`${href}/`)}
                             tooltip={feature.label}
+                            className={feature.slug === 'history' ? 'opacity-65' : undefined}
                           >
                             <Link to={href}>
                               <Icon className="size-4" />

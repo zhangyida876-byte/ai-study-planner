@@ -26,6 +26,7 @@ export interface StageFeatureConfig {
   description: string;
   pathSuffix: string;
   group: FeatureGroupSlug;
+  sidebarVisible?: boolean;
 }
 
 export interface StageConfig {
@@ -45,24 +46,25 @@ export interface StageConfig {
 const FEATURES: StageFeatureConfig[] = [
   {
     slug: 'diagnosis',
-    label: '学情诊断',
-    description: '按学段差异化分析薄弱点、失分原因与升学影响',
+    label: '学情诊断与规划',
+    description: '一次完成水平定位、目标差距、家长行动和产品承接',
     pathSuffix: 'diagnosis',
     group: 'learning',
   },
   {
     slug: 'knowledge',
-    label: '知识点查询',
-    description: '按教材、年级和科目查询知识点并生成深度分析',
+    label: '学情及知识点查询',
+    description: '查询共性学情、重难点、易错点与一周学习动作',
     pathSuffix: 'knowledge',
     group: 'learning',
   },
   {
     slug: 'future',
     label: '未来规划',
-    description: '统一承接升学路径与可执行的学习课表',
+    description: '保留旧版升学路径与执行课表能力',
     pathSuffix: 'future',
     group: 'learning',
+    sidebarVisible: false,
   },
   {
     slug: 'history',

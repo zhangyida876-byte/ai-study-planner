@@ -10,6 +10,7 @@ import {
   FileText,
   Search,
   Sparkles,
+  Settings2,
 } from 'lucide-react';
 import { axiosForBackend } from '@lark-apaas/client-toolkit/utils/getAxiosForBackend';
 
@@ -78,6 +79,7 @@ const diagnosisFormSchema = z.object({
   history: optionalScoreLow(),
   geography: optionalScoreLow(),
   politics: optionalScoreLow(),
+  scoreMaxValues: z.record(z.number().positive().max(1000)).optional(),
   problemDesc: z.string().optional(),
 });
 
@@ -214,6 +216,7 @@ const FORM_DEFAULTS: DiagnosisFormData = {
   history: undefined,
   geography: undefined,
   politics: undefined,
+  scoreMaxValues: undefined,
   problemDesc: '',
 };
 
@@ -325,6 +328,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   const [majorInfoContent, setMajorInfoContent] = useState('');
   const [majorInfoLoading, setMajorInfoLoading] = useState(false);
   const [showAllSubjects, setShowAllSubjects] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [formFeedback, setFormFeedback] = useState('');
   const [internetSubjectMaxHints, setInternetSubjectMaxHints] = useState<Record<string, number>>({});
   const customRegionRef = useRef('');
@@ -538,6 +542,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   const watchedRegion = form.watch('region');
   const watchedMajor = form.watch('targetMajor');
   const watchedScores = form.watch(SCORE_FIELDS);
+  const watchedScoreMaxValues = form.watch('scoreMaxValues') || {};
   const isHighSchool = ['高一', '高二', '高三'].includes(watchedGrade);
   const isMiddleSchool = ['初一', '初二', '初三'].includes(watchedGrade);
   const isElementary = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'].includes(watchedGrade);
@@ -828,43 +833,59 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   }, []);
 
   const renderSubjectInput = (subject: { name: keyof DiagnosisFormData; label: string; max: number }) => {
-    const effectiveMax = resolveSubjectMax(subject.label, subject.max, internetSubjectMaxHints);
+    const suggestedMax = resolveSubjectMax(subject.label, subject.max, internetSubjectMaxHints);
+    const effectiveMax = watchedScoreMaxValues[subject.label] || suggestedMax;
     return (
-    <FormField
-      key={String(subject.name)}
-      control={form.control}
-      name={subject.name}
-      render={({ field }) => (
-        <FormItem className="space-y-1">
-          <FormLabel className="text-xs">
-            {subject.label}
-            <span className="ml-1 text-xs font-normal text-ink/50">(满分{effectiveMax})</span>
-          </FormLabel>
-          <FormControl>
-            <Input
-              className="h-10"
-              type="number"
-              placeholder={`0-${effectiveMax}`}
-              min={0}
-              max={effectiveMax}
-              name={field.name}
-              ref={field.ref}
-              disabled={field.disabled}
-              value={
-                field.value !== undefined && field.value !== null
-                  ? String(field.value)
-                  : ''
-              }
-              onChange={(e) => {
-                const raw = e.target.value;
-                field.onChange(raw === '' ? undefined : Number(raw));
-              }}
-            />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
+      <div key={String(subject.name)} className="space-y-1">
+        <FormLabel className="text-xs font-bold">{subject.label}</FormLabel>
+        <div className="grid grid-cols-[minmax(0,1fr)_84px] gap-2">
+          <FormField
+            control={form.control}
+            name={subject.name}
+            render={({ field }) => (
+              <FormItem className="space-y-1">
+                <FormControl>
+                  <Input
+                    className="h-10"
+                    type="number"
+                    aria-label={`${subject.label}得分`}
+                    placeholder="得分"
+                    min={0}
+                    max={effectiveMax}
+                    name={field.name}
+                    ref={field.ref}
+                    disabled={field.disabled}
+                    value={field.value != null ? String(field.value) : ''}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      field.onChange(raw === '' ? undefined : Number(raw));
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Input
+            className="h-10"
+            type="number"
+            aria-label={`${subject.label}满分`}
+            title={`${subject.label}满分`}
+            min={1}
+            max={1000}
+            value={String(effectiveMax)}
+            onChange={(event) => {
+              const nextMax = Number(event.target.value);
+              if (!Number.isFinite(nextMax) || nextMax <= 0) return;
+              form.setValue('scoreMaxValues', {
+                ...watchedScoreMaxValues,
+                [subject.label]: nextMax,
+              });
+            }}
+          />
+        </div>
+        <p className="font-hand text-[11px] text-ink/45">左侧得分 · 右侧满分</p>
+      </div>
     );
   };
 
@@ -875,22 +896,180 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
         className="space-y-3"
       >
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-2 border-dashed border-pen-blue/25 bg-pen-blue/5 px-3 py-2">
-          <span className="font-marker text-sm font-bold">首页档案</span>
-          {[
-            ['student', form.getValues('studentName') || stageProfile?.studentName || '学生未填写'],
-            ['grade', watchedGrade || stageProfile?.grade || '年级未填写'],
-            ['region', watchedRegion || '地区未填写'],
-          ].map(([key, value]) => (
-            <span key={key} className="border-l border-ink/15 pl-4 font-hand text-sm text-ink/75">
-              {value}
-            </span>
-          ))}
+          <span className="font-marker text-sm font-bold">首页档案已带入</span>
+          <span className="border-l border-ink/15 pl-4 font-hand text-sm text-ink/75">
+            {form.getValues('studentName') || stageProfile?.studentName || '未命名学生'}
+          </span>
           <span className="font-hand ml-auto text-xs text-ink/55">
-            {watchedSchool || stageProfile?.targetSchool
-              ? `目标：${watchedSchool || stageProfile?.targetSchool}`
-              : `${isElementary ? '目标初中' : isHighSchool ? '目标大学' : '目标学校'}未填，生成时自动匹配本地参照`}
+            以下字段可直接核对修改，并自动同步回档案
           </span>
         </div>
+
+        <div className="grid gap-3 border-2 border-dashed border-ink/15 bg-white/70 p-3 md:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <FormLabel>学段</FormLabel>
+            <Input className="mt-1 h-10 bg-accent/50" value={stageLabel || ''} readOnly />
+          </div>
+          <FormField
+            control={form.control}
+            name="grade"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>年级 <span className="text-marker-red">*</span></FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl><SelectTrigger className="mt-1 h-10 w-full"><SelectValue placeholder="请选择年级" /></SelectTrigger></FormControl>
+                  <SelectContent>
+                    {GRADE_OPTIONS.filter((gradeOption) => (
+                      !allowedGrades || allowedGrades.includes(gradeOption)
+                    )).map((gradeOption: string) => (
+                      <SelectItem key={gradeOption} value={gradeOption}>{gradeOption}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="region"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>地区 <span className="text-marker-red">*</span></FormLabel>
+                <FormControl>
+                  <Input
+                    className="mt-1 h-10"
+                    placeholder="省 市（区县可选）"
+                    value={field.value || ''}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      const parts = value.split(/\s+/u).filter(Boolean);
+                      field.onChange(value);
+                      markProfileDirty();
+                      onRegionPartsChange?.({
+                        province: parts[0] || '',
+                        city: parts[1] || '',
+                        county: parts[2] || '',
+                      });
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="examDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>开学/考试时间（选填）</FormLabel>
+                <FormControl><Input className="mt-1 h-10" type="date" {...field} value={field.value || ''} /></FormControl>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="targetSchool"
+            render={({ field }) => (
+              <FormItem className="xl:col-span-2">
+                <FormLabel>目标学校（选填）</FormLabel>
+                <FormControl><Input className="mt-1 h-10" placeholder="不填则匹配本地层级参照" {...field} value={field.value || ''} /></FormControl>
+              </FormItem>
+            )}
+          />
+          {!isElementary && (
+            <FormField
+              control={form.control}
+              name="targetScore"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>目标分数（选填）</FormLabel>
+                  <FormControl>
+                    <Input
+                      className="mt-1 h-10"
+                      type="number"
+                      placeholder="可只填目标分数"
+                      value={field.value != null ? String(field.value) : ''}
+                      onChange={(event) => field.onChange(
+                        event.target.value === '' ? undefined : Number(event.target.value),
+                      )}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          )}
+          <div className="flex items-end">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-10 w-full justify-start font-hand text-pen-blue"
+              onClick={() => setShowAdvanced((current) => !current)}
+            >
+              <Settings2 className="mr-2 size-4" />
+              {showAdvanced ? '收起高级选项' : '高级选项'}
+              {showAdvanced ? <ChevronUp className="ml-auto size-4" /> : <ChevronDown className="ml-auto size-4" />}
+            </Button>
+          </div>
+        </div>
+
+        {showAdvanced && (
+          <div className="grid gap-3 border-2 border-dashed border-pen-blue/20 bg-pen-blue/5 p-3 md:grid-cols-2 xl:grid-cols-4">
+            <FormField
+              control={form.control}
+              name="boardingType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>走读/住读</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger className="w-full"><SelectValue placeholder="未填写" /></SelectTrigger></FormControl>
+                    <SelectContent>{BOARDING_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="monthlyStudyHours"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>每月自主学习小时</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="如：40" value={field.value != null ? String(field.value) : ''} onChange={(event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            {isHighSchool && (
+              <FormField
+                control={form.control}
+                name="examMode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>高考选科模式</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger className="w-full"><SelectValue placeholder="未填写" /></SelectTrigger></FormControl>
+                      <SelectContent>{HS_MODES.map((mode) => <SelectItem key={mode.value} value={mode.value}>{mode.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+            )}
+            {isHighSchool && (
+              <FormField
+                control={form.control}
+                name="targetMajor"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>目标专业</FormLabel>
+                    <FormControl><Input placeholder="选填" {...field} value={field.value || ''} /></FormControl>
+                  </FormItem>
+                )}
+              />
+            )}
+          </div>
+        )}
 
         <div className="hidden" aria-hidden="true">
         <div className="rounded-xl border-2 border-dashed border-ink/15 bg-accent/40 p-4">
@@ -1313,7 +1492,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
             <div>
             <FormLabel className="block">各科成绩</FormLabel>
             <p className="font-hand mt-1 text-xs text-ink/60">
-              首页成绩已自动带入，可只补充或修正本次要诊断的科目。
+              首页成绩已自动带入；左侧填得分，右侧核对满分，可只填写本次要诊断的科目。
             </p>
             </div>
             {(!isHighSchool || !watchedMode) && (hiddenSubjectCount > 0 || showAllSubjects) && (
@@ -1395,7 +1574,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
           name="problemDesc"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>学习困扰</FormLabel>
+              <FormLabel>当前最担心的问题（选填）</FormLabel>
               <FormControl>
                 <Textarea
                   placeholder="可补充错题表现、听课状态、做题习惯，例如：数学压轴题不会列式，英语完形总靠感觉"
@@ -1421,7 +1600,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
           ) : (
             <>
               <FileText className="mr-2 size-4" />
-              生成诊断报告
+              生成诊断与规划报告
             </>
           )}
         </Button>

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Copy, Check, Loader2, Clock, Target, ArrowLeft, CalendarCheck2 } from 'lucide-react';
+import { Copy, Check, Loader2, Clock, Target, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import {
@@ -18,17 +18,14 @@ import {
   type EducationStage,
 } from '@client/src/api/plugins';
 import WobblyCard from '@client/src/components/WobblyCard';
-import ReferenceScriptCard from '@client/src/components/ReferenceScriptCard';
-import DiagnosisRoadmapChart from '@client/src/components/DiagnosisRoadmapChart';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { Button } from '@/components/ui/button';
 import DiagnosisForm, { type DiagnosisFormData } from './DiagnosisForm';
+import DiagnosisReportView from './DiagnosisReportView';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import { stagePath } from '@client/src/config/stages';
 import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
-import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
-import { getInternalScriptAnchor } from '@client/src/config/internal-resource-library';
 import { buildMiddleSchoolBenchmarkContext } from '@client/src/utils/school-benchmarks';
 import { formatDiagnosisDate, getAcademicPeriod } from '@client/src/utils/diagnosis-timing';
 import { getVersionForProvinceSubject } from '@client/src/pages/Knowledge/KnowledgeFilterPanel';
@@ -338,12 +335,12 @@ const Diagnosis: React.FC = () => {
             15000,
             '学校参照检索超时，本次先基于已有成绩完成诊断；具体学校与分数线待核实。',
           );
-      const coreMax = stage === 'elementary' ? 100 : stage === 'middle' ? 120 : 150;
       const scoreMaxValues: Record<string, number> = {};
       for (const key of filledSubjectKeys) {
         const label = SUBJECT_LABELS[key];
-        scoreMaxValues[label] =
-          key === 'chinese' || key === 'math' || key === 'english' ? coreMax : 100;
+        const coreMax = stage === 'elementary' ? 100 : stage === 'middle' ? 120 : 150;
+        const suggestedMax = CORE_SUBJECT_KEYS.includes(key) ? coreMax : 100;
+        scoreMaxValues[label] = normalizedData.scoreMaxValues?.[label] || suggestedMax;
       }
       const examType = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '小升初期末统考';
       const formCtx: DiagnosisFormContext = {
@@ -385,7 +382,7 @@ const Diagnosis: React.FC = () => {
         learning_problems: learningProblems,
       });
 
-      setGenerationPhase('正在生成诊断报告...');
+      setGenerationPhase('正在生成诊断与规划报告...');
       let fullContent = '';
       for await (const chunk of generator) {
         fullContent += chunk;
@@ -417,7 +414,7 @@ const Diagnosis: React.FC = () => {
           targetSchool: normalizedData.targetSchool,
           targetScore: normalizedData.targetScore,
           artifactType: 'diagnosis',
-          title: `${normalizedData.grade}学情诊断`,
+          title: `${normalizedData.grade}学情诊断与规划`,
           content: fullContent,
           inputSnapshot: {
             scores,
@@ -425,7 +422,7 @@ const Diagnosis: React.FC = () => {
             examDate: normalizedData.examDate || '',
           },
         });
-        toast.success('诊断报告已生成并自动归档');
+        toast.success('诊断与规划报告已生成并自动归档');
       } catch (archiveError) {
         logger.error('诊断报告自动归档失败', String(archiveError));
         toast.warning('报告已生成，但自动归档失败');
@@ -461,42 +458,14 @@ const Diagnosis: React.FC = () => {
           : ['chinese', 'math', 'english', 'physics', 'chemistry', 'biology', 'history', 'geography', 'politics']
       ).reduce((sum, key) => sum + ((studentInfo[key as keyof DiagnosisFormData] as number) || 0), 0)
     : 0;
-  const scoreGap = (studentInfo?.targetScore != null && studentStage !== 'elementary') ? studentInfo.targetScore - totalScore : null;
-  const prioritySubject = studentInfo
-    ? resolveFilledSubjects(studentInfo)
-        .map((key) => {
-          const score = studentInfo[key];
-          const coreMax = studentStage === 'elementary' ? 100 : studentStage === 'middle' ? 120 : 150;
-          const max = CORE_SUBJECT_KEYS.includes(key) ? coreMax : 100;
-          return { label: SUBJECT_LABELS[key], rate: typeof score === 'number' ? score / max : 1 };
-        })
-        .sort((a, b) => a.rate - b.rate)[0]?.label
-    : undefined;
-  const buildDiagnosisReferenceScript = useCallback(() => {
-    if (!studentInfo) return '';
-    const name = studentInfo.studentName || '孩子';
-    const weak = profile.weakSubjects || '当前薄弱科目';
-    const targetText = studentInfo.targetSchool
-      ? `${studentInfo.targetSchool}${studentInfo.targetMajor ? `（${studentInfo.targetMajor}）` : ''}`
-      : '';
-    const gapText =
-      scoreGap == null
-        ? ''
-        : scoreGap > 0
-          ? `离目标还差${scoreGap}分`
-          : `目前已经超过目标${Math.abs(scoreGap)}分`;
-    const reportPoint = pickFirstSentence(reportContent);
-    const internalAnchor = getInternalScriptAnchor(stageSlug, 'diagnosis');
-    return buildReferenceScript([
-      `先按一个原则：${internalAnchor}`,
-      `${name}现在最该做的是把${weak}先稳住`,
-      targetText ? `咱们目标是${targetText}` : '',
-      gapText,
-      reportPoint ? `我先说最关键一点：${reportPoint}` : '',
-      '这周先别求全，先抓一科短板，每天固定时间做错题回炉，周末咱们再一起复盘怎么调。',
-    ]);
-  }, [studentInfo, profile.weakSubjects, scoreGap, reportContent]);
-
+  const hasCompleteScoreSet = studentInfo
+    ? resolveExpectedSubjects(studentInfo).every((key) => typeof studentInfo[key] === 'number')
+    : false;
+  const scoreGap = studentInfo?.targetScore != null
+    && studentStage !== 'elementary'
+    && hasCompleteScoreSet
+    ? studentInfo.targetScore - totalScore
+    : null;
   return (
     <>
       <div className="mx-auto max-w-7xl space-y-6">
@@ -507,9 +476,9 @@ const Diagnosis: React.FC = () => {
               返回{stageConfig.label}主页
             </Link>
           </Button>
-          <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 学情诊断</h1>
+          <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 学情诊断与规划</h1>
           <p className="font-hand mt-1 text-sm text-muted-foreground">
-            按{stageConfig.label}学段标准分析薄弱点、失分原因与升学影响
+            一次完成水平定位、3个优先问题、目标差距、家长行动和洋葱学园承接
           </p>
         </div>
 
@@ -518,10 +487,10 @@ const Diagnosis: React.FC = () => {
           <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false}>
             <div className="space-y-3 p-4">
               <div className="border-b-2 border-dashed border-ink/15 pb-3">
-                <p className="font-hand text-xs font-bold text-marker-red">STEP 1</p>
-                <h2 className="font-marker mt-1 text-xl font-bold">填写诊断信息</h2>
+                <p className="font-hand text-xs font-bold text-marker-red">STEP 1 · 只填必要信息</p>
+                <h2 className="font-marker mt-1 text-xl font-bold">确认孩子现状与目标</h2>
                 <p className="font-hand mt-1 text-sm text-ink/60">
-                  基础档案会自动带入，只需要核对目标、成绩和学习困扰。
+                  档案自动带入；核对年级、地区、成绩与满分即可，目标和担忧都可选填。
                 </p>
               </div>
               <div className="space-y-4">
@@ -549,9 +518,9 @@ const Diagnosis: React.FC = () => {
               <div className="p-5">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
+                    <p className="font-hand text-xs font-bold text-marker-red">STEP 2 · 结论与行动</p>
                     <h2 className="font-marker mt-1 text-2xl font-bold">
-                      {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}诊断报告
+                      {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}学情诊断与规划报告
                     </h2>
                   </div>
                   {reportContent && (
@@ -650,38 +619,16 @@ const Diagnosis: React.FC = () => {
                   )}
                 </div>
 
-                {studentInfo && reportContent && (
-                  <DiagnosisRoadmapChart
-                    grade={studentInfo.grade}
-                    stage={studentStage}
-                    examDate={studentInfo.examDate}
-                    prioritySubject={prioritySubject}
-                  />
-                )}
-
                 {isGenerating && !reportContent && (
                   <div className="flex items-center gap-3 py-12 font-hand text-xl text-muted-foreground">
                     <Loader2 className="size-5 animate-spin" />
-                    正在生成诊断报告...
+                    正在生成诊断与规划报告...
                   </div>
                 )}
 
                 {reportContent && (
                   <>
-                    <div className="font-hand prose-headings:font-marker rounded-lg bg-white/70 p-4">
-                      <Streamdown>{reportContent}</Streamdown>
-                    </div>
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t-2 border-dashed border-ink/15 pt-4">
-                      <p className="font-hand text-sm text-ink/65">
-                        诊断结论已保存，可直接带入目标差距和真实时间约束生成执行方案。
-                      </p>
-                      <Button asChild>
-                        <Link to={`${stagePath(stageSlug, 'future')}?tab=schedule`}>
-                          <CalendarCheck2 className="mr-2 size-4" />
-                          带入未来规划
-                        </Link>
-                      </Button>
-                    </div>
+                    <DiagnosisReportView content={reportContent} />
                   </>
                 )}
               </div>
@@ -690,20 +637,13 @@ const Diagnosis: React.FC = () => {
             <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false}>
               <div className="flex min-h-[220px] flex-col items-center justify-center p-6 text-center">
                 <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
-                <p className="font-marker mt-2 text-2xl font-bold text-ink">生成学情诊断报告</p>
+                <p className="font-marker mt-2 text-2xl font-bold text-ink">生成学情诊断与规划报告</p>
                 <p className="font-hand mt-2 max-w-md text-sm text-muted-foreground">
-                  在上方确认基础信息和各科成绩后，点击“生成诊断报告”，这里会展示宽版诊断结果和备考危机时间轴。
+                  生成后优先展示一句话判断、3个核心问题、家长行动方案和可直接转述的话术；详细分析按需展开。
                 </p>
               </div>
             </WobblyCard>
           )}
-          <div className="mt-4">
-            <ReferenceScriptCard
-              onGenerate={buildDiagnosisReferenceScript}
-              hint="基于当前诊断结果生成可直接和孩子沟通的话术（300字内）。"
-              wobblyIndex={31}
-            />
-          </div>
         </div>
       </div>
       </div>
