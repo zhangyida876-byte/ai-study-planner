@@ -16,6 +16,12 @@ import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import caseMaterialsData from '@client/src/data/case-materials.json';
+import CaseMaterialMultiFilter from './CaseMaterialMultiFilter';
+import {
+  matchesCaseMaterialTags,
+  scoreCaseMaterial,
+  violatesCaseMaterialProtectedTerm,
+} from '@client/src/utils/case-material-search';
 
 interface CaseMaterial {
   id: string;
@@ -32,6 +38,8 @@ interface CaseMaterial {
   evidence: string;
   summary: string;
   value: string;
+  focus?: string;
+  searchText?: string;
   status: string;
 }
 
@@ -43,57 +51,6 @@ const SOURCE_BASE_URL =
   'https://guanghe.feishu.cn/wiki/HdqqwpMKbi0pmvkhWWQcXLtNnOd?table=tbl8Xeiesb4nJkn6&view=vewc8sRCjT';
 const PAGE_SIZE = 12;
 const MATERIALS: CaseMaterial[] = caseMaterialsData;
-
-const SEARCH_EXPANSIONS: Array<[string[], string[]]> = [
-  [['价格', '太贵', '值不值'], ['物超所值', '费用', '预算', '异议']],
-  [['提分', '涨分'], ['成绩提升', '进步', '中考成绩', '录取']],
-  [['不主动', '没动力'], ['主动学习', '自律', '学习习惯', '坚持']],
-  [['补基础', '听不懂'], ['查漏补缺', '知识点', '薄弱点', '补漏']],
-  [['辅导班', '补课'], ['竞品对比', '线下班', '一对一']],
-  [['家长沟通', '没钱'], ['父母', '妈妈', '爸爸', '学生没钱']],
-];
-
-function normalizeText(value: string): string {
-  return value.toLowerCase().replace(/\s+/gu, ' ').trim();
-}
-
-function buildSearchTerms(query: string): string[] {
-  const normalized = normalizeText(query);
-  const terms = new Set(normalized.split(/[\s，,。！？!、]+/u).filter(Boolean));
-  for (const [triggers, related] of SEARCH_EXPANSIONS) {
-    if (triggers.some((trigger) => normalized.includes(trigger))) {
-      related.forEach((term) => terms.add(normalizeText(term)));
-    }
-  }
-  return [...terms];
-}
-
-function scoreMaterial(material: CaseMaterial, query: string): number {
-  const normalizedQuery = normalizeText(query);
-  if (!normalizedQuery) return 1;
-  const terms = buildSearchTerms(normalizedQuery);
-  const fields: Array<[string, number]> = [
-    [material.manualTag, 90],
-    [material.title, 70],
-    [material.pitch, 55],
-    [material.scenario, 48],
-    [material.evidence, 42],
-    [material.aiTags.join(' '), 38],
-    [material.keywords.join(' '), 32],
-    [material.summary, 24],
-    [material.imageType, 20],
-  ];
-  return fields.reduce((total, [text, weight]) => {
-    const normalizedField = normalizeText(text);
-    if (!normalizedField) return total;
-    const exact = normalizedField.includes(normalizedQuery) ? weight : 0;
-    const related = terms.reduce(
-      (sum, term) => sum + (normalizedField.includes(term) ? Math.max(3, weight / 5) : 0),
-      0,
-    );
-    return total + exact + related;
-  }, 0);
-}
 
 function buildShareText(material: CaseMaterial): string {
   return material.pitch.trim()
@@ -137,24 +94,28 @@ async function writeRichClipboard(material: CaseMaterial, includeText: boolean):
 const CaseMaterials: React.FC = () => {
   const { stageConfig } = useRequiredStage();
   const [query, setQuery] = useState('');
-  const [stage, setStage] = useState(stageConfig.label);
-  const [grade, setGrade] = useState('');
-  const [imageType, setImageType] = useState('');
-  const [selectedTag, setSelectedTag] = useState('');
+  const [selectedStages, setSelectedStages] = useState<string[]>([stageConfig.label]);
+  const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
+  const [selectedImageTypes, setSelectedImageTypes] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [copiedId, setCopiedId] = useState('');
 
   useEffect(() => {
-    setStage(stageConfig.label);
-    setGrade('');
+    setSelectedStages([stageConfig.label]);
+    setSelectedGrades([]);
     setPage(1);
   }, [stageConfig.label]);
 
   const grades = useMemo(
-    () => [...new Set(MATERIALS.filter((item) => !stage || item.stage === stage)
+    () => [...new Set(MATERIALS.filter((item) => (
+      selectedStages.length === 0
+      || item.stage === '通用'
+      || selectedStages.includes(item.stage)
+    ))
       .map((item) => item.grade)
       .filter(Boolean))],
-    [stage],
+    [selectedStages],
   );
   const imageTypes = useMemo(
     () => [...new Set(MATERIALS.map((item) => item.imageType).filter(Boolean))],
@@ -172,28 +133,29 @@ const CaseMaterials: React.FC = () => {
   }, []);
 
   const results = useMemo<RankedMaterial[]>(() => MATERIALS
-    .map((item) => ({ ...item, relevance: scoreMaterial(item, query) }))
+    .map((item) => ({ ...item, relevance: scoreCaseMaterial(item, query) }))
     .filter((item) => {
-      if (stage && item.stage !== stage && item.stage !== '通用') return false;
-      if (grade && item.grade !== grade) return false;
-      if (imageType && item.imageType !== imageType) return false;
-      if (selectedTag && !item.aiTags.includes(selectedTag)) return false;
+      if (selectedStages.length && item.stage !== '通用' && !selectedStages.includes(item.stage)) return false;
+      if (selectedGrades.length && !selectedGrades.includes(item.grade)) return false;
+      if (selectedImageTypes.length && !selectedImageTypes.includes(item.imageType)) return false;
+      if (!matchesCaseMaterialTags(item, selectedTags)) return false;
+      if (violatesCaseMaterialProtectedTerm(item, query)) return false;
       if (query.trim() && item.relevance <= 0) return false;
       return true;
     })
     .sort((left, right) => right.relevance - left.relevance), [
-      grade,
-      imageType,
       query,
-      selectedTag,
-      stage,
+      selectedGrades,
+      selectedImageTypes,
+      selectedStages,
+      selectedTags,
     ]);
   const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
   const visibleResults = results.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   useEffect(() => {
     setPage(1);
-  }, [query, stage, grade, imageType, selectedTag]);
+  }, [query, selectedStages, selectedGrades, selectedImageTypes, selectedTags]);
 
   const copyText = async (material: CaseMaterial): Promise<void> => {
     try {
@@ -225,10 +187,10 @@ const CaseMaterials: React.FC = () => {
 
   const clearFilters = (): void => {
     setQuery('');
-    setStage(stageConfig.label);
-    setGrade('');
-    setImageType('');
-    setSelectedTag('');
+    setSelectedStages([stageConfig.label]);
+    setSelectedGrades([]);
+    setSelectedImageTypes([]);
+    setSelectedTags([]);
   };
 
   return (
@@ -263,35 +225,27 @@ const CaseMaterials: React.FC = () => {
             />
           </div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <select
-              value={stage}
-              onChange={(event) => { setStage(event.target.value); setGrade(''); }}
-              className="h-10 rounded-md border-2 border-ink bg-white px-3 font-hand text-sm"
-              aria-label="所属学段"
-            >
-              <option value="">全部学段</option>
-              <option value="小学">小学</option>
-              <option value="初中">初中</option>
-              <option value="高中">高中</option>
-            </select>
-            <select
-              value={grade}
-              onChange={(event) => setGrade(event.target.value)}
-              className="h-10 rounded-md border-2 border-ink bg-white px-3 font-hand text-sm"
-              aria-label="具体年级"
-            >
-              <option value="">全部年级</option>
-              {grades.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-            <select
-              value={imageType}
-              onChange={(event) => setImageType(event.target.value)}
-              className="h-10 rounded-md border-2 border-ink bg-white px-3 font-hand text-sm"
-              aria-label="案例类型"
-            >
-              <option value="">全部案例类型</option>
-              {imageTypes.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
+            <CaseMaterialMultiFilter
+              label="学段"
+              options={['小学', '初中', '高中']}
+              selected={selectedStages}
+              onChange={(next) => {
+                setSelectedStages(next);
+                setSelectedGrades([]);
+              }}
+            />
+            <CaseMaterialMultiFilter
+              label="年级"
+              options={grades}
+              selected={selectedGrades}
+              onChange={setSelectedGrades}
+            />
+            <CaseMaterialMultiFilter
+              label="案例类型"
+              options={imageTypes}
+              selected={selectedImageTypes}
+              onChange={setSelectedImageTypes}
+            />
             <Button type="button" variant="ghost" className="font-hand" onClick={clearFilters}>
               <X className="mr-1 size-4" />清空筛选
             </Button>
@@ -301,9 +255,13 @@ const CaseMaterials: React.FC = () => {
               <button
                 key={tag}
                 type="button"
-                onClick={() => setSelectedTag((current) => current === tag ? '' : tag)}
+                onClick={() => setSelectedTags((current) => (
+                  current.includes(tag)
+                    ? current.filter((item) => item !== tag)
+                    : [...current, tag]
+                ))}
                 className={`border-2 border-ink px-2.5 py-1 font-hand text-xs transition-transform hover:-translate-y-0.5 ${
-                  selectedTag === tag ? 'bg-postit-yellow font-bold' : 'bg-white'
+                  selectedTags.includes(tag) ? 'bg-postit-yellow font-bold' : 'bg-white'
                 }`}
               >
                 {tag}
