@@ -1,4 +1,5 @@
 import type { StageSlug } from '@client/src/config/stages';
+import { buildAcademicTimingPromptContext } from '../utils/academic-phase';
 
 export interface SemesterSubjectInsight {
   stage: StageSlug;
@@ -242,12 +243,15 @@ export function buildSemesterInsightPromptContext(
   grade: string,
   semester: string,
   subjects: string[],
+  date: Date = new Date(),
 ): string {
   const insights = getSemesterSubjectInsights(stage, grade, semester)
     .filter((item) => subjects.includes(item.subject));
-  if (insights.length === 0) return '';
+  const timingContext = buildAcademicTimingPromptContext(date);
+  if (insights.length === 0) return timingContext;
   const first = insights[0];
   return [
+    timingContext,
     `当前学期：${normalizeInsightGrade(grade)}${semester}`,
     `年龄段心理：${first.agePsychology.join('；')}`,
     `学习节奏：${first.learningTraits.join('；')}`,

@@ -109,7 +109,7 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({ content }) =>
         <Accordion type="single" collapsible className="mt-3 border-2 border-dashed border-ink/15 px-4">
           <AccordionItem value="details" className="border-0">
             <AccordionTrigger className="font-marker text-base font-bold no-underline hover:no-underline">
-              查看年龄学期、升学差距与开学月详情
+              查看时间节点、升学差距与阶段行动详情
             </AccordionTrigger>
             <AccordionContent className="space-y-5">
               {detailSections.map((section) => (

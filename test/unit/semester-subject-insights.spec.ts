@@ -34,8 +34,11 @@ describe('semester subject insights', () => {
       '八年级',
       '下学期',
       ['数学', '物理'],
+      new Date(2026, 7, 28, 12),
     );
 
+    expect(context).toContain('查询日期：2026年8月28日');
+    expect(context).toContain('最近关键考试：开学摸底与第一次月考');
     expect(context).toContain('当前学期：八年级下学期');
     expect(context).toContain('数学：');
     expect(context).toContain('物理：');

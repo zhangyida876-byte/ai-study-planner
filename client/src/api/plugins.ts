@@ -10,6 +10,7 @@ import {
 } from '@client/src/config/semester-subject-insights';
 import { resolveZhongkaoProfile, type ZhongkaoScoreProfile } from '@client/src/data/zhongkao-score-profiles';
 import type { StageProfile } from '@client/src/types/stage-profile';
+import { buildAcademicTimingPromptContext } from '@client/src/utils/academic-phase';
 
 export const PLUGIN_IDS = {
   DIAGNOSIS_REPORT: 'academic_diagnosis_report_generator_1',
@@ -640,7 +641,7 @@ export async function* streamKnowledgeAnalysis(
     limit: 12,
   });
   const framework = buildProfessionalReportFramework('knowledge');
-  const gradeMatch = input.grade_semester.match(/(七年级|八年级|九年级|初一|初二|初三)/u);
+  const gradeMatch = input.grade_semester.match(/(一年级|二年级|三年级|四年级|五年级|六年级|七年级|八年级|九年级|初一|初二|初三|高一|高二|高三)/u);
   const semesterMatch = input.grade_semester.match(/(上学期|下学期|上册|下册)/u);
   const semesterInsightContext = gradeMatch && semesterMatch
     ? buildSemesterInsightPromptContext(
@@ -650,6 +651,7 @@ export async function* streamKnowledgeAnalysis(
       [input.subject],
     )
     : '';
+  const teachingContext = semesterInsightContext || buildAcademicTimingPromptContext();
   const studentContext = appendProfileAndStageRules(
     `${framework}
 
@@ -659,14 +661,14 @@ export async function* streamKnowledgeAnalysis(
 年级学期：${input.grade_semester}
 章节：${input.chapter}
 知识点：${input.knowledge_point}
-${semesterInsightContext ? `\n【本地教研学期上下文】\n${semesterInsightContext}` : ''}
+${teachingContext ? `\n【查询时间与本地教研上下文】\n${teachingContext}` : ''}
 
 【知识点专项补充规则】
-1. 先判断该知识点在本章节的位置和真正掌握标准；学生档案只作为沟通背景，不生成个性化升学档位。
+1. 先按“查询日期 → 当前时间节点 → 最近关键考试 → 教材位置”判断优先级，再说明该知识点的真正掌握标准；学生档案只作为沟通背景，不生成个性化升学档位。
 2. 必须给出3-5条家长能看到的具体现象，并逐条解释知识、题型、思维步骤或习惯根因。
 3. 明确前置知识、当前核心题型和后续受影响的具体章节，禁止只写“影响后续学习”。
 4. 给出3-5道由基础到变式的验证题型组合，明确错误证据和通过标准。
-5. 7天行动必须写到每天做什么、多久、家长怎么检查、什么算有效和不要做什么。
+5. 7天行动必须服务最近一次关键考试，写到每天做什么、多久、家长怎么检查、什么算有效和不要做什么。
 6. 洋葱学园只选择当前知识点真正需要的AI功能、同步课、知识点课程、解题/培优课、练习/测评/错题复盘，并写频率和验收。
 7. 禁止臆造中考分值占比、命题概率、提分幅度或补救成本倍数。
 
@@ -811,7 +813,7 @@ ${semesterInsightContext ? `\n【本地教研学期上下文】\n${semesterInsig
 1. 本模块一次回答“目前什么水平、3个优先问题、离目标差多少、家长三个阶段怎么做、洋葱学园如何承接”。
 2. 只引用当前目标学校或必要的本地层级参照，不展开多套学校梯度、志愿批次、选科专业和长期政策科普。
 3. 必须把分数差距翻译成家长听得懂的具体风险，例如“数学再卡在90分上下，会把总分拉开约20分”。
-4. 必须输出未来一周、开学第一周、开学第一个月的最小可执行方案；不输出泛泛30/60/90天时间轴或逐小时课表。
+4. 必须输出未来一周和“从现在到下一次关键考试”的最小可执行方案；行动窗口必须随当前节点切换，不得在期中或期末继续照搬开学模板，也不输出泛泛30/60/90天时间轴或逐小时课表。
 5. 输出优先采用当地课程顾问口吻：先说结论和3个问题，再给行动与产品承接。
 6. 第一至九节优先使用短结论和表格，不得连续输出超过100字的大段文字；第十节才输出完整口播话术。
 

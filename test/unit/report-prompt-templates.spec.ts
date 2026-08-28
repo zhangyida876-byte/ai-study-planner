@@ -11,9 +11,9 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('## 2. 家长能观察到的3-5个现象');
     expect(prompt).toContain('## 3. 现象背后的深层根因');
     expect(prompt).toContain('## 5. 最值得老师先讲的3个问题');
-    expect(prompt).toContain('## 7. 开学前7天行动清单');
-    expect(prompt).toContain('开学第一周');
-    expect(prompt).toContain('开学第一个月');
+    expect(prompt).toContain('## 7. 当前节点未来7天行动清单');
+    expect(prompt).toContain('## 8. 从现在到下一次关键考试');
+    expect(prompt).toContain('临近开学时聚焦开学摸底和第一次月考');
     expect(prompt).toContain('## 9. 洋葱学园承接方案');
     expect(prompt).toContain('## 10. 课程顾问口播话术');
     expect(prompt).toContain('30秒短版');
@@ -38,10 +38,11 @@ describe('report prompt templates', () => {
   it('keeps knowledge analysis within the requested knowledge point', () => {
     const prompt = buildProfessionalReportFramework('knowledge');
 
-    expect(prompt).toContain('## 一、知识点在当前学期的位置与掌握标准');
-    expect(prompt).toContain('## 二、未掌握时家长能看到的具体现象');
-    expect(prompt).toContain('## 六、7天行动清单');
-    expect(prompt).toContain('## 八、洋葱学园承接建议');
+    expect(prompt).toContain('## 一、当前时间节点与最近一次关键考试');
+    expect(prompt).toContain('## 三、近期考试重点与知识点位置');
+    expect(prompt).toContain('## 七、未来7天行动清单');
+    expect(prompt).toContain('## 十、洋葱学园承接建议');
+    expect(prompt).toContain('第四单元等后续内容只能作为次级提醒');
     expect(prompt).toContain('不对某个孩子下最终升学结论');
   });
 

@@ -7,6 +7,7 @@ import {
   getSemesterSubjectInsight,
   getSemesterSubjectInsights,
 } from '@client/src/config/semester-subject-insights';
+import { resolveAcademicTiming } from '@client/src/utils/academic-phase';
 
 interface SemesterSubjectInsightsPanelProps {
   stageSlug: StageSlug;
@@ -33,6 +34,8 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
     () => subject === '__all__' ? undefined : getSemesterSubjectInsight(stageSlug, grade, semester, subject),
     [grade, semester, stageSlug, subject],
   );
+  const timing = useMemo(() => resolveAcademicTiming(), []);
+  const useOpeningActions = timing.id.includes('opening') || timing.id.includes('break');
 
   if (!grade || !semester) {
     return (
@@ -72,19 +75,23 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
 
         <section className="grid gap-4 lg:grid-cols-2">
           <div className="border-2 border-dashed border-ink/20 bg-postit-yellow/25 p-4">
-            <h3 className="font-marker mb-2 flex items-center gap-2 font-bold"><Brain className="size-4 text-pen-blue" />年龄段与学习节奏</h3>
-            {[...selected.agePsychology, ...selected.learningTraits].map((item) => <p key={item} className="font-hand mb-1 text-sm leading-6">• {item}</p>)}
+            <h3 className="font-marker mb-2 flex items-center gap-2 font-bold"><Brain className="size-4 text-pen-blue" />当前节点与近期考试</h3>
+            <p className="font-hand text-sm leading-6"><strong>{timing.queryDate} · {timing.phaseLabel}</strong></p>
+            <p className="font-hand mt-1 text-sm leading-6">最近关注：{timing.nearestAssessment}</p>
+            {timing.priorityFocus.map((item) => <p key={item} className="font-hand mt-1 text-sm leading-6">• {item}</p>)}
+            <p className="font-hand mt-2 text-xs text-ink/55">{timing.confidenceNote}</p>
           </div>
           <div className="border-2 border-dashed border-ink/20 bg-white p-4">
-            <h3 className="font-marker mb-2 font-bold">本学期科目特点</h3>
+            <h3 className="font-marker mb-2 font-bold">{displaySubject(selected.subject)}当前学习重点</h3>
             <p className="font-hand text-sm leading-6">{selected.subjectCharacteristics}</p>
-            <p className="font-hand mt-2 text-sm"><strong>核心目标：</strong>{selected.coreGoals.join('；')}</p>
+            <p className="font-hand mt-2 text-sm"><strong>近期先做：</strong>{(useOpeningActions ? selected.openingActions : selected.weeklyActions).join('；')}</p>
+            <p className="font-hand mt-2 text-xs text-ink/55"><strong>年龄与节奏：</strong>{selected.agePsychology[0]}；{selected.learningTraits[0]}</p>
           </div>
         </section>
 
         <section className="mt-4 grid gap-4 md:grid-cols-3">
           {[
-            ['重难点', selected.keyDifficulties],
+            ['当前优先重难点', selected.keyDifficulties.slice(0, useOpeningActions ? 3 : 5)],
             ['高频易错点', selected.commonMistakes],
             ['常见卡点', selected.bottlenecks],
           ].map(([title, items]) => (
@@ -99,16 +106,17 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
           <h3 className="font-marker mb-3 flex items-center gap-2 text-lg font-bold"><Eye className="size-5 text-marker-red" />家长看到的现象与真正根因</h3>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[620px] border-collapse font-hand text-sm">
-              <thead><tr className="bg-accent"><th className="border-2 border-ink/20 p-2 text-left">家长能看到什么</th><th className="border-2 border-ink/20 p-2 text-left">背后根因</th><th className="border-2 border-ink/20 p-2 text-left">开学前先做什么</th></tr></thead>
-              <tbody>{selected.observablePhenomena.map((phenomenon, index) => <tr key={phenomenon}><td className="border-2 border-ink/15 p-2">{phenomenon}</td><td className="border-2 border-ink/15 p-2">{selected.rootCauses[index] || selected.rootCauses[0]}</td><td className="border-2 border-ink/15 p-2">{selected.openingActions[index] || selected.openingActions[0]}</td></tr>)}</tbody>
+              <thead><tr className="bg-accent"><th className="border-2 border-ink/20 p-2 text-left">家长能看到什么</th><th className="border-2 border-ink/20 p-2 text-left">背后根因</th><th className="border-2 border-ink/20 p-2 text-left">当前先做什么</th></tr></thead>
+              <tbody>{selected.observablePhenomena.map((phenomenon, index) => <tr key={phenomenon}><td className="border-2 border-ink/15 p-2">{phenomenon}</td><td className="border-2 border-ink/15 p-2">{selected.rootCauses[index] || selected.rootCauses[0]}</td><td className="border-2 border-ink/15 p-2">{(useOpeningActions ? selected.openingActions : selected.weeklyActions)[index] || (useOpeningActions ? selected.openingActions : selected.weeklyActions)[0]}</td></tr>)}</tbody>
             </table>
           </div>
         </section>
 
         <section className="mt-5 grid gap-4 lg:grid-cols-2">
           <div className="border-2 border-dashed border-ink/20 p-4">
-            <h3 className="font-marker mb-2 flex items-center gap-2 font-bold"><ListChecks className="size-4 text-pen-blue" />一周行动</h3>
-            {selected.weeklyActions.map((item) => <p key={item} className="font-hand mb-1 text-sm">• {item}</p>)}
+            <h3 className="font-marker mb-2 flex items-center gap-2 font-bold"><ListChecks className="size-4 text-pen-blue" />{timing.actionWindows[0]}行动</h3>
+            {(useOpeningActions ? selected.openingActions : selected.weeklyActions).map((item) => <p key={item} className="font-hand mb-1 text-sm">• {item}</p>)}
+            <p className="font-hand mt-2 text-xs text-ink/55">后续窗口：{timing.actionWindows.slice(1).join(' → ')}</p>
           </div>
           <div className="border-2 border-dashed border-marker-red/30 bg-marker-red/5 p-4">
             <h3 className="font-marker mb-2 flex items-center gap-2 font-bold"><Route className="size-4 text-marker-red" />洋葱学园承接</h3>
@@ -125,7 +133,12 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
       <div className="mb-4 border-b-2 border-dashed border-ink/15 pb-4">
         <p className="font-hand text-xs font-bold text-marker-red">学期全科画像</p>
         <h2 className="font-marker text-2xl font-bold">{context.grade}{context.semester}</h2>
-        <p className="font-hand mt-2 text-sm text-ink/70">{context.learningTraits[0]}；{context.agePsychology[0]}</p>
+        <div className="font-hand mt-2 border-l-[3px] border-marker-red bg-marker-red/5 px-3 py-2 text-sm">
+          <strong>{timing.queryDate} · {timing.phaseLabel}</strong>
+          <span className="mx-2 text-ink/30">|</span>
+          最近关注：<strong>{timing.nearestAssessment}</strong>
+          <p className="mt-1 text-xs text-ink/55">当前优先：{timing.priorityFocus.join('；')}。{timing.confidenceNote}</p>
+        </div>
       </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {allInsights.map((item) => (
@@ -140,9 +153,9 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
               <span className="font-hand text-xs text-pen-blue">查看深度分析</span>
             </div>
             <p className="font-hand line-clamp-2 text-sm leading-5 text-ink/75">{item.subjectCharacteristics}</p>
-            <p className="font-hand mt-3 text-xs font-bold text-marker-red">容易掉队：</p>
+            <p className="font-hand mt-3 text-xs font-bold text-marker-red">当前容易掉队：</p>
             <p className="font-hand mt-1 line-clamp-2 text-sm">{item.commonMistakes.slice(0, 2).join('；')}</p>
-            <p className="font-hand mt-2 line-clamp-2 text-xs text-ink/60">先做：{item.openingActions[0]}</p>
+            <p className="font-hand mt-2 line-clamp-2 text-xs text-ink/60">当前先做：{(useOpeningActions ? item.openingActions : item.weeklyActions)[0]}</p>
           </button>
         ))}
       </div>
