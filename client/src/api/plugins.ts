@@ -589,7 +589,9 @@ export async function searchSchoolCandidates(
     for await (const chunk of streamCollegePolicySearch({
       region,
       year: String(examYear || new Date().getFullYear()),
-      keyword: kw ? `${kw} 录取分数线` : '高校 录取分数线',
+      keyword: kw
+        ? `${kw} 面向${region}考生的录取分数线`
+        : `面向${region}考生招生的全国高校 录取分数线`,
     })) {
       merged += chunk;
     }

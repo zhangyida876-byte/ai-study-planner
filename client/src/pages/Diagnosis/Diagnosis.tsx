@@ -55,6 +55,14 @@ async function resolveAutomaticTargetContext(
   region: string,
   stage: EducationStage,
 ): Promise<string> {
+  if (stage === 'high') {
+    return [
+      '高中阶段未填写目标院校时，不按当前城市匹配“本地院校”。',
+      '本次先依据已填科目、卷面得分率、年级和生源省份完成学情与选科影响判断。',
+      '院校层级、投档分差与录取位次需在补充目标院校、高考总分或省排名后再精确判断；不得编造录取概率。',
+    ].join('\n');
+  }
+
   const currentYear: string = String(new Date().getFullYear());
   let databaseContext = '';
 
@@ -71,9 +79,7 @@ async function resolveAutomaticTargetContext(
 
   const keyword = stage === 'middle'
     ? '普通高中和重点高中各1所 学校名称 官方录取分数线 年份'
-    : stage === 'high'
-      ? '稳妥院校和冲刺院校各1所 官方投档线 年份'
-      : '本地代表性公办初中和优质初中 入学政策';
+    : '本地代表性公办初中和优质初中 入学政策';
   let internetContext = '';
   try {
     for await (const chunk of streamPolicySearch({
@@ -326,7 +332,11 @@ const Diagnosis: React.FC = () => {
         normalizedData.targetSchool?.trim() || normalizedData.targetScore != null,
       );
       setGenerationPhase(
-        hasExplicitTarget ? '正在整理诊断依据...' : '正在匹配本地学校参照...',
+        hasExplicitTarget
+          ? '正在整理诊断依据...'
+          : stage === 'high'
+            ? '正在整理高考与选科依据...'
+            : '正在匹配本地学校参照...',
       );
       const schoolReferenceContext = hasExplicitTarget
         ? ''

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Loader2, MapPin, Save, Search, Target, User } from 'lucide-react';
+import { BookOpen, ChevronDown, Loader2, MapPin, Save, Search, Target, User } from 'lucide-react';
 import { toast } from 'sonner';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Button } from '@/components/ui/button';
@@ -335,7 +335,9 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     const keyword = (keywordOverride ?? schoolKeyword).trim();
     setSearchingSchool(true);
     try {
-      const region = draft.city || draft.province;
+      const region = stageConfig.slug === 'high'
+        ? effectiveProvince || draft.province
+        : draft.city || draft.province;
       let candidates: SchoolCandidate[] = [];
 
       // 初中学段优先用本地高中政策库；高中目标是大学/院校，不能混用高中/中学库。
@@ -429,7 +431,9 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
     setMatchingScore(true);
     try {
       const score = await fetchSchoolScoreByName({
-        region: draft.city || draft.province,
+        region: stageConfig.slug === 'high'
+          ? effectiveProvince || draft.province
+          : draft.city || draft.province,
         schoolName: candidate.name,
         examType: stageConfig.slug === 'high' ? '高考' : '中考',
       });
@@ -445,19 +449,20 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
   };
 
   return (
-    <WobblyCard variant="white" decoration="tape" wobblyIndex={1} hoverable={false} className="p-5">
-      <div className="mb-5 flex items-center gap-2">
+    <WobblyCard variant="white" decoration="tape" wobblyIndex={1} hoverable={false} className="p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <User className="size-5 text-pen-blue" />
-          <h2 className="font-marker text-lg font-bold">学生基本信息</h2>
+          <h2 className="font-marker text-lg font-bold">学生档案</h2>
         </div>
+        <span className="font-hand text-xs text-muted-foreground">填写后自动同步到全部学情模块</span>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <div>
           <Label className="font-hand">学生姓名</Label>
           <Input
-            className="font-hand mt-1"
+            className="font-hand mt-1 h-9"
             value={draft.studentName}
             onChange={(e) => patch({ studentName: e.target.value })}
             placeholder="如：张三"
@@ -477,7 +482,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
                 });
               }}
             >
-              <SelectTrigger className="font-hand mt-1">
+              <SelectTrigger className="font-hand mt-1 h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -490,7 +495,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         <div>
           <Label className="font-hand">当前年级</Label>
           <Select value={toSelectValue(safeGrade)} onValueChange={(v) => patch({ grade: v })}>
-            <SelectTrigger className="font-hand mt-1"><SelectValue placeholder="选择年级" /></SelectTrigger>
+            <SelectTrigger className="font-hand mt-1 h-9"><SelectValue placeholder="选择年级" /></SelectTrigger>
             <SelectContent>
               {gradeOptions.map((g) => (
                 <SelectItem key={g} value={g}>{g}</SelectItem>
@@ -501,7 +506,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         {stageConfig.slug === 'high' && (
           <div>
             <Label className="font-hand">当地高考选科模式</Label>
-            <div className="mt-1 border-l-[3px] border-pen-blue bg-pen-blue/5 px-3 py-2">
+            <div className="mt-1 min-h-9 border-l-[3px] border-pen-blue bg-pen-blue/5 px-3 py-1.5">
               <div className="font-marker text-sm font-bold text-pen-blue">
                 {gaokaoModeMatch.mode || '待选择省份后自动判断'}
               </div>
@@ -511,7 +516,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         )}
       </div>
 
-      <div className="mt-5 border-t-2 border-dashed border-ink/15 pt-5">
+      <div className="mt-4 border-t-2 border-dashed border-ink/15 pt-3">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <MapPin className="size-4 text-marker-red" />
@@ -523,7 +528,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
           <div>
             <Label className="font-hand">省份 *</Label>
             <Input
-              className="font-hand mt-1"
+              className="font-hand mt-1 h-9"
               value={draft.province}
               onChange={(e) => handleProvinceTextChange(e.target.value)}
               placeholder="如：湖北省"
@@ -532,7 +537,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
           <div>
             <Label className="font-hand">城市 *</Label>
             <Input
-              className="font-hand mt-1"
+              className="font-hand mt-1 h-9"
               value={draft.city}
               onChange={(e) => handleCityTextChange(e.target.value)}
               placeholder="如：武汉市"
@@ -541,7 +546,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
           <div>
             <Label className="font-hand">区县（选填，可不选）</Label>
             <Input
-              className="font-hand mt-1"
+              className="font-hand mt-1 h-9"
               value={draft.county}
               onChange={(e) => handleCountyTextChange(e.target.value)}
               placeholder="如：武昌区"
@@ -557,16 +562,19 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       </div>
 
       {shouldShowTextbookHint && (
-        <div className="mt-5 border-t-2 border-dashed border-ink/15 pt-5">
-          <div className="mb-3 flex items-center gap-2">
-            <BookOpen className="size-4 text-pen-blue" />
-            <h3 className="font-marker text-base font-bold text-ink">教材与单科分值</h3>
-          </div>
-          <div className="grid items-end gap-3 md:grid-cols-[180px_1fr]">
+        <details className="group mt-3 border-t-2 border-dashed border-ink/15 pt-3">
+          <summary className="font-hand flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-bold text-pen-blue">
+            <span className="flex items-center gap-2">
+              <BookOpen className="size-4" />
+              教材与单科分值核验
+            </span>
+            <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="mt-3 grid items-end gap-3 md:grid-cols-[160px_1fr]">
             <div>
               <Label className="font-hand">科目</Label>
               <Select value={selectedTextbookSubject} onValueChange={setSelectedTextbookSubject}>
-                <SelectTrigger className="font-hand mt-1">
+                <SelectTrigger className="font-hand mt-1 h-9">
                   <SelectValue placeholder="选择科目" />
                 </SelectTrigger>
                 <SelectContent>
@@ -576,7 +584,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
                 </SelectContent>
               </Select>
             </div>
-            <div className="font-hand flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 border-l-[3px] border-pen-blue bg-pen-blue/5 px-3 py-2 text-sm">
+            <div className="font-hand flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1 border-l-[3px] border-pen-blue bg-pen-blue/5 px-3 py-2 text-sm">
               <strong className="text-pen-blue">{selectedTextbookSubject} · {textbookVersion}</strong>
               <span className="text-ink/30">|</span>
               <strong className="text-marker-red">
@@ -588,19 +596,19 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
               </span>
             </div>
           </div>
-        </div>
+        </details>
       )}
 
-      <div className="mt-5 border-t-2 border-dashed border-ink/15 pt-5">
-        <div className="mb-3 flex items-center gap-2">
+      <div className="mt-4 border-t-2 border-dashed border-ink/15 pt-3">
+        <div className="mb-2 flex items-center gap-2">
           <Target className="size-4 text-marker-red" />
           <h3 className="font-marker text-base font-bold text-ink">成绩与升学目标</h3>
         </div>
-        <div className={`grid gap-4 ${stageConfig.slug === 'high' ? 'md:grid-cols-2' : ''}`}>
+        <div className={`grid gap-3 ${stageConfig.slug === 'high' ? 'md:grid-cols-2' : ''}`}>
           <div>
             <Label className="font-hand">当前成绩概览（选填）</Label>
             <Input
-              className="font-hand mt-1"
+              className="font-hand mt-1 h-9"
               value={draft.scoresOverview}
               onChange={(e) => patch({ scoresOverview: e.target.value })}
               placeholder="如：语文92，数学78，英语85"
@@ -610,7 +618,7 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
             <div>
               <Label className="font-hand">职业方向（选填）</Label>
               <Input
-                className="font-hand mt-1"
+                className="font-hand mt-1 h-9"
                 value={draft.careerIntent}
                 onChange={(e) => patch({ careerIntent: e.target.value })}
                 placeholder="如：人工智能、医学、金融、设计"
@@ -623,30 +631,37 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)]">
         <div>
           <Label className="font-hand font-bold text-ink">{stageConfig.targetLabel}</Label>
+          {stageConfig.slug === 'high' && (
+            <p className="font-hand mt-0.5 text-xs text-ink/55">
+              按生源省份查询全国招生院校，不限制大学所在城市。
+            </p>
+          )}
           <div className="mt-1 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
             <Input
-              className="font-hand"
+              className="font-hand h-9"
               value={schoolKeyword}
               onChange={(e) => setSchoolKeyword(e.target.value)}
-              placeholder={stageConfig.slug === 'high' ? '输入目标院校' : '输入目标学校'}
+              placeholder={stageConfig.slug === 'high' ? '输入全国任意目标大学' : '输入目标学校'}
             />
             <Button
               type="button"
               variant="outline"
-              className="border-2 border-ink bg-white font-hand"
+              size="sm"
+              className="h-9 border-2 border-ink bg-white font-hand"
               onClick={() => {
                 setSchoolKeyword('');
                 handleSearchSchools('');
               }}
               disabled={searchingSchool}
             >
-              {stageConfig.slug === 'high' ? '本地院校' : '本地学校'}
+              {stageConfig.slug === 'high' ? '全国推荐' : '本地学校'}
             </Button>
             <Button
               type="button"
-              className="border-2 border-ink bg-marker-red font-hand text-white hover:bg-marker-red/90"
+              size="sm"
+              className="h-9 border-2 border-ink bg-marker-red font-hand text-white hover:bg-marker-red/90"
               onClick={() => handleSearchSchools()}
-              disabled={searchingSchool}
+              disabled={searchingSchool || !schoolKeyword.trim()}
             >
               {searchingSchool ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
               搜索
@@ -674,9 +689,11 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
           )}
         </div>
         <div>
-          <Label className="font-hand">目标分数线（选填）</Label>
+          <Label className="font-hand">
+            {stageConfig.slug === 'high' ? '目标投档分（选填）' : '目标分数线（选填）'}
+          </Label>
           <Input
-            className="font-hand mt-1"
+            className="font-hand mt-1 h-9"
             value={draft.targetScore != null ? String(draft.targetScore) : ''}
             onChange={(e) => {
               const value = e.target.value.trim();
@@ -693,12 +710,12 @@ const StageProfileEditor: React.FC<StageProfileEditorProps> = ({
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t-2 border-dashed border-ink/15 pt-4">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t-2 border-dashed border-ink/15 pt-3">
         <p className="font-hand text-xs text-muted-foreground">
           保存后将同步到学情诊断、升学路径、知识点查询和执行课表。
           {countdownDays != null && draft.examDate ? ` 距${stageConfig.examLabel} ${countdownDays} 天。` : ''}
         </p>
-        <Button className="font-hand" onClick={handleSave}>
+        <Button size="sm" className="font-hand" onClick={handleSave}>
           <Save className="mr-1 size-4" />
           保存档案
         </Button>

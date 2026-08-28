@@ -37,8 +37,8 @@ const StageHome: React.FC = () => {
   const { profile, saveProfile, countdownDays } = useStageProfile(stageSlug);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-7">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="mx-auto max-w-6xl space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Button variant="ghost" size="sm" className="font-hand mb-2 -ml-2" asChild>
             <Link to="/">
@@ -49,27 +49,21 @@ const StageHome: React.FC = () => {
           <h1 className="font-marker text-3xl font-bold text-ink">
             {stageConfig.label}学段
           </h1>
-          <p className="font-hand mt-2 text-lg text-ink/60">{stageConfig.subtitle}</p>
+          <p className="font-hand mt-1 text-base text-ink/60">{stageConfig.subtitle}</p>
         </div>
-        <WobblyCard variant="yellow" wobblyIndex={0} hoverable={false} className="p-4">
-          <p className="font-hand text-xs text-ink/60">本学段重点关注</p>
-          <ul className="font-hand mt-2 space-y-1 text-sm">
-            {stageConfig.focusPoints.map((point) => (
-              <li key={point} className="flex gap-1.5">
-                <span className="text-marker-red">•</span>
-                {point}
-              </li>
-            ))}
-          </ul>
-        </WobblyCard>
+        <div className="font-hand flex max-w-xl flex-wrap justify-end gap-1.5 text-xs text-ink/65">
+          {stageConfig.focusPoints.map((point) => (
+            <span key={point} className="border border-ink/20 bg-postit-yellow px-2 py-1">{point}</span>
+          ))}
+        </div>
       </div>
 
-      <section className="space-y-3">
+      <section className="space-y-2">
         <div>
           <p className="font-hand text-xs font-bold text-marker-red">STEP 1</p>
           <h2 className="font-marker text-xl font-bold">整理学生档案</h2>
-          <p className="font-hand mt-1 text-sm text-muted-foreground">
-            先把姓名、年级、地区、成绩和目标院校整理清楚，后续模块都会自动带入。
+          <p className="font-hand mt-0.5 text-sm text-muted-foreground">
+            先填写必要信息，目标院校和补充资料均可选填。
           </p>
         </div>
         <StageProfileEditor
@@ -80,7 +74,7 @@ const StageHome: React.FC = () => {
         />
       </section>
 
-      <section className="space-y-3">
+      <section className="space-y-2">
         <div>
           <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
           <h2 className="font-marker text-xl font-bold">选择工作板块</h2>
