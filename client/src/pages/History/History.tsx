@@ -36,7 +36,7 @@ import type {
 } from '@shared/api.interface';
 
 const ARTIFACT_LABELS: Record<CaseArtifactType, string> = {
-  diagnosis: '学情诊断与规划',
+  diagnosis: '学情诊断与升学规划',
   study_plan: '执行课表',
   advice: '个性化话术',
 };
@@ -160,7 +160,7 @@ const History: React.FC = () => {
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部内容</SelectItem>
-              <SelectItem value="diagnosis">学情诊断与规划</SelectItem>
+              <SelectItem value="diagnosis">学情诊断与升学规划</SelectItem>
               <SelectItem value="study_plan">执行课表</SelectItem>
               <SelectItem value="advice">个性化话术</SelectItem>
             </SelectContent>

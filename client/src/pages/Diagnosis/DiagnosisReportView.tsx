@@ -3,6 +3,7 @@ import {
   AlertCircle,
   CheckSquare2,
   ChevronRight,
+  Eye,
   MessageSquareQuote,
   PackageCheck,
   Sparkles,
@@ -27,11 +28,12 @@ interface DiagnosisReportViewProps {
 
 const SECTION_ICONS: Record<number, React.FC<{ className?: string }>> = {
   1: Sparkles,
+  2: Eye,
   3: AlertCircle,
-  5: MessageSquareQuote,
-  6: CheckSquare2,
-  7: PackageCheck,
-  8: MessageSquareQuote,
+  5: AlertCircle,
+  7: CheckSquare2,
+  9: PackageCheck,
+  10: MessageSquareQuote,
 };
 
 function parseReportSections(content: string): ReportSection[] {
@@ -82,10 +84,10 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({ content }) =>
     () => new Map(sections.map((section) => [section.index, section])),
     [sections],
   );
-  const primarySections = [1, 3, 5, 6, 7, 8]
+  const primarySections = [1, 2, 3, 5, 7, 9, 10]
     .map((index) => byIndex.get(index))
     .filter((section): section is ReportSection => Boolean(section));
-  const detailSections = [2, 4]
+  const detailSections = [4, 6, 8]
     .map((index) => byIndex.get(index))
     .filter((section): section is ReportSection => Boolean(section));
 
@@ -107,7 +109,7 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({ content }) =>
         <Accordion type="single" collapsible className="mt-3 border-2 border-dashed border-ink/15 px-4">
           <AccordionItem value="details" className="border-0">
             <AccordionTrigger className="font-marker text-base font-bold no-underline hover:no-underline">
-              查看当前水平、档位与升学差距详情
+              查看年龄学期、升学差距与开学月详情
             </AccordionTrigger>
             <AccordionContent className="space-y-5">
               {detailSections.map((section) => (

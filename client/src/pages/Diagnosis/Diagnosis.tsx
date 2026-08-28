@@ -414,7 +414,7 @@ const Diagnosis: React.FC = () => {
           targetSchool: normalizedData.targetSchool,
           targetScore: normalizedData.targetScore,
           artifactType: 'diagnosis',
-          title: `${normalizedData.grade}学情诊断与规划`,
+          title: `${normalizedData.grade}学情诊断与升学规划`,
           content: fullContent,
           inputSnapshot: {
             scores,
@@ -476,7 +476,7 @@ const Diagnosis: React.FC = () => {
               返回{stageConfig.label}主页
             </Link>
           </Button>
-          <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 学情诊断与规划</h1>
+          <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 学情诊断与升学规划</h1>
           <p className="font-hand mt-1 text-sm text-muted-foreground">
             一次完成水平定位、3个优先问题、目标差距、家长行动和洋葱学园承接
           </p>
@@ -520,7 +520,7 @@ const Diagnosis: React.FC = () => {
                   <div>
                     <p className="font-hand text-xs font-bold text-marker-red">STEP 2 · 结论与行动</p>
                     <h2 className="font-marker mt-1 text-2xl font-bold">
-                      {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}学情诊断与规划报告
+                      {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}学情诊断与升学规划报告
                     </h2>
                   </div>
                   {reportContent && (
@@ -637,7 +637,7 @@ const Diagnosis: React.FC = () => {
             <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false}>
               <div className="flex min-h-[220px] flex-col items-center justify-center p-6 text-center">
                 <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
-                <p className="font-marker mt-2 text-2xl font-bold text-ink">生成学情诊断与规划报告</p>
+                <p className="font-marker mt-2 text-2xl font-bold text-ink">生成学情诊断与升学规划报告</p>
                 <p className="font-hand mt-2 max-w-md text-sm text-muted-foreground">
                   生成后优先展示一句话判断、3个核心问题、家长行动方案和可直接转述的话术；详细分析按需展开。
                 </p>

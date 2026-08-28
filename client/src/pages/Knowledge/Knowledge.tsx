@@ -8,6 +8,7 @@ import { knowledge } from '@client/src/api';
 import type { KnowledgePoint, KnowledgePointListItem, ChapterUnit } from '@shared/api.interface';
 import KnowledgeDetailPanel from './KnowledgeDetailPanel';
 import KnowledgeFilterPanel, { REGION_VERSION_MAP, getVersionForProvinceSubject } from './KnowledgeFilterPanel';
+import SemesterSubjectInsightsPanel from './SemesterSubjectInsightsPanel';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { useStageProfile } from '@client/src/hooks/use-stage-profile';
 import ProfileAutofillBanner from '@client/src/components/ProfileAutofillBanner';
@@ -448,6 +449,22 @@ const Knowledge: React.FC = () => {
           />
         </WobblyCard>
 
+        <SemesterSubjectInsightsPanel
+          stageSlug={stageSlug}
+          grade={grade}
+          semester={semester}
+          subject={subject}
+          onSubjectChange={handleSubjectChange}
+        />
+
+        {(hasQueried || selectedId || effectiveSubject) && (
+          <div className="mb-3 flex items-center gap-2">
+            <BookOpen className="size-5 text-pen-blue" />
+            <h2 className="font-marker text-xl font-bold">单知识点查询与影响分析</h2>
+          </div>
+        )}
+
+        {(hasQueried || effectiveSubject) && (
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
           <div className="min-w-0 lg:w-[330px] lg:shrink-0">
             {loading ? (
@@ -685,6 +702,7 @@ const Knowledge: React.FC = () => {
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );

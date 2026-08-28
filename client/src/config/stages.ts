@@ -46,7 +46,7 @@ export interface StageConfig {
 const FEATURES: StageFeatureConfig[] = [
   {
     slug: 'diagnosis',
-    label: '学情诊断与规划',
+    label: '学情诊断与升学规划',
     description: '一次完成水平定位、目标差距、家长行动和产品承接',
     pathSuffix: 'diagnosis',
     group: 'learning',

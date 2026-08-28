@@ -8,16 +8,17 @@ describe('report prompt templates', () => {
     const prompt = buildProfessionalReportFramework('diagnosis');
 
     expect(prompt).toContain('## 1. 一句话判断');
-    expect(prompt).toContain('## 3. 最值得先讲给家长的3个问题');
-    expect(prompt).toContain('## 5. 给家长的钩子');
-    expect(prompt).toContain('## 6. 家长可执行方案');
-    expect(prompt).toContain('未来一周');
+    expect(prompt).toContain('## 2. 家长能观察到的3-5个现象');
+    expect(prompt).toContain('## 3. 现象背后的深层根因');
+    expect(prompt).toContain('## 5. 最值得老师先讲的3个问题');
+    expect(prompt).toContain('## 7. 开学前7天行动清单');
     expect(prompt).toContain('开学第一周');
     expect(prompt).toContain('开学第一个月');
-    expect(prompt).toContain('## 7. 洋葱学园承接方案');
-    expect(prompt).toContain('## 8. 课程顾问转述话术');
-    expect(prompt).toContain('1200-1800个中文字符');
-    expect(prompt).toContain('普通高中、重点高中各1所');
+    expect(prompt).toContain('## 9. 洋葱学园承接方案');
+    expect(prompt).toContain('## 10. 课程顾问口播话术');
+    expect(prompt).toContain('30秒短版');
+    expect(prompt).toContain('2分钟完整版');
+    expect(prompt).toContain('1400-2000个中文字符');
     expect(prompt).toContain('家长怎么检查');
   });
 
@@ -37,9 +38,10 @@ describe('report prompt templates', () => {
   it('keeps knowledge analysis within the requested knowledge point', () => {
     const prompt = buildProfessionalReportFramework('knowledge');
 
-    expect(prompt).toContain('## 一、本学期共性学情与知识点位置');
-    expect(prompt).toContain('## 五、通用家长沟通口径');
-    expect(prompt).toContain('## 六、通用一周学习动作');
+    expect(prompt).toContain('## 一、知识点在当前学期的位置与掌握标准');
+    expect(prompt).toContain('## 二、未掌握时家长能看到的具体现象');
+    expect(prompt).toContain('## 六、7天行动清单');
+    expect(prompt).toContain('## 八、洋葱学园承接建议');
     expect(prompt).toContain('不对某个孩子下最终升学结论');
   });
 

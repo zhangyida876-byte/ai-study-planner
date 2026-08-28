@@ -4,6 +4,10 @@ import type { StageSlug } from '@client/src/config/stages';
 import { appendProfileAndStageRules } from '@client/src/config/stage-analysis-rules';
 import { getInternalMaterialContext } from '@client/src/config/internal-resource-library';
 import { buildProfessionalReportFramework } from '@client/src/config/report-prompt-templates';
+import {
+  buildSemesterInsightPromptContext,
+  inferCurrentSemester,
+} from '@client/src/config/semester-subject-insights';
 import { resolveZhongkaoProfile, type ZhongkaoScoreProfile } from '@client/src/data/zhongkao-score-profiles';
 import type { StageProfile } from '@client/src/types/stage-profile';
 
@@ -634,6 +638,16 @@ export async function* streamKnowledgeAnalysis(
     limit: 12,
   });
   const framework = buildProfessionalReportFramework('knowledge');
+  const gradeMatch = input.grade_semester.match(/(七年级|八年级|九年级|初一|初二|初三)/u);
+  const semesterMatch = input.grade_semester.match(/(上学期|下学期|上册|下册)/u);
+  const semesterInsightContext = gradeMatch && semesterMatch
+    ? buildSemesterInsightPromptContext(
+      stageSlug,
+      gradeMatch[1],
+      semesterMatch[1].startsWith('上') ? '上学期' : '下学期',
+      [input.subject],
+    )
+    : '';
   const studentContext = appendProfileAndStageRules(
     `${framework}
 
@@ -643,13 +657,16 @@ export async function* streamKnowledgeAnalysis(
 年级学期：${input.grade_semester}
 章节：${input.chapter}
 知识点：${input.knowledge_point}
+${semesterInsightContext ? `\n【本地教研学期上下文】\n${semesterInsightContext}` : ''}
 
 【知识点专项补充规则】
-1. 先判断该知识点在本章节和升学考试中的位置，输出该年级学生的共性学情；学生档案只作为沟通背景，不得据此生成个性化升学档位。
-2. 明确前置知识、当前核心题型、后续受影响章节，以及未来1-2学期可能出现的连锁失分。
-3. 给出3-5道诊断题/一次章节测评/近3套试卷错题的验证方案，并明确判定标准。
-4. 一周动作可按“AI诊断 → 知识点课程补概念 → 同步课跟章节 → 解题/培优课练题型 → 阶段测评与错题复盘”组织，但只选择当前知识点真正需要的功能。
-5. 禁止臆造本知识点的中考分值占比、命题概率、提分幅度或补救成本倍数；没有输入证据时只做定性判断。
+1. 先判断该知识点在本章节的位置和真正掌握标准；学生档案只作为沟通背景，不生成个性化升学档位。
+2. 必须给出3-5条家长能看到的具体现象，并逐条解释知识、题型、思维步骤或习惯根因。
+3. 明确前置知识、当前核心题型和后续受影响的具体章节，禁止只写“影响后续学习”。
+4. 给出3-5道由基础到变式的验证题型组合，明确错误证据和通过标准。
+5. 7天行动必须写到每天做什么、多久、家长怎么检查、什么算有效和不要做什么。
+6. 洋葱学园只选择当前知识点真正需要的AI功能、同步课、知识点课程、解题/培优课、练习/测评/错题复盘，并写频率和验收。
+7. 禁止臆造中考分值占比、命题概率、提分幅度或补救成本倍数。
 
 【内部资源库素材（优先使用）】
 ${internalMaterial}`,
@@ -746,6 +763,17 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
   const filledScoreTotals = buildFilledScoreTotals(ctx.scores, ctx.scoreMaxValues);
   const filledSubjectsText = (ctx.filledSubjects || Object.keys(ctx.scores)).join('、');
   const missingSubjectsText = (ctx.missingSubjects || []).join('、');
+  const semester = ctx.academicPeriod?.includes('下学期')
+    ? '下学期'
+    : ctx.academicPeriod?.includes('上学期')
+      ? '上学期'
+      : inferCurrentSemester();
+  const semesterInsightContext = buildSemesterInsightPromptContext(
+    currentStageSlug,
+    ctx.grade,
+    semester,
+    ctx.filledSubjects || Object.keys(ctx.scores),
+  );
   const examLabel = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '小升初期末统考';
   const stageLabel = stage === 'high' ? '高中' : stage === 'middle' ? '初中' : '小学';
   const framework = buildProfessionalReportFramework('diagnosis');
@@ -760,9 +788,10 @@ ${filledScoreTotals}
 
 已填写科目：${filledSubjectsText || '未提供'}
 未填写科目：${missingSubjectsText || '无'}
+${semesterInsightContext ? `\n【本地教研学期上下文】\n${semesterInsightContext}` : ''}
 
 【诊断专项硬性要求】
-1. 必须严格使用模板中的8节结构和标题，先给一句话结论，再输出问题、行动和产品承接。
+1. 必须严格使用模板中的10节结构和标题，先给一句话结论，再输出可观察现象、根因、行动和产品承接。
 2. 只对“已填写科目”做分数评价，不得臆测未填写科目的具体分数表现。
 3. 已填写科目必须全部出现且逐科回答，禁止只挑一个科目分析。若已填写“数学、英语、物理”，报告必须分别出现“数学诊断”“英语诊断”“物理诊断”。
 4. 对未填写科目只说明“需要补充该科成绩后判断”，不得扩写假设性结论。
@@ -782,13 +811,13 @@ ${filledScoreTotals}
 3. 必须把分数差距翻译成家长听得懂的具体风险，例如“数学再卡在90分上下，会把总分拉开约20分”。
 4. 必须输出未来一周、开学第一周、开学第一个月的最小可执行方案；不输出泛泛30/60/90天时间轴或逐小时课表。
 5. 输出优先采用当地课程顾问口吻：先说结论和3个问题，再给行动与产品承接。
-6. 第一至七节优先使用短结论和表格，不得连续输出超过100字的大段文字；第八节才输出完整转述话术。
+6. 第一至九节优先使用短结论和表格，不得连续输出超过100字的大段文字；第十节才输出完整口播话术。
 
 【问题定位证据规则】
 1. 分数只能用于提出“待验证的问题假设”，不能仅凭单次分数断言具体知识点已经失分。
 2. 每科列1-2个最高优先级验证项，并说明应查看哪些错题、章节测评或课堂表现来确认。
 3. 危机链必须对应已发现的问题、后续章节、下一考试节点和目标差距，不得用恐吓式结论。
-4. 第3节的问题必须与第6节行动和第7节产品方案逐项对应，第8节用顾问话术综合收口。
+4. 第5节的问题必须与第7/8节行动和第9节产品方案逐项对应，第10节用顾问口播综合收口。
 
 【内部资源库素材（优先使用）】
 ${internalMaterial}

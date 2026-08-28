@@ -45,7 +45,7 @@ describe('stage feature navigation', () => {
         'scripts',
       ]);
       expect(features.find((feature) => feature.slug === 'diagnosis')?.label)
-        .toBe('学情诊断与规划');
+        .toBe('学情诊断与升学规划');
       expect(features.find((feature) => feature.slug === 'future')?.sidebarVisible)
         .toBe(false);
       expect(stagePath(stage, 'future')).toBe(`/${stage}/future`);
