@@ -12,7 +12,7 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('## 2. 各科家长可观察现象');
     expect(prompt).toContain('## 3. 各科核心问题与根因');
     expect(prompt).toContain('### 跨科共性问题');
-    expect(prompt).toContain('## 4. 年级、学期与学科特点');
+    expect(prompt).toContain('## 4. 当前日期、学期阶段与真实教学进度');
     expect(prompt).toContain('## 5. 升学或阶段目标影响');
     expect(prompt).toContain('## 6. 家长可执行动作');
     expect(prompt).toContain('### A. 未来一周');
@@ -25,6 +25,10 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('单科1400-2000个中文字符');
     expect(prompt).toContain('不得限制为总共3行');
     expect(prompt).toContain('家长怎么检查');
+    expect(prompt).toContain('教学进度校验（最高优先级）');
+    expect(prompt).toContain('按常规校历推测，需用学校课表/教材目录/最近作业核实');
+    expect(prompt).toContain('为什么现在做');
+    expect(prompt).toContain('现在不要提前做什么');
   });
 
   it('keeps three observations and problems for one subject', () => {

@@ -13,8 +13,6 @@ interface LoadedClipboardImage {
   objectUrl: string;
 }
 
-export type CaseMaterialCopyResult = 'binary';
-
 const compositePngCache = new Map<string, Promise<Blob>>();
 const MAX_COMPOSITE_CACHE_ENTRIES = 18;
 
@@ -199,27 +197,19 @@ export async function prepareCaseMaterialImages(options: {
   await getCompositePng(absoluteUrls, compositeText);
 }
 
-export async function copyCaseMaterialImages(options: {
+export function getCaseMaterialCompositePng(options: {
   imageUrls: string[];
   text: string;
   includeText: boolean;
-}): Promise<CaseMaterialCopyResult> {
+}): Promise<Blob> {
   const { imageUrls, text, includeText } = options;
-  if (imageUrls.length === 0) throw new Error('No images to copy');
-  if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
-    throw new Error('Image clipboard API unavailable');
-  }
+  if (imageUrls.length === 0) return Promise.reject(new Error('No images to copy'));
 
   const { absoluteUrls, compositeText } = resolveClipboardOptions(options);
-  const pngPromise = getCompositePng(absoluteUrls, compositeText).then((pngBlob: Blob) => {
+  return getCompositePng(absoluteUrls, compositeText).then((pngBlob: Blob) => {
     if (pngBlob.size === 0 || pngBlob.type !== 'image/png') {
       throw new Error('Composite image is invalid');
     }
     return pngBlob;
   });
-
-  await navigator.clipboard.write([
-    new ClipboardItem({ 'image/png': pngPromise }, { presentationStyle: 'inline' }),
-  ]);
-  return 'binary';
 }

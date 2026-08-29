@@ -30,6 +30,7 @@ import { buildMiddleSchoolBenchmarkContext } from '@client/src/utils/school-benc
 import { formatDiagnosisDate, getAcademicPeriod } from '@client/src/utils/diagnosis-timing';
 import { getVersionForProvinceSubject } from '@client/src/pages/Knowledge/KnowledgeFilterPanel';
 import { getDefaultSubjectMax } from '@client/src/utils/score-validation';
+import { copyPlainText } from '@client/src/utils/clipboard';
 import {
   buildDiagnosisRegionSnapshot,
   isDiagnosisRegionSnapshotCompatible,
@@ -265,7 +266,7 @@ const Diagnosis: React.FC = () => {
 
   const handleCopy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(reportContent);
+      await copyPlainText(reportContent);
       setCopied(true);
       toast.success('已复制到剪贴板');
       setTimeout(() => setCopied(false), 2000);

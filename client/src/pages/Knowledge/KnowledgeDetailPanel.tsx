@@ -12,6 +12,7 @@ import { getInternalScriptAnchor } from '@client/src/config/internal-resource-li
 
 import type { StageProfile } from '@client/src/types/stage-profile';
 import type { StageSlug } from '@client/src/config/stages';
+import { copyPlainText } from '@client/src/utils/clipboard';
 
 interface KnowledgeDetailPanelProps {
   detail: KnowledgePoint | null;
@@ -39,18 +40,11 @@ const SectionBlock: React.FC<SectionBlockProps> = ({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(content);
+      await copyPlainText(content);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      const textarea = document.createElement('textarea');
-      textarea.value = content;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopied(false);
     }
   };
 

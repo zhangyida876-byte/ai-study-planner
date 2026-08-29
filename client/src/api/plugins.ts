@@ -11,6 +11,7 @@ import {
   buildSemesterInsightPromptContext,
   inferCurrentSemester,
 } from '@client/src/config/semester-subject-insights';
+import { buildTeachingProgressPromptContext } from '@client/src/config/teaching-progress-map';
 import { resolveZhongkaoProfile, type ZhongkaoScoreProfile } from '@client/src/data/zhongkao-score-profiles';
 import type { StageProfile } from '@client/src/types/stage-profile';
 import { buildAcademicTimingPromptContext } from '@client/src/utils/academic-phase';
@@ -655,6 +656,14 @@ export async function* streamKnowledgeAnalysis(
     )
     : '';
   const teachingContext = semesterInsightContext || buildAcademicTimingPromptContext();
+  const progressContext = gradeMatch && semesterMatch
+    ? buildTeachingProgressPromptContext({
+      stage: stageSlug,
+      grade: gradeMatch[1],
+      semester: semesterMatch[1].startsWith('上') ? '上学期' : '下学期',
+      subjects: [input.subject],
+    })
+    : '';
   const studentContext = appendProfileAndStageRules(
     `${framework}
 
@@ -665,6 +674,7 @@ export async function* streamKnowledgeAnalysis(
 章节：${input.chapter}
 知识点：${input.knowledge_point}
 ${teachingContext ? `\n【查询时间与本地教研上下文】\n${teachingContext}` : ''}
+${progressContext ? `\n【当前教学进度硬约束】\n${progressContext}` : ''}
 
 【知识点专项补充规则】
 1. 先按“查询日期 → 当前时间节点 → 最近关键考试 → 教材位置”判断优先级，再说明该知识点的真正掌握标准；学生档案只作为沟通背景，不生成个性化升学档位。
@@ -674,6 +684,7 @@ ${teachingContext ? `\n【查询时间与本地教研上下文】\n${teachingCon
 5. 7天行动必须服务最近一次关键考试，写到每天做什么、多久、家长怎么检查、什么算有效和不要做什么。
 6. 洋葱学园只选择当前知识点真正需要的AI功能、同步课、知识点课程、解题/培优课、练习/测评/错题复盘，并写频率和验收。
 7. 禁止臆造中考分值占比、命题概率、提分幅度或补救成本倍数。
+8. “当前教学进度硬约束”的优先级高于整学期目录。必须先写当前阶段内容，再写指定知识点；后续章节只能标作储备，禁止提前制造紧迫感。
 
 【内部资源库素材（优先使用）】
 ${internalMaterial}`,
@@ -784,6 +795,12 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
     semester,
     filledSubjects,
   );
+  const teachingProgressContext = buildTeachingProgressPromptContext({
+    stage: currentStageSlug,
+    grade: ctx.grade,
+    semester,
+    subjects: filledSubjects,
+  });
   const examLabel = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '小升初期末统考';
   const stageLabel = stage === 'high' ? '高中' : stage === 'middle' ? '初中' : '小学';
   const framework = buildProfessionalReportFramework('diagnosis');
@@ -800,6 +817,7 @@ ${filledScoreTotals}
 已填写科目：${filledSubjectsText || '未提供'}
 未填写科目：${missingSubjectsText || '无'}
 ${semesterInsightContext ? `\n【本地教研学期上下文】\n${semesterInsightContext}` : ''}
+${teachingProgressContext ? `\n【当前教学进度硬约束（最高优先级）】\n${teachingProgressContext}` : ''}
 
 ${subjectCoverageRules}
 
@@ -818,6 +836,8 @@ ${subjectCoverageRules}
 12. 当前处于寒暑假或开学衔接期时，分析必须同时覆盖“上一学期关键漏洞复盘”和“新学期前置知识”，不能照搬学期中进度。
 13. 小学必须点名当前年级/学期的具体知识模块，说明现象、根因和小升初衔接影响，禁止只谈习惯与基础。
 14. 高中必须点名当前年级/学期的具体模块或题型，说明高考能力要求、后续模块、选科赋分及院校专业影响边界，禁止泛谈高考压力。
+15. 任何行动建议必须先服从“当前教学进度硬约束”。开学前、开学第1周和第1个月只能安排已学内容、前置知识和即将进入的第一单元；不得从整学期目录随意抽取函数综合、实验大题、压轴题等后续内容。
+16. 第4节必须逐字出现“当前日期/学期阶段判断”和“按常规校历推测，需用学校课表/教材目录/最近作业核实”。每条阶段动作要说明“为什么现在做”，并列出“现在不适合提前做”的内容。
 
 【本模块边界】
 0. 下面的模块边界和建议输出结构优先级高于插件默认模板；如默认模板要求输出长篇政策/完整规划，应主动压缩或省略。

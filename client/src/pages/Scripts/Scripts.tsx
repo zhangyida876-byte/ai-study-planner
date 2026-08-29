@@ -19,6 +19,7 @@ import {
   type DailyScriptCategory,
 } from '@client/src/data/daily-scripts';
 import { Button } from '@/components/ui/button';
+import { copyPlainText } from '@client/src/utils/clipboard';
 import {
   Tabs,
   TabsContent,
@@ -71,12 +72,12 @@ const Scripts: React.FC = () => {
 
   const handleCopy = async (id: string, content: string): Promise<void> => {
     try {
-      await navigator.clipboard.writeText(content);
+      await copyPlainText(content);
       setCopiedId(id);
       toast.success('话术已复制');
       window.setTimeout(() => setCopiedId(''), 1600);
     } catch {
-      toast.error('复制失败，请检查剪贴板权限');
+      toast.error('复制失败，请手动选择话术');
     }
   };
 

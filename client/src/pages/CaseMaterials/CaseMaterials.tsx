@@ -23,9 +23,10 @@ import {
   violatesCaseMaterialProtectedTerm,
 } from '@client/src/utils/case-material-search';
 import {
-  copyCaseMaterialImages,
+  getCaseMaterialCompositePng,
   prepareCaseMaterialImages,
 } from '@client/src/utils/case-material-clipboard';
+import { copyPlainText, copyRichContent } from '@client/src/utils/clipboard';
 
 interface CaseMaterial {
   id: string;
@@ -61,14 +62,6 @@ function buildShareText(material: CaseMaterial): string {
     || material.manualTag.trim()
     || material.summary.trim()
     || '您可以先看一下这个真实案例。';
-}
-
-async function writeRichClipboard(material: CaseMaterial, includeText: boolean): Promise<void> {
-  await copyCaseMaterialImages({
-    imageUrls: material.images,
-    text: buildShareText(material),
-    includeText,
-  });
 }
 
 function preloadClipboardImage(material: CaseMaterial, includeText: boolean): void {
@@ -147,7 +140,7 @@ const CaseMaterials: React.FC = () => {
 
   const copyText = async (material: CaseMaterial): Promise<void> => {
     try {
-      await navigator.clipboard.writeText(buildShareText(material));
+      await copyPlainText(buildShareText(material));
       setCopiedId(material.id);
       toast.success('推荐话术已复制');
       window.setTimeout(() => setCopiedId(''), 1600);
@@ -161,10 +154,22 @@ const CaseMaterials: React.FC = () => {
     includeText: boolean,
   ): Promise<void> => {
     try {
-      await writeRichClipboard(material, includeText);
-      toast.success(includeText ? '案例图文已合成图片并复制' : '案例图片已复制');
+      const absoluteImageUrls = material.images.map((url) => (
+        new URL(url, window.location.origin).toString()
+      ));
+      const result = await copyRichContent({
+        text: includeText ? buildShareText(material) : '',
+        imageUrls: absoluteImageUrls,
+        imagePng: getCaseMaterialCompositePng({
+          imageUrls: material.images,
+          text: buildShareText(material),
+          includeText,
+        }),
+      });
+      if (result.copiedImageBinary) toast.success(result.message);
+      else toast.warning(result.message);
     } catch {
-      toast.error('图片未写入剪贴板，请保持页面在前台并允许剪贴板权限后重试');
+      toast.error(includeText ? '复制失败，请手动选择话术并保存图片' : '复制失败，请手动保存图片');
     }
   };
 
