@@ -22,6 +22,7 @@ import {
   scoreCaseMaterial,
   violatesCaseMaterialProtectedTerm,
 } from '@client/src/utils/case-material-search';
+import { copyCaseMaterialImages } from '@client/src/utils/case-material-clipboard';
 
 interface CaseMaterial {
   id: string;
@@ -59,36 +60,12 @@ function buildShareText(material: CaseMaterial): string {
     || '您可以先看一下这个真实案例。';
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/gu, '&amp;')
-    .replace(/</gu, '&lt;')
-    .replace(/>/gu, '&gt;')
-    .replace(/"/gu, '&quot;')
-    .replace(/'/gu, '&#039;');
-}
-
 async function writeRichClipboard(material: CaseMaterial, includeText: boolean): Promise<void> {
-  const text = includeText ? buildShareText(material) : material.images.join('\n');
-  if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
-    if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-  const paragraphs = includeText
-    ? `<p style="line-height:1.7">${escapeHtml(buildShareText(material)).replace(/\n/gu, '<br>')}</p>`
-    : '';
-  const images = material.images
-    .map((url) => new URL(url, window.location.origin).toString())
-    .map((url) => `<img src="${escapeHtml(url)}" style="display:block;max-width:720px;width:100%;margin:10px 0" />`)
-    .join('');
-  const html = `<div>${paragraphs}${images}</div>`;
-  await navigator.clipboard.write([
-    new ClipboardItem({
-      'text/html': new Blob([html], { type: 'text/html' }),
-      'text/plain': new Blob([text], { type: 'text/plain' }),
-    }),
-  ]);
+  await copyCaseMaterialImages({
+    imageUrls: material.images,
+    text: buildShareText(material),
+    includeText,
+  });
 }
 
 const CaseMaterials: React.FC = () => {
