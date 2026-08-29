@@ -211,13 +211,15 @@ export async function copyCaseMaterialImages(options: {
   }
 
   const { absoluteUrls, compositeText } = resolveClipboardOptions(options);
-  const pngBlob = await getCompositePng(absoluteUrls, compositeText);
-  if (pngBlob.size === 0 || pngBlob.type !== 'image/png') {
-    throw new Error('Composite image is invalid');
-  }
+  const pngPromise = getCompositePng(absoluteUrls, compositeText).then((pngBlob: Blob) => {
+    if (pngBlob.size === 0 || pngBlob.type !== 'image/png') {
+      throw new Error('Composite image is invalid');
+    }
+    return pngBlob;
+  });
 
   await navigator.clipboard.write([
-    new ClipboardItem({ 'image/png': pngBlob }, { presentationStyle: 'inline' }),
+    new ClipboardItem({ 'image/png': pngPromise }, { presentationStyle: 'inline' }),
   ]);
   return 'binary';
 }
