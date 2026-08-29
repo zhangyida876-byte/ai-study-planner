@@ -29,6 +29,7 @@ import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-s
 import { buildMiddleSchoolBenchmarkContext } from '@client/src/utils/school-benchmarks';
 import { formatDiagnosisDate, getAcademicPeriod } from '@client/src/utils/diagnosis-timing';
 import { getVersionForProvinceSubject } from '@client/src/pages/Knowledge/KnowledgeFilterPanel';
+import { getDefaultSubjectMax } from '@client/src/utils/score-validation';
 import {
   buildDiagnosisRegionSnapshot,
   isDiagnosisRegionSnapshotCompatible,
@@ -348,9 +349,8 @@ const Diagnosis: React.FC = () => {
       const scoreMaxValues: Record<string, number> = {};
       for (const key of filledSubjectKeys) {
         const label = SUBJECT_LABELS[key];
-        const coreMax = stage === 'elementary' ? 100 : stage === 'middle' ? 120 : 150;
-        const suggestedMax = CORE_SUBJECT_KEYS.includes(key) ? coreMax : 100;
-        scoreMaxValues[label] = normalizedData.scoreMaxValues?.[label] || suggestedMax;
+        scoreMaxValues[label] = normalizedData.scoreMaxValues?.[label]
+          || getDefaultSubjectMax(normalizedData.grade, label);
       }
       const examType = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '小升初期末统考';
       const formCtx: DiagnosisFormContext = {

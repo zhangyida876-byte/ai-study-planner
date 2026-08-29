@@ -45,9 +45,19 @@ describe('semester subject insights', () => {
     expect(context).not.toContain('英语：');
   });
 
-  it('keeps extensible basic coverage for elementary and high school', () => {
+  it('provides concrete elementary grade-semester subject depth', () => {
     expect(getSemesterSubjectInsights('elementary', '六年级', '上学期').map((item) => item.subject))
       .toEqual(['语文', '数学', '英语']);
+    const mathematics = getSemesterSubjectInsights('elementary', '四年级', '下学期')
+      .find((item) => item.subject === '数学');
+
+    expect(mathematics?.keyDifficulties).toEqual(expect.arrayContaining(['小数意义与运算', '三角形与平均数']));
+    expect(mathematics?.observablePhenomena.join('')).toContain('应用题');
+    expect(mathematics?.futureImpacts.join('')).toContain('分数小数百分数');
+    expect(mathematics?.openingActions.join('')).toContain('每天');
+  });
+
+  it('provides concrete high-school modules and future impacts', () => {
     const highSchoolInsights = getSemesterSubjectInsights('high', '高一', '下学期');
     expect(highSchoolInsights).toHaveLength(9);
     highSchoolInsights.forEach((insight) => {
@@ -55,7 +65,17 @@ describe('semester subject insights', () => {
       expect(insight.bottlenecks.length).toBeGreaterThan(0);
       expect(insight.openingActions.length).toBeGreaterThan(0);
       expect(insight.weeklyActions.length).toBeGreaterThan(0);
+      expect(insight.futureImpacts.length).toBeGreaterThan(0);
     });
+
+    const highOneMathematics = highSchoolInsights.find((item) => item.subject === '数学');
+    expect(highOneMathematics?.keyDifficulties).toEqual(expect.arrayContaining(['三角函数', '平面向量']));
+    expect(highOneMathematics?.futureImpacts.join('')).toContain('高考');
+
+    const highTwoPhysics = getSemesterSubjectInsights('high', '高二', '上学期')
+      .find((item) => item.subject === '物理');
+    expect(highTwoPhysics?.keyDifficulties.join('')).toMatch(/电场|电路/);
+    expect(highTwoPhysics?.futureImpacts.join('')).toMatch(/选科|专业|高考/);
   });
 
   it('builds high school diagnosis context without missing-field errors', () => {
@@ -70,5 +90,6 @@ describe('semester subject insights', () => {
     expect(context).toContain('当前学期：高二上学期');
     expect(context).toContain('数学：');
     expect(context).toContain('常见错点=');
+    expect(context).toContain('后续影响=');
   });
 });

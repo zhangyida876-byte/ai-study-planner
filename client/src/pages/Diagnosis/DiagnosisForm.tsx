@@ -45,6 +45,10 @@ import { logger } from '@lark-apaas/client-toolkit/logger';
 import type { StageProfile } from '@client/src/types/stage-profile';
 import { parseScoreOverviewToSubjectScores } from '@client/src/utils/score-overview';
 import {
+  resolveSubjectScoreMax,
+  validateSubjectScore,
+} from '@client/src/utils/score-validation';
+import {
   createCustomRegionOption,
   filterRegionOptions,
   findOptionByName,
@@ -56,8 +60,7 @@ import {
 
 /* ===== Schema & Constants ===== */
 
-const optionalScore = () => z.number().min(0).max(150).optional();
-const optionalScoreLow = () => z.number().min(0).max(100).optional();
+const optionalScore = () => z.number().min(0, '得分不能小于0').optional();
 
 const diagnosisFormSchema = z.object({
   studentName: z.string().optional(),
@@ -73,12 +76,12 @@ const diagnosisFormSchema = z.object({
   chinese: optionalScore(),
   math: optionalScore(),
   english: optionalScore(),
-  physics: optionalScoreLow(),
-  chemistry: optionalScoreLow(),
-  biology: optionalScoreLow(),
-  history: optionalScoreLow(),
-  geography: optionalScoreLow(),
-  politics: optionalScoreLow(),
+  physics: optionalScore(),
+  chemistry: optionalScore(),
+  biology: optionalScore(),
+  history: optionalScore(),
+  geography: optionalScore(),
+  politics: optionalScore(),
   scoreMaxValues: z.record(z.number().positive().max(1000)).optional(),
   problemDesc: z.string().optional(),
 });
@@ -561,6 +564,11 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
   const hiddenSubjectCount = stageSubjects.length - compactStageSubjects.length;
 
   useEffect(() => {
+    form.clearErrors(SCORE_FIELDS);
+    setFormFeedback('');
+  }, [form, watchedGrade]);
+
+  useEffect(() => {
     if (!watchedRegion || !watchedGrade) return;
     let cancelled = false;
     const timer = setTimeout(async () => {
@@ -796,9 +804,24 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
 
   const handleFormSubmit = useCallback((data: DiagnosisFormData) => {
     const scores: Record<string, number> = {};
-    for (const field of ALL_SCORE_SUBJECTS) {
+    const activeSubjects = getStageSubjects(data.grade);
+    for (const field of activeSubjects) {
       const val = data[field.name];
       if (typeof val === 'number') {
+        const maxScore = resolveSubjectScoreMax({
+          grade: data.grade,
+          subject: field.label,
+          explicitMax: data.scoreMaxValues?.[field.label],
+          inferredMax: resolveSubjectMax(field.label, field.max, internetSubjectMaxHints),
+          fallbackMax: field.max,
+        });
+        const validation = validateSubjectScore(val, maxScore);
+        if ('message' in validation) {
+          form.setError(field.name, { type: 'validate', message: validation.message });
+          setFormFeedback(`${field.label}：${validation.message}`);
+          toast.error(`${field.label}：${validation.message}`);
+          return;
+        }
         scores[field.label] = val;
       }
     }
@@ -810,9 +833,10 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
       return;
     }
 
+    form.clearErrors(SCORE_FIELDS);
     setFormFeedback('');
     onSubmit(data);
-  }, [onSubmit]);
+  }, [form, internetSubjectMaxHints, onSubmit]);
 
   const handleInvalidSubmit = useCallback((errors: FieldErrors<DiagnosisFormData>) => {
     let message = '表单信息不完整，请检查红色提示项';
@@ -834,7 +858,13 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
 
   const renderSubjectInput = (subject: { name: keyof DiagnosisFormData; label: string; max: number }) => {
     const suggestedMax = resolveSubjectMax(subject.label, subject.max, internetSubjectMaxHints);
-    const effectiveMax = watchedScoreMaxValues[subject.label] || suggestedMax;
+    const effectiveMax = resolveSubjectScoreMax({
+      grade: watchedGrade,
+      subject: subject.label,
+      explicitMax: watchedScoreMaxValues[subject.label],
+      inferredMax: suggestedMax,
+      fallbackMax: subject.max,
+    });
     return (
       <div key={String(subject.name)} className="space-y-1">
         <FormLabel className="text-xs font-bold">{subject.label}</FormLabel>
@@ -858,7 +888,15 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
                     value={field.value != null ? String(field.value) : ''}
                     onChange={(event) => {
                       const raw = event.target.value;
-                      field.onChange(raw === '' ? undefined : Number(raw));
+                      const nextScore = raw === '' ? undefined : Number(raw);
+                      field.onChange(nextScore);
+                      const validation = validateSubjectScore(nextScore, effectiveMax);
+                      if (!('message' in validation)) {
+                        form.clearErrors(subject.name);
+                        setFormFeedback('');
+                      } else {
+                        form.setError(subject.name, { type: 'validate', message: validation.message });
+                      }
                     }}
                   />
                 </FormControl>
@@ -882,6 +920,12 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
                   ...watchedScoreMaxValues,
                   [subject.label]: nextMax,
                 });
+                const currentScore = form.getValues(subject.name);
+                if (typeof currentScore === 'number') {
+                  const validation = validateSubjectScore(currentScore, nextMax);
+                  if (!('message' in validation)) form.clearErrors(subject.name);
+                  else form.setError(subject.name, { type: 'validate', message: validation.message });
+                }
               }}
             />
           )}
@@ -895,6 +939,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(handleFormSubmit, handleInvalidSubmit)}
+        noValidate
         className="space-y-3"
       >
         <div className="grid gap-3 border-2 border-dashed border-ink/15 bg-white/70 p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">

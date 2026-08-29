@@ -15,6 +15,7 @@ export interface SemesterSubjectInsight {
   bottlenecks: string[];
   observablePhenomena: string[];
   rootCauses: string[];
+  futureImpacts: string[];
   openingActions: string[];
   weeklyActions: string[];
   onionRecommendations: string[];
@@ -36,6 +37,7 @@ function normalizeInsight(insight: SemesterSubjectInsight): SemesterSubjectInsig
     bottlenecks: ensureList(insight.bottlenecks, [subjectFallback]),
     observablePhenomena: ensureList(insight.observablePhenomena, [subjectFallback]),
     rootCauses: ensureList(insight.rootCauses, [subjectFallback]),
+    futureImpacts: ensureList(insight.futureImpacts, [`会影响${insight.subject}后续章节的方法迁移和考试稳定性`]),
     openingActions: ensureList(insight.openingActions, ['抽查最近错题并按概念、方法和执行分类']),
     weeklyActions: ensureList(insight.weeklyActions, ['完成一次章节小测并复盘同类错误']),
     onionRecommendations: ensureList(insight.onionRecommendations, ['先用测评定位，再按知识点课程、解题课和错题复盘闭环学习']),
@@ -74,7 +76,7 @@ const PERIOD_CONTEXT: Record<typeof PERIODS[number], { psychology: string[]; lea
   },
 };
 
-const SUBJECT_BASE: Record<typeof MIDDLE_SUBJECTS[number], Omit<SubjectSeed, 'subjectCharacteristics' | 'coreGoals' | 'keyDifficulties' | 'commonMistakes' | 'bottlenecks'>> = {
+const SUBJECT_BASE: Record<typeof MIDDLE_SUBJECTS[number], Omit<SubjectSeed, 'subjectCharacteristics' | 'coreGoals' | 'keyDifficulties' | 'commonMistakes' | 'bottlenecks' | 'futureImpacts'>> = {
   语文: { subject: '语文', observablePhenomena: ['阅读答案写了很多却得分低', '作文有内容但结构松散'], rootCauses: ['文本证据与答题要点没有建立对应', '素材积累未经过主题化和结构化'], openingActions: ['用一篇课内阅读做“题干-证据-答案”标注', '整理2个可复用作文素材'], weeklyActions: ['每周2次阅读题限时并复述答题依据', '每周1次作文提纲与片段升格'], onionRecommendations: ['知识点课程补阅读方法和文言规则', '解题课训典型阅读题，练习后复盘答题证据'] },
   数学: { subject: '数学', observablePhenomena: ['例题听懂，换个问法就不会', '计算过程频繁丢符号或条件'], rootCauses: ['概念、条件和解题步骤没有结构化', '只对答案，没有对错误步骤归因'], openingActions: ['抽查10道错题按概念/计算/建模归类', '每天15分钟做计算准确性训练'], weeklyActions: ['每周完成1次章节小测并绘制错因分布', '用2道变式题验证方法是否迁移'], onionRecommendations: ['AI功能辅助错因分类和路径安排', '知识点课程补概念，解题课训题型，测评验收'] },
   英语: { subject: '英语', observablePhenomena: ['单词背过，进入句子和阅读就认不出', '完形和阅读总在相似选项中选错'], rootCauses: ['词汇只记中文意思，未建立词性、搭配和语境', '长句结构和篇章逻辑标记不稳'], openingActions: ['抽查20个旧词的句中识别和搭配', '每天精读1个长句并标主干'], weeklyActions: ['每周2篇阅读定位原文证据', '每周复盘1次语法错题和词汇搭配'], onionRecommendations: ['同步课跟校内语法和课文', '知识点课程补句法，解题课训阅读证据定位'] },
@@ -84,6 +86,156 @@ const SUBJECT_BASE: Record<typeof MIDDLE_SUBJECTS[number], Omit<SubjectSeed, 'su
   历史: { subject: '历史', observablePhenomena: ['时间和事件背了，材料题仍不会归纳', '相似制度和事件容易混淆'], rootCauses: ['史实未放进时空线和因果链', '材料关键词与教材观点没有对应'], openingActions: ['绘制1个单元时间轴和因果链', '练习3道材料题的“材料词-教材词”转换'], weeklyActions: ['每周复述1个主题的背景-过程-影响', '每周1次材料题限定词检查'], onionRecommendations: ['同步课建立历史主线', '知识点课补因果逻辑，解题课训材料转化'] },
   地理: { subject: '地理', observablePhenomena: ['地图会看图例，但不会从图中提取关系', '自然要素和人类活动影响说不完整'], rootCauses: ['空间定位、图表读取和因果解释没有形成步骤', '只记区域结论，未理解位置与要素的联系'], openingActions: ['每天读1张图，按位置-要素-影响口述', '整理1类等值线或统计图读图步骤'], weeklyActions: ['每周2道综合读图题', '每周用空白图复现1个区域的核心关系'], onionRecommendations: ['知识点课建立空间和因果模型', '解题课训读图步骤，练习验收迁移'] },
   政治: { subject: '政治', observablePhenomena: ['知识点背了，材料题不知道用哪个观点', '答案篇幅很长但采分点少'], rootCauses: ['材料情境、教材观点和行为建议未建立对应', '答题没有按限定词和分值组织要点'], openingActions: ['用3道材料题练习圈情境词、定观点、写行动', '整理1个单元的观点-材料对应表'], weeklyActions: ['每周1次材料题按点给分', '每周更新1个时政案例与教材观点的联系'], onionRecommendations: ['同步课梳理教材观点', '解题课训情境材料转化，练习检查采分点'] },
+};
+
+const SUBJECT_FUTURE_IMPACTS: Record<typeof MIDDLE_SUBJECTS[number], string[]> = {
+  语文: ['影响跨文本证据提取、文言迁移和考场作文表达', '答案组织不清会在各类材料题中持续丢采分点'],
+  数学: ['影响后续方程、函数、几何和综合题的条件转化', '计算与建模不稳会压缩中高档题的作答时间'],
+  英语: ['影响长难句、完形阅读和写作输出', '词汇语境与句法不稳会让阅读正确率长期波动'],
+  物理: ['影响力、电、热等模型迁移和实验探究', '公式与情境不能互译会在综合题中持续卡顿'],
+  化学: ['影响物质转化、实验探究和定量计算', '宏观微观符号链不完整会导致新概念互相混淆'],
+  生物: ['影响遗传、稳态、生态等机制类材料题', '结构功能关系不清会导致图表和实验题迁移困难'],
+  历史: ['影响跨时期比较、材料概括和因果论证', '时空线索不稳会让史实调用和观点表达失序'],
+  地理: ['影响区域综合、人地关系和图表信息整合', '空间定位不稳会让自然与人文要素无法形成因果链'],
+  政治: ['影响材料情境与学科观点的匹配', '主体、权利责任和观点边界不清会持续漏采分点'],
+};
+
+type CoreStageSubject = '语文' | '数学' | '英语';
+type SemesterModules = { 上学期: string[]; 下学期: string[] };
+
+const ELEMENTARY_MODULES: Record<string, Record<CoreStageSubject, SemesterModules>> = {
+  一年级: {
+    语文: { 上学期: ['拼音拼读', '基础识字与规范书写', '短句朗读'], 下学期: ['识字量扩展', '句子理解', '看图说话与写话启蒙'] },
+    数学: { 上学期: ['20以内数感', '加减法意义', '位置与图形初步'], 下学期: ['100以内数感', '进退位加减', '人民币与时间认识'] },
+    英语: { 上学期: ['语音模仿', '课堂指令', '基础词汇听说'], 下学期: ['字母与自然拼读启蒙', '核心句型跟读', '图片信息理解'] },
+  },
+  二年级: {
+    语文: { 上学期: ['字词积累', '句子扩写', '记叙文信息提取'], 下学期: ['段落理解', '词句运用', '看图写话结构'] },
+    数学: { 上学期: ['表内乘法', '长度单位', '两步问题启蒙'], 下学期: ['表内除法', '万以内数感', '图形运动与数据整理'] },
+    英语: { 上学期: ['自然拼读基础', '主题词汇', '简单问答句型'], 下学期: ['词形音对应', '课文朗读', '短句听力与理解'] },
+  },
+  三年级: {
+    语文: { 上学期: ['词句段运用', '记叙文阅读', '习作起步'], 下学期: ['中心句与段意', '古诗积累', '观察类习作'] },
+    数学: { 上学期: ['万以内计算', '时分秒与测量', '多位数乘一位数'], 下学期: ['除数是一位数的除法', '面积与周长', '小数初步与应用题'] },
+    英语: { 上学期: ['自然拼读', '核心词汇', '一般疑问句启蒙'], 下学期: ['单词记忆方法', '句型理解', '短篇阅读与听力'] },
+  },
+  四年级: {
+    语文: { 上学期: ['概括主要内容', '批注阅读', '记叙文结构'], 下学期: ['关键语句理解', '文言启蒙', '写人记事作文'] },
+    数学: { 上学期: ['大数认识', '三位数乘两位数', '角与平行垂直'], 下学期: ['四则运算', '小数意义与运算', '三角形与平均数'] },
+    英语: { 上学期: ['词汇拼写', '一般现在时', '听力关键词'], 下学期: ['句型转换', '介词与方位', '短文阅读和书面表达启蒙'] },
+  },
+  五年级: {
+    语文: { 上学期: ['提高阅读速度', '说明文信息提取', '习作选材'], 下学期: ['人物描写', '古典名著阅读', '作文结构与细节'] },
+    数学: { 上学期: ['小数乘除法', '简易方程', '多边形面积'], 下学期: ['因数倍数', '分数意义与加减', '长方体正方体'] },
+    英语: { 上学期: ['时态意识', '词汇搭配', '篇章信息定位'], 下学期: ['一般过去时启蒙', '语法综合', '阅读理解与短文写作'] },
+  },
+  六年级: {
+    语文: { 上学期: ['主题阅读', '古诗文理解', '作文立意与结构'], 下学期: ['小升初阅读整合', '古诗文积累迁移', '考场作文审题'] },
+    数学: { 上学期: ['分数乘除', '比与百分数', '圆与应用题'], 下学期: ['比例与正反比例', '圆柱圆锥', '小升初数与形综合'] },
+    英语: { 上学期: ['核心时态', '长句理解', '阅读证据定位'], 下学期: ['小升初词汇语法整合', '完形与阅读', '书面表达'] },
+  },
+};
+
+interface StageDepthSeed {
+  observablePhenomena: string[];
+  rootCauses: string[];
+  commonMistakes: string[];
+  futureImpacts: string[];
+  openingActions: string[];
+  weeklyActions: string[];
+  onionRecommendations: string[];
+}
+
+const ELEMENTARY_DEPTH: Record<CoreStageSubject, StageDepthSeed> = {
+  语文: {
+    observablePhenomena: ['课文能读完，但说不清主要内容和依据', '写话或作文有内容，却常漏题意、顺序和细节'],
+    rootCauses: ['识字、词句理解与段落结构没有连成阅读链', '审题、选材、口头表达和书面组织缺少固定步骤'],
+    commonMistakes: ['只找原句不理解题目要求', '作文流水账、标点和句子边界不清'],
+    futureImpacts: ['影响高年级阅读概括、古诗文理解和作文表达', '语文审题与信息提取不稳还会拖累数学应用题'],
+    openingActions: ['选一篇课内短文练“题目-原文证据-自己的话”', '口述一段经历后再按起因经过结果写下来'],
+    weeklyActions: ['每周2次阅读证据标注', '每周1次作文提纲和片段修改'],
+    onionRecommendations: ['同步课跟进课文与单元语文要素', '知识点课程补阅读方法，练习和AI错因分析做验收'],
+  },
+  数学: {
+    observablePhenomena: ['计算题会做，但竖式、进退位或单位经常出错', '应用题文字读得懂，却说不清先算什么和为什么'],
+    rootCauses: ['数感、运算意义和计算步骤没有形成稳定表征', '已知、问题、数量关系和算式之间没有建立模型'],
+    commonMistakes: ['抄错数、漏单位、运算顺序混乱', '见到关键词就套公式，条件变化后不会列式'],
+    futureImpacts: ['影响面积周长、分数小数百分数和方程启蒙', '应用题建模不稳会在小升初综合题中持续失分'],
+    openingActions: ['每天10分钟计算并记录错误类型', '每天讲1道应用题的已知、所求、关系和步骤'],
+    weeklyActions: ['每周做1次计算与应用题小测', '用2道变式题验证是否真正理解数量关系'],
+    onionRecommendations: ['知识点课程补数感、概念和基础模型', '解题课训练典型应用题，测评与错题复盘验证迁移'],
+  },
+  英语: {
+    observablePhenomena: ['单词单独会读，放进课文就认不出或不会拼', '课文能跟读，但换成新句型就听不懂、说不出'],
+    rootCauses: ['字母音、拼读、词义和词形没有建立双向联系', '听力输入、句型理解和口头输出练习不足'],
+    commonMistakes: ['只背中文意思，不会按音节拼读', '机械抄句子，不理解人称、时态和语序'],
+    futureImpacts: ['影响高年级词汇积累、语法启蒙和阅读速度', '听说基础不稳会增加初中长句和写作的学习成本'],
+    openingActions: ['每天10分钟做自然拼读和听音辨词', '选课文3句完成听、跟读、替换词复述'],
+    weeklyActions: ['每周抽查20个词的听说读写', '每周完成2次短篇听读并口述大意'],
+    onionRecommendations: ['同步课跟校内词汇句型', '知识点课程补拼读和语法，练习验证听读迁移'],
+  },
+};
+
+const HIGH_SUBJECTS = MIDDLE_SUBJECTS;
+
+const HIGH_MODULES: Record<typeof HIGH_SUBJECTS[number], Record<string, SemesterModules>> = {
+  语文: {
+    高一: { 上学期: ['现代文信息筛选', '文言实词与句式', '议论文写作启蒙'], 下学期: ['文学类文本阅读', '古诗鉴赏', '作文立意与素材'] },
+    高二: { 上学期: ['论述类文本', '文言翻译与文化常识', '作文论证结构'], 下学期: ['现代文综合阅读', '古诗比较鉴赏', '语言文字运用'] },
+    高三: { 上学期: ['高考阅读题型整合', '古诗文精准翻译', '作文审题立意'], 下学期: ['真题阅读证据链', '语言运用', '考场作文稳定性'] },
+  },
+  数学: {
+    高一: { 上学期: ['集合与逻辑', '函数概念、单调性与图像', '指数对数函数'], 下学期: ['三角函数', '平面向量', '复数与立体几何初步'] },
+    高二: { 上学期: ['数列', '空间向量与立体几何', '直线与圆锥曲线'], 下学期: ['导数及应用', '计数原理', '概率统计'] },
+    高三: { 上学期: ['函数导数综合', '数列与解析几何', '概率统计与立体几何'], 下学期: ['高考真题模块', '压轴题分类讨论', '限时取舍与稳定性'] },
+  },
+  英语: {
+    高一: { 上学期: ['高中核心词汇', '句子成分与从句启蒙', '阅读信息定位'], 下学期: ['定语从句', '完形语境', '应用文写作'] },
+    高二: { 上学期: ['非谓语与复杂句', '七选五逻辑', '读后续写基础'], 下学期: ['语法填空整合', '长篇阅读', '应用文与续写表达'] },
+    高三: { 上学期: ['高频词汇语境', '阅读完形七选五', '写作题型整合'], 下学期: ['真题语篇证据', '语法错点', '应用文与续写稳定输出'] },
+  },
+  物理: {
+    高一: { 上学期: ['运动学图像', '牛顿运动定律', '受力分析'], 下学期: ['曲线运动', '万有引力', '功和能量关系'] },
+    高二: { 上学期: ['静电场', '恒定电流与电路', '磁场与带电粒子'], 下学期: ['电磁感应', '交变电流', '机械振动与波'] },
+    高三: { 上学期: ['力学模型综合', '电磁场综合', '实验与图像'], 下学期: ['高考模型迁移', '实验题证据链', '综合计算与时间分配'] },
+  },
+  化学: {
+    高一: { 上学期: ['物质的量', '离子反应与氧化还原', '元素化合物'], 下学期: ['元素周期律', '化学反应与能量', '有机化学初步'] },
+    高二: { 上学期: ['化学反应速率与平衡', '电化学', '水溶液平衡'], 下学期: ['物质结构', '有机化学基础', '实验探究'] },
+    高三: { 上学期: ['反应原理综合', '工艺流程题', '实验探究与有机推断'], 下学期: ['真题证据链', '计算与图像', '工艺实验综合'] },
+  },
+  生物: {
+    高一: { 上学期: ['细胞结构', '物质跨膜运输', '酶与细胞代谢'], 下学期: ['有丝分裂', '遗传基本规律', '伴性遗传'] },
+    高二: { 上学期: ['稳态与调节', '神经体液免疫', '植物生命活动调节'], 下学期: ['种群群落生态系统', '生态工程', '生物技术实践'] },
+    高三: { 上学期: ['细胞代谢与遗传综合', '稳态生态', '实验设计'], 下学期: ['高考材料题', '遗传计算', '实验变量与结论'] },
+  },
+  历史: {
+    高一: { 上学期: ['中外历史纲要古代至近代', '时空定位', '制度与社会变迁'], 下学期: ['现代中国与世界', '民族国家与国际关系', '材料题概括'] },
+    高二: { 上学期: ['国家制度与社会治理', '经济与社会生活', '选必模块材料题'], 下学期: ['文化交流传播', '战争与文化', '跨时空比较'] },
+    高三: { 上学期: ['通史主题整合', '史料实证', '比较与因果论证'], 下学期: ['高考材料题', '开放性论述', '学科术语精准表达'] },
+  },
+  地理: {
+    高一: { 上学期: ['地球运动', '大气水循环', '地貌与植被'], 下学期: ['人口城镇化', '产业区位', '交通与人地协调'] },
+    高二: { 上学期: ['区域发展', '资源环境与国家安全', '区域比较'], 下学期: ['自然地理综合', '世界与中国区域', '图表信息整合'] },
+    高三: { 上学期: ['自然过程综合', '区域产业与人地关系', '图表判读'], 下学期: ['高考区域综合', '原因措施评价', '时空尺度转换'] },
+  },
+  政治: {
+    高一: { 上学期: ['中国特色社会主义', '经济与社会', '材料观点匹配'], 下学期: ['政治与法治', '国家制度与公民参与', '主体权限'] },
+    高二: { 上学期: ['哲学与文化', '认识论与辩证法', '材料分析'], 下学期: ['当代国际政治经济', '法律与生活', '逻辑与思维'] },
+    高三: { 上学期: ['四册主干整合', '时政情境', '主观题证据链'], 下学期: ['高考材料题', '学科术语', '观点材料行动闭环'] },
+  },
+};
+
+const HIGH_DEPTH: Record<typeof HIGH_SUBJECTS[number], StageDepthSeed> = {
+  语文: { observablePhenomena: ['阅读写了很多却踩不中采分点', '作文素材不少但立意、结构和论证松散'], rootCauses: ['题干限定、文本证据和答案术语没有形成对应', '审题立意、素材选择和论证链缺少稳定流程'], commonMistakes: ['脱离文本套模板', '文言关键词漏译、作文论据与观点脱节'], futureImpacts: ['影响高考现代文、古诗文和作文三大板块稳定性', '材料理解与表达还会影响政史地作答'], openingActions: ['做1篇阅读并标出每个答案的原文证据', '完成1道作文题的立意、分论点和素材匹配'], weeklyActions: ['每周2次阅读限时训练', '每周1次作文提纲与片段升格'], onionRecommendations: ['知识点课程补文体方法和古诗文规则', '解题/培优课训练高考题型，AI辅助答案证据复盘'] },
+  数学: { observablePhenomena: ['基础题能做，遇到含参数、分类讨论或图像变化就卡', '听懂例题但换条件后无法选择方法'], rootCauses: ['符号语言、图像和数量关系的转化能力未形成', '概念条件和题型方法记成孤立结论，缺少迁移验证'], commonMistakes: ['定义域和参数范围漏检', '分类不全、数形结合和运算过程脱节'], futureImpacts: ['高一函数不稳会影响导数、数列和解析几何', '综合建模和运算稳定性直接影响高考中高档题得分'], openingActions: ['用3天复核当前模块核心定义和图像', '每天做5道基础题并口述条件与依据'], weeklyActions: ['每周1次模块小测和错因统计', '每个方法用2道变式题验证迁移'], onionRecommendations: ['知识点课程补函数、数列、几何等底层模型', '解题/培优课练典型题与综合题，测评和错题复盘验收'] },
+  英语: { observablePhenomena: ['词汇背了不少，阅读和完形仍在相似选项中摇摆', '语法题会规则，写作和续写中却用不出来'], rootCauses: ['词汇未进入搭配、语境和篇章逻辑', '长句结构、指代衔接和证据定位步骤不稳定'], commonMistakes: ['只按单词表背词', '阅读凭感觉、写作句式堆砌'], futureImpacts: ['影响阅读、完形、七选五和写作的整体稳定性', '长句理解不足会压缩高考阅读速度'], openingActions: ['每天精读1段并划主干、连接词和证据', '复盘20个词的搭配与真题语境'], weeklyActions: ['每周2套阅读组合限时训练', '每周完成1篇应用文或续写并订正'], onionRecommendations: ['同步课跟进词汇语法', '知识点课程补长句，解题课训阅读证据和写作输出'] },
+  物理: { observablePhenomena: ['公式会背，题目一换场景就不会建模', '受力、电路或实验图能看懂，但推不出下一步'], rootCauses: ['物理过程、状态变化和方程没有形成模型链', '图像、实验条件和结论证据之间联系不稳'], commonMistakes: ['受力漏力、正方向混乱', '功能关系和电路状态判断机械套公式'], futureImpacts: ['力学模型不稳会影响功能、圆周和电磁综合', '物理模型能力会影响选科竞争力和理工专业学习准备'], openingActions: ['每天重画2道题的过程图或受力图', '做3道同模型变式并说清状态变化'], weeklyActions: ['每周1次模型分类小测', '实验题按目的、变量、现象、结论复述'], onionRecommendations: ['知识点课程用动画建立运动、力电模型', '解题/培优课训练模型识别，测评和错题复盘验证'] },
+  化学: { observablePhenomena: ['方程式会写，工艺流程或实验新情境中不会调用', '反应原理计算常在条件、单位和图像处出错'], rootCauses: ['宏观现象、微观粒子和符号方程没有连成体系', '平衡、电化学、实验变量等原理缺少证据链'], commonMistakes: ['离子与反应条件漏写', '工艺目的、操作和结果答非所问'], futureImpacts: ['影响反应原理、工艺流程、实验探究和有机推断', '会降低化学赋分稳定性及化工医药材料类专业准备度'], openingActions: ['画1张当前模块物质转化关系图', '完成3道实验或流程题并标每步目的'], weeklyActions: ['每周1次方程式与原理小测', '每周1组工艺实验综合题复盘'], onionRecommendations: ['知识点课程建立宏微符号联系', '解题/培优课练工艺实验题，AI辅助错因归类'] },
+  生物: { observablePhenomena: ['概念背得熟，材料换一种实验或图表就不会', '遗传、代谢或调节题步骤多时容易漏条件'], rootCauses: ['结构、过程、变量和结果没有形成机制模型', '实验设计的自变量、因变量和对照原则不清'], commonMistakes: ['只背结论不看适用条件', '遗传计算漏概率条件、实验结论超出证据'], futureImpacts: ['影响遗传、稳态、生态和实验设计综合题', '机制推理能力会影响生物赋分和生命科学类专业准备'], openingActions: ['用流程图口述1个核心机制', '做3道材料题并圈变量、条件和结论'], weeklyActions: ['每周1张模块机制图', '每周1组实验或遗传题验收'], onionRecommendations: ['同步课梳理机制主线', '知识点课程补过程，解题课和测评验证材料迁移'] },
+  历史: { observablePhenomena: ['史实记了很多，材料题仍不会概括和比较', '开放题观点有了，但证据和论证不完整'], rootCauses: ['史实没有放进时空、因果和阶段特征框架', '材料限定词与学科术语没有建立对应'], commonMistakes: ['跨时期史实错位', '只抄材料、不说明变化原因和影响'], futureImpacts: ['影响高考材料概括、比较和开放性论述', '会降低历史赋分稳定性和人文社科专业学习准备'], openingActions: ['画1条主题时间轴并标转折和因果', '做2道材料题练材料词转学科术语'], weeklyActions: ['每周复述1个主题的背景过程影响', '每周1次材料题按点给分'], onionRecommendations: ['同步课建立通史主线', '知识点课程补因果，解题/培优课训材料论证'] },
+  地理: { observablePhenomena: ['地图图表能看懂单项信息，却整合不出原因和措施', '区域题背过结论，换地区后不会迁移'], rootCauses: ['时空定位、自然过程和人类活动没有形成因果链', '图名、图例、尺度、变量的读图步骤不稳定'], commonMistakes: ['不先定位就直接作答', '原因措施只写自然或人文一侧'], futureImpacts: ['影响自然地理过程、区域综合和人地关系题', '会影响地理赋分及资源环境规划类专业准备'], openingActions: ['每天读1张图并按位置、要素、关系口述', '做2道区域题标出证据和因果箭头'], weeklyActions: ['每周2道综合图表题', '每周复盘1个区域的自然人文关系'], onionRecommendations: ['知识点课程建立自然过程和区域模型', '解题/培优课训读图证据，测评验证迁移'] },
+  政治: { observablePhenomena: ['知识点能背，材料题不知道调用哪个观点', '答案写得长，但主体、逻辑和采分点不清'], rootCauses: ['情境材料、学科概念和主体行为没有建立映射', '限定词、设问类型和答案层次缺少结构'], commonMistakes: ['主体权限混淆', '只抄材料或只背观点，缺少分析链'], futureImpacts: ['影响高考选择题判断和主观题采分稳定性', '会影响政治赋分及法学经管社会科学类专业准备'], openingActions: ['用2道材料题练圈主体、定知识、连材料', '整理当前模块概念边界表'], weeklyActions: ['每周1次主观题按点给分', '每周更新1个时政情境与教材观点联系'], onionRecommendations: ['同步课梳理概念体系', '知识点课程补边界，解题/培优课训材料转化'] },
 };
 
 const PERIOD_FOCUS: Record<typeof PERIODS[number], Record<typeof MIDDLE_SUBJECTS[number], [string, string, string]>> = {
@@ -176,6 +328,7 @@ function createMiddleInsights(): SemesterSubjectInsight[] {
         bottlenecks: [base.rootCauses[0], base.rootCauses[1]],
         observablePhenomena: base.observablePhenomena,
         rootCauses: base.rootCauses,
+        futureImpacts: SUBJECT_FUTURE_IMPACTS[subject],
         openingActions: base.openingActions,
         weeklyActions: base.weeklyActions,
         onionRecommendations: base.onionRecommendations,
@@ -186,37 +339,43 @@ function createMiddleInsights(): SemesterSubjectInsight[] {
 
 export const SEMESTER_SUBJECT_INSIGHTS: SemesterSubjectInsight[] = createMiddleInsights();
 
-function createBasicStageInsights(
-  stage: Exclude<StageSlug, 'middle'>,
+function createDepthStageInsights(
+  stage: 'elementary' | 'high',
   grade: string,
   semester: string,
 ): SemesterSubjectInsight[] {
-  const subjects = stage === 'elementary'
-    ? ['语文', '数学', '英语'] as const
-    : MIDDLE_SUBJECTS;
+  const normalizedSemester = semester === '下学期' ? '下学期' : '上学期';
+  const subjects = stage === 'elementary' ? (['语文', '数学', '英语'] as const) : HIGH_SUBJECTS;
   const stagePsychology = stage === 'elementary'
-    ? ['对即时反馈和小目标更敏感，需要用可见的完成感建立主动性']
-    : ['学业任务、同伴比较和升学压力叠加，需要明确优先级与可验收反馈'];
+    ? ['对即时反馈和小目标更敏感，需要用可见的完成感建立主动性', '低年级依赖示范，高年级开始形成自我评价，家长应从催促转向提问和验收']
+    : ['学业任务、同伴比较和升学压力叠加，需要明确优先级与可验收反馈', '高中生自主意识增强，笼统说教效果弱，具体数据和阶段目标更能促进调整'];
   const learningTraits = stage === 'elementary'
-    ? ['先建立阅读、计算、表达和当日复盘的基础动作']
-    : ['知识密度和综合性上升，需要用单元测评区分概念、题型与执行问题'];
+    ? ['识字阅读、计算建模、听说表达逐年递进，必须把会做升级为会讲依据', '习惯建议必须落到当前年级正在学习的知识和可检查动作']
+    : ['知识密度和综合性上升，需要用单元测评区分概念、题型与执行问题', '选科和赋分关注校内排名与稳定性，不能只看一次卷面分数'];
 
   return subjects.map((subject) => {
-    const base = SUBJECT_BASE[subject];
+    const modules = stage === 'elementary'
+      ? ELEMENTARY_MODULES[grade]?.[subject as CoreStageSubject]?.[normalizedSemester]
+      : HIGH_MODULES[subject as typeof HIGH_SUBJECTS[number]]?.[grade]?.[normalizedSemester];
+    const base = stage === 'elementary'
+      ? ELEMENTARY_DEPTH[subject as CoreStageSubject]
+      : HIGH_DEPTH[subject as typeof HIGH_SUBJECTS[number]];
+    const keyDifficulties = modules || ['当前教材章节核心概念', '从基础题到变式题的方法迁移'];
     return normalizeInsight({
       stage,
       grade,
-      semester,
+      semester: normalizedSemester,
       subject,
       agePsychology: stagePsychology,
       learningTraits,
-      subjectCharacteristics: `${grade}${semester}的${subject}需按当地教材版本和学校进度核对，先用最近作业、试卷与章节目录定位当前卡点。`,
-      coreGoals: ['说清当前单元的核心概念和方法', '用基础题与变式题验证能否迁移'],
-      keyDifficulties: ['当前教材章节的核心概念', '从例题到变式题的方法迁移'],
-      commonMistakes: base.observablePhenomena,
+      subjectCharacteristics: `${grade}${normalizedSemester}${subject}的核心模块包括${keyDifficulties.join('、')}；具体顺序需按当地教材版本、学校进度和最近试卷核对。`,
+      coreGoals: [`说清${keyDifficulties.slice(0, 2).join('、')}的核心概念和方法`, '用基础题、变式题和阶段测评验证迁移'],
+      keyDifficulties,
+      commonMistakes: base.commonMistakes,
       bottlenecks: base.rootCauses,
       observablePhenomena: base.observablePhenomena,
       rootCauses: base.rootCauses,
+      futureImpacts: base.futureImpacts,
       openingActions: base.openingActions,
       weeklyActions: base.weeklyActions,
       onionRecommendations: base.onionRecommendations,
@@ -243,7 +402,7 @@ export function getSemesterSubjectInsights(
     ));
   }
   if (!normalizedGrade || !semester) return [];
-  return createBasicStageInsights(stage, normalizedGrade, semester);
+  return createDepthStageInsights(stage, normalizedGrade, semester);
 }
 
 export function getSemesterSubjectInsight(
@@ -267,8 +426,9 @@ export function buildSemesterInsightPromptContext(
   subjects: string[],
   date: Date = new Date(),
 ): string {
+  const normalizedSubjects = subjects.map((subject) => subject === '政治&道法' ? '政治' : subject);
   const insights = getSemesterSubjectInsights(stage, grade, semester)
-    .filter((item) => subjects.includes(item.subject));
+    .filter((item) => normalizedSubjects.includes(item.subject));
   const timingContext = buildAcademicTimingPromptContext(date);
   if (insights.length === 0) return timingContext;
   const first = insights[0];
@@ -277,6 +437,14 @@ export function buildSemesterInsightPromptContext(
     `当前学期：${normalizeInsightGrade(grade)}${semester}`,
     `年龄段心理：${first.agePsychology.join('；')}`,
     `学习节奏：${first.learningTraits.join('；')}`,
-    ...insights.map((item) => `${item.subject}：特点=${item.subjectCharacteristics}；重难点=${item.keyDifficulties.slice(0, 4).join('、')}；常见错点=${item.commonMistakes.join('、')}`),
+    ...insights.map((item) => [
+      `${item.subject}：特点=${item.subjectCharacteristics}`,
+      `核心模块=${item.keyDifficulties.slice(0, 5).join('、')}`,
+      `常见错点=${item.commonMistakes.slice(0, 3).join('、')}`,
+      `家长现象=${item.observablePhenomena.slice(0, 3).join('、')}`,
+      `深层根因=${item.rootCauses.slice(0, 3).join('、')}`,
+      `后续影响=${item.futureImpacts.slice(0, 3).join('、')}`,
+      `近期动作=${item.openingActions.slice(0, 2).join('、')}`,
+    ].join('；')),
   ].join('\n');
 }

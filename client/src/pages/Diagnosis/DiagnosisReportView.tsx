@@ -30,10 +30,9 @@ const SECTION_ICONS: Record<number, React.FC<{ className?: string }>> = {
   1: Sparkles,
   2: Eye,
   3: AlertCircle,
-  5: AlertCircle,
-  7: CheckSquare2,
-  9: PackageCheck,
-  10: MessageSquareQuote,
+  6: CheckSquare2,
+  7: PackageCheck,
+  8: MessageSquareQuote,
 };
 
 function parseReportSections(content: string): ReportSection[] {
@@ -84,10 +83,10 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({ content }) =>
     () => new Map(sections.map((section) => [section.index, section])),
     [sections],
   );
-  const primarySections = [1, 2, 3, 5, 7, 9, 10]
+  const primarySections = [1, 2, 3, 6, 7, 8]
     .map((index) => byIndex.get(index))
     .filter((section): section is ReportSection => Boolean(section));
-  const detailSections = [4, 6, 8]
+  const detailSections = [4, 5]
     .map((index) => byIndex.get(index))
     .filter((section): section is ReportSection => Boolean(section));
 
@@ -109,7 +108,7 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({ content }) =>
         <Accordion type="single" collapsible className="mt-3 border-2 border-dashed border-ink/15 px-4">
           <AccordionItem value="details" className="border-0">
             <AccordionTrigger className="font-marker text-base font-bold no-underline hover:no-underline">
-              查看时间节点、升学差距与阶段计划详情
+              查看年级学期特点与阶段目标影响
             </AccordionTrigger>
             <AccordionContent className="space-y-5">
               {detailSections.map((section) => (

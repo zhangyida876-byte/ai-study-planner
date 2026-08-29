@@ -89,11 +89,12 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
           </div>
         </section>
 
-        <section className="mt-4 grid gap-4 md:grid-cols-3">
+        <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {[
             ['当前优先重难点', selected.keyDifficulties.slice(0, useOpeningActions ? 3 : 5)],
             ['高频易错点', selected.commonMistakes],
             ['常见卡点', selected.bottlenecks],
+            ['后续学习影响', selected.futureImpacts],
           ].map(([title, items]) => (
             <div key={title as string} className="border-l-4 border-pen-blue bg-accent/45 p-3">
               <h3 className="font-marker mb-2 font-bold">{title as string}</h3>

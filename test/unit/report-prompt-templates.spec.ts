@@ -8,15 +8,18 @@ describe('report prompt templates', () => {
   it('unifies diagnosis, target gap and executable planning', () => {
     const prompt = buildProfessionalReportFramework('diagnosis');
 
-    expect(prompt).toContain('## 1. 一句话判断');
+    expect(prompt).toContain('## 1. 一句话结论');
     expect(prompt).toContain('## 2. 各科家长可观察现象');
     expect(prompt).toContain('## 3. 各科核心问题与根因');
-    expect(prompt).toContain('## 5. 跨科共性问题');
-    expect(prompt).toContain('## 7. 各科未来7天行动清单');
-    expect(prompt).toContain('## 8. 从现在到下一次关键考试');
-    expect(prompt).toContain('临近开学时聚焦开学摸底和第一次月考');
-    expect(prompt).toContain('## 9. 洋葱学园承接方案');
-    expect(prompt).toContain('## 10. 课程顾问口播话术');
+    expect(prompt).toContain('### 跨科共性问题');
+    expect(prompt).toContain('## 4. 年级、学期与学科特点');
+    expect(prompt).toContain('## 5. 升学或阶段目标影响');
+    expect(prompt).toContain('## 6. 家长可执行动作');
+    expect(prompt).toContain('### A. 未来一周');
+    expect(prompt).toContain('### B. 开学第一周');
+    expect(prompt).toContain('### C. 开学第一个月');
+    expect(prompt).toContain('## 7. 洋葱学园承接方案');
+    expect(prompt).toContain('## 8. 课程顾问转述话术');
     expect(prompt).toContain('30秒短版');
     expect(prompt).toContain('2分钟完整版');
     expect(prompt).toContain('单科1400-2000个中文字符');
@@ -31,7 +34,7 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('数学');
     expect(prompt).toContain('3个家长可观察现象');
     expect(prompt).toContain('3个核心问题');
-    expect(prompt).toContain('完整7天行动');
+    expect(prompt).toContain('未来一周、开学第一周、开学第一个月');
     expect(prompt).toContain('不输出跨科共性问题');
   });
 
@@ -50,6 +53,17 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('每个科目至少1行产品承接');
     expect(prompt).toContain('禁止只分析最低分科目');
     expect(prompt).toContain('禁止为了控制篇幅删掉已填写科目');
+  });
+
+  it('requires concrete elementary and high-school subject depth', () => {
+    const prompt = buildProfessionalReportFramework('diagnosis');
+
+    expect(prompt).toContain('小学禁止只写“培养习惯、打好基础”');
+    expect(prompt).toContain('自然拼读');
+    expect(prompt).toContain('分数/小数/百分数');
+    expect(prompt).toContain('高中禁止只写“高考压力大、提高综合能力”');
+    expect(prompt).toContain('选科赋分');
+    expect(prompt).toContain('当前模块/题型');
   });
 
   it('extends planning through subject selection, majors and employment', () => {
