@@ -1,5 +1,5 @@
 import {
-  buildCaseMaterialClipboardHtml,
+  copyCaseMaterialImages,
   resolveCaseMaterialImageUrl,
 } from '../../client/src/utils/case-material-clipboard';
 
@@ -11,31 +11,33 @@ describe('case material clipboard', () => {
       .toBe('https://guanghe.feishuapp.com/spark/app/app_4ke0jqzqjy118/runtime/api/v1/storage/object/bucket_x/1.jpg');
   });
 
-  it('builds rich clipboard HTML instead of exposing storage paths as plain text', () => {
-    const imageUrl = 'https://guanghe.feishuapp.com/spark/app/app_4ke0jqzqjy118/runtime/api/v1/storage/object/bucket_x/1.jpg';
-    const html = buildCaseMaterialClipboardHtml([imageUrl], '家长推荐话术', true);
+  it('fails instead of reporting success when binary image clipboard is unavailable', async () => {
+    const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: { clipboard: { writeText: jest.fn() } },
+    });
 
-    expect(html).toContain(`<img src="${imageUrl}"`);
-    expect(html).toContain('家长推荐话术');
-    expect(html).not.toBe(imageUrl);
+    try {
+      await expect(copyCaseMaterialImages({
+        imageUrls: ['/storage/object/example.png'],
+        text: '家长推荐话术',
+        includeText: true,
+      })).rejects.toThrow('Image clipboard API unavailable');
+    } finally {
+      if (navigatorDescriptor) {
+        Object.defineProperty(globalThis, 'navigator', navigatorDescriptor);
+      } else {
+        Reflect.deleteProperty(globalThis, 'navigator');
+      }
+    }
   });
 
-  it('escapes clipboard text and image attributes', () => {
-    const html = buildCaseMaterialClipboardHtml(
-      ['https://example.com/a.jpg?x=1&y=2'],
-      '<建议>\n继续',
-      true,
-    );
-
-    expect(html).toContain('&lt;建议&gt;<br>继续');
-    expect(html).toContain('x=1&amp;y=2');
-  });
-
-  it('keeps embedded image data inside rich clipboard HTML', () => {
-    const embeddedImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB';
-    const html = buildCaseMaterialClipboardHtml([embeddedImage], '', false);
-
-    expect(html).toContain(`<img src="${embeddedImage}"`);
-    expect(html).not.toContain('/storage/object/');
+  it('rejects empty image packages before reporting copy success', async () => {
+    await expect(copyCaseMaterialImages({
+      imageUrls: [],
+      text: '',
+      includeText: false,
+    })).rejects.toThrow('No images to copy');
   });
 });

@@ -22,7 +22,10 @@ import {
   scoreCaseMaterial,
   violatesCaseMaterialProtectedTerm,
 } from '@client/src/utils/case-material-search';
-import { copyCaseMaterialImages } from '@client/src/utils/case-material-clipboard';
+import {
+  copyCaseMaterialImages,
+  prepareCaseMaterialImages,
+} from '@client/src/utils/case-material-clipboard';
 
 interface CaseMaterial {
   id: string;
@@ -66,6 +69,14 @@ async function writeRichClipboard(material: CaseMaterial, includeText: boolean):
     text: buildShareText(material),
     includeText,
   });
+}
+
+function preloadClipboardImage(material: CaseMaterial, includeText: boolean): void {
+  void prepareCaseMaterialImages({
+    imageUrls: material.images,
+    text: buildShareText(material),
+    includeText,
+  }).catch(() => undefined);
 }
 
 const CaseMaterials: React.FC = () => {
@@ -153,7 +164,7 @@ const CaseMaterials: React.FC = () => {
       await writeRichClipboard(material, includeText);
       toast.success(includeText ? '案例图文已合成图片并复制' : '案例图片已复制');
     } catch {
-      toast.error('图片复制失败，请检查浏览器剪贴板权限后重试');
+      toast.error('图片未写入剪贴板，请保持页面在前台并允许剪贴板权限后重试');
     }
   };
 
@@ -311,6 +322,8 @@ const CaseMaterials: React.FC = () => {
                     variant="outline"
                     size="sm"
                     className="px-2 font-hand text-xs"
+                    onPointerEnter={() => preloadClipboardImage(material, false)}
+                    onFocus={() => preloadClipboardImage(material, false)}
                     onClick={() => copyPackage(material, false)}
                   >
                     <Images className="mr-1 size-3.5" />图片
@@ -331,6 +344,8 @@ const CaseMaterials: React.FC = () => {
                     type="button"
                     size="sm"
                     className="px-2 font-hand text-xs"
+                    onPointerEnter={() => preloadClipboardImage(material, true)}
+                    onFocus={() => preloadClipboardImage(material, true)}
                     onClick={() => copyPackage(material, true)}
                   >
                     <Copy className="mr-1 size-3.5" />图文
