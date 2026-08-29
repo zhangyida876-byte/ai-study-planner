@@ -1,4 +1,5 @@
 import {
+  buildDiagnosisSubjectCoverageRules,
   buildOnionProductPathRules,
   buildProfessionalReportFramework,
 } from '../../client/src/config/report-prompt-templates';
@@ -8,18 +9,47 @@ describe('report prompt templates', () => {
     const prompt = buildProfessionalReportFramework('diagnosis');
 
     expect(prompt).toContain('## 1. 一句话判断');
-    expect(prompt).toContain('## 2. 家长能观察到的3-5个现象');
-    expect(prompt).toContain('## 3. 现象背后的深层根因');
-    expect(prompt).toContain('## 5. 最值得老师先讲的3个问题');
-    expect(prompt).toContain('## 7. 当前节点未来7天行动清单');
+    expect(prompt).toContain('## 2. 各科家长可观察现象');
+    expect(prompt).toContain('## 3. 各科核心问题与根因');
+    expect(prompt).toContain('## 5. 跨科共性问题');
+    expect(prompt).toContain('## 7. 各科未来7天行动清单');
     expect(prompt).toContain('## 8. 从现在到下一次关键考试');
     expect(prompt).toContain('临近开学时聚焦开学摸底和第一次月考');
     expect(prompt).toContain('## 9. 洋葱学园承接方案');
     expect(prompt).toContain('## 10. 课程顾问口播话术');
     expect(prompt).toContain('30秒短版');
     expect(prompt).toContain('2分钟完整版');
-    expect(prompt).toContain('1400-2000个中文字符');
+    expect(prompt).toContain('单科1400-2000个中文字符');
+    expect(prompt).toContain('不得限制为总共3行');
     expect(prompt).toContain('家长怎么检查');
+  });
+
+  it('keeps three observations and problems for one subject', () => {
+    const prompt = buildDiagnosisSubjectCoverageRules(['数学']);
+
+    expect(prompt).toContain('单科诊断');
+    expect(prompt).toContain('数学');
+    expect(prompt).toContain('3个家长可观察现象');
+    expect(prompt).toContain('3个核心问题');
+    expect(prompt).toContain('完整7天行动');
+    expect(prompt).toContain('不输出跨科共性问题');
+  });
+
+  it.each([
+    ['数学', '英语'],
+    ['语文', '数学', '英语'],
+    ['语文', '数学', '英语', '物理'],
+  ])('keeps every subject in multi-subject diagnosis: %j', (...subjects: string[]) => {
+    const prompt = buildDiagnosisSubjectCoverageRules(subjects);
+
+    expect(prompt).toContain(`${subjects.length}科诊断`);
+    expect(prompt).toContain(`已填写科目：${subjects.join('、')}`);
+    expect(prompt).toContain('每科至少2个家长可观察现象');
+    expect(prompt).toContain('每科至少2个核心问题');
+    expect(prompt).toContain('跨科共性问题');
+    expect(prompt).toContain('每个科目至少1行产品承接');
+    expect(prompt).toContain('禁止只分析最低分科目');
+    expect(prompt).toContain('禁止为了控制篇幅删掉已填写科目');
   });
 
   it('extends planning through subject selection, majors and employment', () => {

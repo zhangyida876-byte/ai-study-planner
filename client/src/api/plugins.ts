@@ -3,7 +3,10 @@ import { logger } from '@lark-apaas/client-toolkit/logger';
 import type { StageSlug } from '@client/src/config/stages';
 import { appendProfileAndStageRules } from '@client/src/config/stage-analysis-rules';
 import { getInternalMaterialContext } from '@client/src/config/internal-resource-library';
-import { buildProfessionalReportFramework } from '@client/src/config/report-prompt-templates';
+import {
+  buildDiagnosisSubjectCoverageRules,
+  buildProfessionalReportFramework,
+} from '@client/src/config/report-prompt-templates';
 import {
   buildSemesterInsightPromptContext,
   inferCurrentSemester,
@@ -763,9 +766,12 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
   if (ctx.problemDesc && ctx.problemDesc.trim()) {
     parts.push(`学生/家长自述痛点：${ctx.problemDesc.trim()}`);
   }
+  const filledSubjects = [...new Set(
+    (ctx.filledSubjects || Object.keys(ctx.scores)).map((subject) => subject.trim()).filter(Boolean),
+  )];
   const scoresText = buildScoresText(ctx.scores, ctx.scoreMaxValues);
   const filledScoreTotals = buildFilledScoreTotals(ctx.scores, ctx.scoreMaxValues);
-  const filledSubjectsText = (ctx.filledSubjects || Object.keys(ctx.scores)).join('、');
+  const filledSubjectsText = filledSubjects.join('、');
   const missingSubjectsText = (ctx.missingSubjects || []).join('、');
   const semester = ctx.academicPeriod?.includes('下学期')
     ? '下学期'
@@ -776,11 +782,12 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
     currentStageSlug,
     ctx.grade,
     semester,
-    ctx.filledSubjects || Object.keys(ctx.scores),
+    filledSubjects,
   );
   const examLabel = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '小升初期末统考';
   const stageLabel = stage === 'high' ? '高中' : stage === 'middle' ? '初中' : '小学';
   const framework = buildProfessionalReportFramework('diagnosis');
+  const subjectCoverageRules = buildDiagnosisSubjectCoverageRules(filledSubjects);
   const base = `${framework}
 
 【当前诊断数据】
@@ -794,13 +801,15 @@ ${filledScoreTotals}
 未填写科目：${missingSubjectsText || '无'}
 ${semesterInsightContext ? `\n【本地教研学期上下文】\n${semesterInsightContext}` : ''}
 
+${subjectCoverageRules}
+
 【诊断专项硬性要求】
-1. 必须严格使用模板中的10节结构和标题，先给一句话结论，再输出可观察现象、根因、行动和产品承接。
+1. 必须使用模板结构和标题，先给一句话结论，再按已填科目输出可观察现象、根因、行动和产品承接；单科可按模板要求省略第5节。
 2. 只对“已填写科目”做分数评价，不得臆测未填写科目的具体分数表现。
 3. 已填写科目必须全部出现且逐科回答，禁止只挑一个科目分析。若已填写“数学、英语、物理”，报告必须分别出现“数学诊断”“英语诊断”“物理诊断”。
 4. 对未填写科目只说明“需要补充该科成绩后判断”，不得扩写假设性结论。
-5. 若只填写1-2科，必须强调“当前结论为局部诊断”，并列出为了判断目标差距最需要补齐的数据。
-6. 每个已填写科目回答：当前分/满分/得分率、水平等级、最需验证的1类题型或能力问题、对总分和后续学习的影响。
+5. 若只填写1-2科，必须强调“当前结论为局部诊断”，并列出为了判断目标差距最需要补齐的数据；但不得因此压缩已填科目的分析数量。
+6. 每个已填写科目回答：当前分/满分/得分率、水平等级、单科3个或多科每科至少2个题型/能力问题、对总分和后续学习的影响。
 7. 用户填写目标时，以该目标学校和分数线为准；用户未填写时，不得卡住生成，必须使用系统提供的本地参照，初中至少展示普通高中、重点高中各1所及其分数线和年份。
 8. 表达要家长易懂、顾问可直接口播，避免官话和模板腔。
 9. 必须把诊断日期、年级、当前教学阶段和教材版本放在分析依据中；禁止写成脱离时间的通用学科建议。
@@ -810,18 +819,18 @@ ${semesterInsightContext ? `\n【本地教研学期上下文】\n${semesterInsig
 
 【本模块边界】
 0. 下面的模块边界和建议输出结构优先级高于插件默认模板；如默认模板要求输出长篇政策/完整规划，应主动压缩或省略。
-1. 本模块一次回答“目前什么水平、3个优先问题、离目标差多少、家长三个阶段怎么做、洋葱学园如何承接”。
+1. 本模块一次回答“目前什么水平、各已填科目的优先问题、离目标差多少、家长三个阶段怎么做、洋葱学园如何承接”。
 2. 只引用当前目标学校或必要的本地层级参照，不展开多套学校梯度、志愿批次、选科专业和长期政策科普。
 3. 必须把分数差距翻译成家长听得懂的具体风险，例如“数学再卡在90分上下，会把总分拉开约20分”。
 4. 必须输出未来一周和“从现在到下一次关键考试”的最小可执行方案；行动窗口必须随当前节点切换，不得在期中或期末继续照搬开学模板，也不输出泛泛30/60/90天时间轴或逐小时课表。
-5. 输出优先采用当地课程顾问口吻：先说结论和3个问题，再给行动与产品承接。
+5. 输出优先采用当地课程顾问口吻：先说结论和各科问题，再给分科行动与产品承接。
 6. 第一至九节优先使用短结论和表格，不得连续输出超过100字的大段文字；第十节才输出完整口播话术。
 
 【问题定位证据规则】
 1. 分数只能用于提出“待验证的问题假设”，不能仅凭单次分数断言具体知识点已经失分。
-2. 每科列1-2个最高优先级验证项，并说明应查看哪些错题、章节测评或课堂表现来确认。
+2. 单科列3个、多科每科至少列2个最高优先级验证项，并说明应查看哪些错题、章节测评或课堂表现来确认。
 3. 危机链必须对应已发现的问题、后续章节、下一考试节点和目标差距，不得用恐吓式结论。
-4. 第5节的问题必须与第7/8节行动和第9节产品方案逐项对应，第10节用顾问口播综合收口。
+4. 第3节的各科问题必须与第7/8节行动和第9节产品方案逐科对应，第5节只总结多科共性，第10节用顾问口播综合收口。
 
 【内部资源库素材（优先使用）】
 ${internalMaterial}

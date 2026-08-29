@@ -488,7 +488,7 @@ const Diagnosis: React.FC = () => {
           </Button>
           <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 学情诊断与升学规划</h1>
           <p className="font-hand mt-1 text-sm text-muted-foreground">
-            一次完成水平定位、3个优先问题、目标差距、家长行动和洋葱学园承接
+            一次完成水平定位、各科优先问题、目标差距、分科行动和洋葱学园承接
           </p>
         </div>
 
