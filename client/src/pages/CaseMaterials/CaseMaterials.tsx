@@ -153,9 +153,13 @@ const CaseMaterials: React.FC = () => {
       await writeRichClipboard(material, includeText);
       toast.success(includeText ? '案例图文已复制' : '案例图片已复制');
     } catch {
+      if (!includeText) {
+        toast.error('图片复制失败，请检查浏览器剪贴板权限后重试');
+        return;
+      }
       try {
         await navigator.clipboard.writeText(buildShareText(material));
-        toast.warning('图片复制受浏览器限制，已复制推荐话术');
+        toast.warning('图文复制受浏览器限制，本次仅复制了推荐话术');
       } catch {
         toast.error('复制失败，请检查浏览器剪贴板权限');
       }

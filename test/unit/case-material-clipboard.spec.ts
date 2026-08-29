@@ -30,4 +30,12 @@ describe('case material clipboard', () => {
     expect(html).toContain('&lt;建议&gt;<br>继续');
     expect(html).toContain('x=1&amp;y=2');
   });
+
+  it('keeps embedded image data inside rich clipboard HTML', () => {
+    const embeddedImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB';
+    const html = buildCaseMaterialClipboardHtml([embeddedImage], '', false);
+
+    expect(html).toContain(`<img src="${embeddedImage}"`);
+    expect(html).not.toContain('/storage/object/');
+  });
 });

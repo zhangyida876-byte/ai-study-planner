@@ -40,7 +40,7 @@ export function buildCaseMaterialClipboardHtml(
   return `<div>${paragraphs}${images}</div>`;
 }
 
-function writeLegacyRichClipboard(html: string, text: string): boolean {
+function writeClipboardEventData(html: string, text: string): boolean {
   let copied = false;
   const handleCopy = (event: ClipboardEvent): void => {
     if (!event.clipboardData) return;
@@ -56,6 +56,37 @@ function writeLegacyRichClipboard(html: string, text: string): boolean {
   return commandSucceeded && copied;
 }
 
+function writeRenderedRichClipboard(html: string): boolean {
+  const host = document.createElement('div');
+  host.contentEditable = 'true';
+  host.setAttribute('aria-hidden', 'true');
+  host.style.position = 'fixed';
+  host.style.left = '-10000px';
+  host.style.top = '0';
+  host.style.width = '720px';
+  host.style.background = '#ffffff';
+  host.innerHTML = html;
+  document.body.appendChild(host);
+
+  const selection = window.getSelection();
+  const range = document.createRange();
+  range.selectNodeContents(host);
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+  host.focus();
+
+  try {
+    return document.execCommand('copy');
+  } finally {
+    selection?.removeAllRanges();
+    host.remove();
+  }
+}
+
+function writeCompatibleRichClipboard(html: string, text: string): boolean {
+  return writeRenderedRichClipboard(html) || writeClipboardEventData(html, text);
+}
+
 async function loadClipboardImage(imageUrl: string): Promise<LoadedClipboardImage> {
   const response = await fetch(imageUrl, {
     credentials: 'include',
@@ -68,14 +99,15 @@ async function loadClipboardImage(imageUrl: string): Promise<LoadedClipboardImag
   const objectUrl = URL.createObjectURL(blob);
   const element = new Image();
   element.decoding = 'async';
-  element.src = objectUrl;
   try {
-    await element.decode();
-  } catch {
     await new Promise<void>((resolve, reject) => {
       element.onload = () => resolve();
       element.onerror = () => reject(new Error('Image decode failed'));
+      element.src = objectUrl;
     });
+  } catch (error) {
+    URL.revokeObjectURL(objectUrl);
+    throw error;
   }
 
   return {
@@ -93,6 +125,35 @@ function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
       else reject(new Error('Canvas export failed'));
     }, 'image/png');
   });
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') resolve(reader.result);
+      else reject(new Error('Image data URL conversion failed'));
+    };
+    reader.onerror = () => reject(reader.error || new Error('Image data URL conversion failed'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function clipboardContainsImage(): Promise<boolean | null> {
+  if (!navigator.clipboard?.read) return null;
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      if (item.types.some((type: string) => type.startsWith('image/'))) return true;
+      if (item.types.includes('text/html')) {
+        const html = await (await item.getType('text/html')).text();
+        if (/<img\b[^>]*src=["']data:image\//iu.test(html)) return true;
+      }
+    }
+    return false;
+  } catch {
+    return null;
+  }
 }
 
 async function createCompositePng(imageUrls: string[]): Promise<Blob> {
@@ -140,26 +201,40 @@ export async function copyCaseMaterialImages(options: {
   const absoluteUrls = imageUrls.map((url: string) => (
     resolveCaseMaterialImageUrl(url, window.location.origin)
   ));
-  const html = buildCaseMaterialClipboardHtml(absoluteUrls, text, includeText);
   const plainText = includeText ? text : '';
 
   if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
-    if (writeLegacyRichClipboard(html, plainText)) return 'rich-html';
+    const pngBlob = await createCompositePng(absoluteUrls);
+    const embeddedHtml = buildCaseMaterialClipboardHtml(
+      [await blobToDataUrl(pngBlob)],
+      text,
+      includeText,
+    );
+    if (writeCompatibleRichClipboard(embeddedHtml, plainText)) return 'rich-html';
     throw new Error('Rich clipboard unavailable');
   }
 
+  const pngPromise = createCompositePng(absoluteUrls);
+  const embeddedHtmlPromise = pngPromise
+    .then(blobToDataUrl)
+    .then((dataUrl: string) => buildCaseMaterialClipboardHtml([dataUrl], text, includeText));
   try {
-    const clipboardPayload: Record<string, Promise<Blob>> = {
-      'image/png': createCompositePng(absoluteUrls),
-    };
-    if (includeText) {
-      clipboardPayload['text/plain'] = Promise.resolve(new Blob([plainText], { type: 'text/plain' }));
-      clipboardPayload['text/html'] = Promise.resolve(new Blob([html], { type: 'text/html' }));
-    }
-    await navigator.clipboard.write([new ClipboardItem(clipboardPayload)]);
+    const clipboardPayload: Record<string, Promise<Blob>> = includeText
+      ? {
+        'text/html': embeddedHtmlPromise.then(
+          (embeddedHtml: string) => new Blob([embeddedHtml], { type: 'text/html' }),
+        ),
+      }
+      : { 'image/png': pngPromise };
+    await navigator.clipboard.write([
+      new ClipboardItem(clipboardPayload, { presentationStyle: 'inline' }),
+    ]);
+    const verified = await clipboardContainsImage();
+    if (verified === false) throw new Error('Clipboard write did not contain image data');
     return 'binary';
   } catch (error) {
-    if (writeLegacyRichClipboard(html, plainText)) return 'rich-html';
+    const embeddedHtml = await embeddedHtmlPromise;
+    if (writeCompatibleRichClipboard(embeddedHtml, plainText)) return 'rich-html';
     throw error;
   }
 }
