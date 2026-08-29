@@ -1,6 +1,10 @@
 const MAX_COMPOSITE_WIDTH = 1200;
 const MAX_COMPOSITE_HEIGHT = 14000;
 const IMAGE_GAP = 16;
+const TEXT_CANVAS_MIN_WIDTH = 720;
+const TEXT_PADDING = 36;
+const TEXT_LINE_HEIGHT = 40;
+const MAX_TEXT_LINES = 18;
 
 interface LoadedClipboardImage {
   element: HTMLImageElement;
@@ -156,28 +160,86 @@ async function clipboardContainsImage(): Promise<boolean | null> {
   }
 }
 
-async function createCompositePng(imageUrls: string[]): Promise<Blob> {
+function wrapCanvasText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string[] {
+  const lines: string[] = [];
+  text.trim().split(/\n/gu).forEach((paragraph: string) => {
+    if (!paragraph) {
+      lines.push('');
+      return;
+    }
+    let currentLine = '';
+    Array.from(paragraph).forEach((character: string) => {
+      const candidate = `${currentLine}${character}`;
+      if (currentLine && context.measureText(candidate).width > maxWidth) {
+        lines.push(currentLine);
+        currentLine = character;
+      } else {
+        currentLine = candidate;
+      }
+    });
+    if (currentLine) lines.push(currentLine);
+  });
+  if (lines.length <= MAX_TEXT_LINES) return lines;
+  return [...lines.slice(0, MAX_TEXT_LINES - 1), `${lines[MAX_TEXT_LINES - 1]}...`];
+}
+
+async function createCompositePng(imageUrls: string[], text = ''): Promise<Blob> {
   const loaded = await Promise.all(imageUrls.map(loadClipboardImage));
   try {
     const widest = Math.max(...loaded.map((image: LoadedClipboardImage) => image.width));
-    const naturalHeight = loaded.reduce(
+    const naturalImageHeight = loaded.reduce(
       (total: number, image: LoadedClipboardImage) => total + image.height,
       IMAGE_GAP * Math.max(0, loaded.length - 1),
     );
+    const canvasWidth = Math.min(
+      MAX_COMPOSITE_WIDTH,
+      Math.max(widest, text.trim() ? TEXT_CANVAS_MIN_WIDTH : 1),
+    );
+    const measurementCanvas = document.createElement('canvas');
+    const measurementContext = measurementCanvas.getContext('2d');
+    if (!measurementContext) throw new Error('Canvas unavailable');
+    measurementContext.font = '28px system-ui, sans-serif';
+    const textLines = text.trim()
+      ? wrapCanvasText(measurementContext, text, canvasWidth - TEXT_PADDING * 2)
+      : [];
+    const textHeight = textLines.length
+      ? TEXT_PADDING * 2 + textLines.length * TEXT_LINE_HEIGHT
+      : 0;
     const scale = Math.min(
       1,
-      MAX_COMPOSITE_WIDTH / widest,
-      MAX_COMPOSITE_HEIGHT / naturalHeight,
+      canvasWidth / widest,
+      Math.max(1, MAX_COMPOSITE_HEIGHT - textHeight) / naturalImageHeight,
     );
     const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(widest * scale));
-    canvas.height = Math.max(1, Math.round(naturalHeight * scale));
+    canvas.width = Math.max(1, canvasWidth);
+    canvas.height = Math.max(1, textHeight + Math.round(naturalImageHeight * scale));
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Canvas unavailable');
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
 
-    let top = 0;
+    if (textLines.length) {
+      context.fillStyle = '#fffdf4';
+      context.fillRect(0, 0, canvas.width, textHeight);
+      context.fillStyle = '#2d2d2d';
+      context.font = '28px system-ui, sans-serif';
+      context.textBaseline = 'top';
+      textLines.forEach((line: string, index: number) => {
+        context.fillText(line, TEXT_PADDING, TEXT_PADDING + index * TEXT_LINE_HEIGHT);
+      });
+      context.strokeStyle = '#d8d3c8';
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(TEXT_PADDING, textHeight - 1);
+      context.lineTo(canvas.width - TEXT_PADDING, textHeight - 1);
+      context.stroke();
+    }
+
+    let top = textHeight;
     loaded.forEach((image: LoadedClipboardImage) => {
       const width = Math.round(image.width * scale);
       const height = Math.round(image.height * scale);
@@ -204,28 +266,22 @@ export async function copyCaseMaterialImages(options: {
   const plainText = includeText ? text : '';
 
   if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
-    const pngBlob = await createCompositePng(absoluteUrls);
+    const pngBlob = await createCompositePng(absoluteUrls, plainText);
     const embeddedHtml = buildCaseMaterialClipboardHtml(
       [await blobToDataUrl(pngBlob)],
-      text,
-      includeText,
+      '',
+      false,
     );
-    if (writeCompatibleRichClipboard(embeddedHtml, plainText)) return 'rich-html';
+    if (writeCompatibleRichClipboard(embeddedHtml, '')) return 'rich-html';
     throw new Error('Rich clipboard unavailable');
   }
 
-  const pngPromise = createCompositePng(absoluteUrls);
+  const pngPromise = createCompositePng(absoluteUrls, plainText);
   const embeddedHtmlPromise = pngPromise
     .then(blobToDataUrl)
-    .then((dataUrl: string) => buildCaseMaterialClipboardHtml([dataUrl], text, includeText));
+    .then((dataUrl: string) => buildCaseMaterialClipboardHtml([dataUrl], '', false));
   try {
-    const clipboardPayload: Record<string, Promise<Blob>> = includeText
-      ? {
-        'text/html': embeddedHtmlPromise.then(
-          (embeddedHtml: string) => new Blob([embeddedHtml], { type: 'text/html' }),
-        ),
-      }
-      : { 'image/png': pngPromise };
+    const clipboardPayload: Record<string, Promise<Blob>> = { 'image/png': pngPromise };
     await navigator.clipboard.write([
       new ClipboardItem(clipboardPayload, { presentationStyle: 'inline' }),
     ]);
@@ -234,7 +290,7 @@ export async function copyCaseMaterialImages(options: {
     return 'binary';
   } catch (error) {
     const embeddedHtml = await embeddedHtmlPromise;
-    if (writeCompatibleRichClipboard(embeddedHtml, plainText)) return 'rich-html';
+    if (writeCompatibleRichClipboard(embeddedHtml, '')) return 'rich-html';
     throw error;
   }
 }
