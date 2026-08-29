@@ -48,6 +48,27 @@ describe('semester subject insights', () => {
   it('keeps extensible basic coverage for elementary and high school', () => {
     expect(getSemesterSubjectInsights('elementary', '六年级', '上学期').map((item) => item.subject))
       .toEqual(['语文', '数学', '英语']);
-    expect(getSemesterSubjectInsights('high', '高一', '下学期')).toHaveLength(9);
+    const highSchoolInsights = getSemesterSubjectInsights('high', '高一', '下学期');
+    expect(highSchoolInsights).toHaveLength(9);
+    highSchoolInsights.forEach((insight) => {
+      expect(insight.commonMistakes.length).toBeGreaterThan(0);
+      expect(insight.bottlenecks.length).toBeGreaterThan(0);
+      expect(insight.openingActions.length).toBeGreaterThan(0);
+      expect(insight.weeklyActions.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('builds high school diagnosis context without missing-field errors', () => {
+    const context = buildSemesterInsightPromptContext(
+      'high',
+      '高二',
+      '上学期',
+      ['语文', '数学'],
+      new Date(2026, 7, 29, 10),
+    );
+
+    expect(context).toContain('当前学期：高二上学期');
+    expect(context).toContain('数学：');
+    expect(context).toContain('常见错点=');
   });
 });

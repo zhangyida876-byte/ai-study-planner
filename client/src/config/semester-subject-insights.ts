@@ -20,6 +20,28 @@ export interface SemesterSubjectInsight {
   onionRecommendations: string[];
 }
 
+const ensureList = (items: string[] | undefined, fallback: string[]): string[] => (
+  items?.filter(Boolean).length ? items.filter(Boolean) : fallback
+);
+
+function normalizeInsight(insight: SemesterSubjectInsight): SemesterSubjectInsight {
+  const subjectFallback = `${insight.subject}当前章节需结合最近作业和测评进一步核对`;
+  return {
+    ...insight,
+    agePsychology: ensureList(insight.agePsychology, ['需要用清晰的小目标和及时反馈稳定学习节奏']),
+    learningTraits: ensureList(insight.learningTraits, ['先用最近作业和测评区分知识、方法与执行问题']),
+    coreGoals: ensureList(insight.coreGoals, [`说清${insight.subject}当前章节的核心规则`]),
+    keyDifficulties: ensureList(insight.keyDifficulties, [subjectFallback]),
+    commonMistakes: ensureList(insight.commonMistakes, [subjectFallback]),
+    bottlenecks: ensureList(insight.bottlenecks, [subjectFallback]),
+    observablePhenomena: ensureList(insight.observablePhenomena, [subjectFallback]),
+    rootCauses: ensureList(insight.rootCauses, [subjectFallback]),
+    openingActions: ensureList(insight.openingActions, ['抽查最近错题并按概念、方法和执行分类']),
+    weeklyActions: ensureList(insight.weeklyActions, ['完成一次章节小测并复盘同类错误']),
+    onionRecommendations: ensureList(insight.onionRecommendations, ['先用测评定位，再按知识点课程、解题课和错题复盘闭环学习']),
+  };
+}
+
 type SubjectSeed = Omit<SemesterSubjectInsight, 'stage' | 'grade' | 'semester' | 'agePsychology' | 'learningTraits'>;
 
 const MIDDLE_SUBJECTS = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治'] as const;
@@ -140,7 +162,7 @@ function createMiddleInsights(): SemesterSubjectInsight[] {
     return MIDDLE_SUBJECTS.map((subject) => {
       const base = SUBJECT_BASE[subject];
       const [subjectCharacteristics, difficulties, mistakes] = PERIOD_FOCUS[period][subject];
-      return {
+      return normalizeInsight({
         stage: 'middle' as const,
         grade,
         semester,
@@ -157,7 +179,7 @@ function createMiddleInsights(): SemesterSubjectInsight[] {
         openingActions: base.openingActions,
         weeklyActions: base.weeklyActions,
         onionRecommendations: base.onionRecommendations,
-      };
+      });
     });
   });
 }
@@ -181,7 +203,7 @@ function createBasicStageInsights(
 
   return subjects.map((subject) => {
     const base = SUBJECT_BASE[subject];
-    return {
+    return normalizeInsight({
       stage,
       grade,
       semester,
@@ -191,14 +213,14 @@ function createBasicStageInsights(
       subjectCharacteristics: `${grade}${semester}的${subject}需按当地教材版本和学校进度核对，先用最近作业、试卷与章节目录定位当前卡点。`,
       coreGoals: ['说清当前单元的核心概念和方法', '用基础题与变式题验证能否迁移'],
       keyDifficulties: ['当前教材章节的核心概念', '从例题到变式题的方法迁移'],
-      commonMistakes: base.commonMistakes,
+      commonMistakes: base.observablePhenomena,
       bottlenecks: base.rootCauses,
       observablePhenomena: base.observablePhenomena,
       rootCauses: base.rootCauses,
       openingActions: base.openingActions,
       weeklyActions: base.weeklyActions,
       onionRecommendations: base.onionRecommendations,
-    };
+    });
   });
 }
 
