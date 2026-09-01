@@ -26,7 +26,7 @@ import {
   getCaseMaterialCompositePng,
   prepareCaseMaterialImages,
 } from '@client/src/utils/case-material-clipboard';
-import { copyPlainText, copyRichContent } from '@client/src/utils/clipboard';
+import { copyPlainText, copyPngImage } from '@client/src/utils/clipboard';
 
 interface CaseMaterial {
   id: string;
@@ -154,22 +154,21 @@ const CaseMaterials: React.FC = () => {
     includeText: boolean,
   ): Promise<void> => {
     try {
-      const absoluteImageUrls = material.images.map((url) => (
-        new URL(url, window.location.origin).toString()
-      ));
-      const result = await copyRichContent({
-        text: includeText ? buildShareText(material) : '',
-        imageUrls: absoluteImageUrls,
-        imagePng: getCaseMaterialCompositePng({
+      const result = await copyPngImage(
+        getCaseMaterialCompositePng({
           imageUrls: material.images,
           text: buildShareText(material),
           includeText,
         }),
-      });
-      if (result.copiedImageBinary) toast.success(result.message);
-      else toast.warning(result.message);
+        includeText ? '已复制案例图文图片' : '已复制案例图片',
+      );
+      toast.success(result.message);
     } catch {
-      toast.error(includeText ? '复制失败，请手动选择话术并保存图片' : '复制失败，请手动保存图片');
+      toast.error(
+        includeText
+          ? '图文图片未写入剪贴板，本次未复制链接'
+          : '案例图片未写入剪贴板，本次未复制链接',
+      );
     }
   };
 
@@ -328,6 +327,7 @@ const CaseMaterials: React.FC = () => {
                     size="sm"
                     className="px-2 font-hand text-xs"
                     onPointerEnter={() => preloadClipboardImage(material, false)}
+                    onPointerDown={() => preloadClipboardImage(material, false)}
                     onFocus={() => preloadClipboardImage(material, false)}
                     onClick={() => copyPackage(material, false)}
                   >
@@ -350,6 +350,7 @@ const CaseMaterials: React.FC = () => {
                     size="sm"
                     className="px-2 font-hand text-xs"
                     onPointerEnter={() => preloadClipboardImage(material, true)}
+                    onPointerDown={() => preloadClipboardImage(material, true)}
                     onFocus={() => preloadClipboardImage(material, true)}
                     onClick={() => copyPackage(material, true)}
                   >

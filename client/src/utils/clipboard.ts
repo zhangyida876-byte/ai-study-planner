@@ -10,6 +10,11 @@ export interface RichClipboardResult {
   message: string;
 }
 
+export interface ImageClipboardResult {
+  copiedImageBinary: true;
+  message: string;
+}
+
 function errorText(error: unknown): string {
   return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
 }
@@ -85,6 +90,45 @@ async function writeClipboardRepresentations(data: Record<string, Blob | Promise
     throw new Error('Rich clipboard API unavailable');
   }
   await navigator.clipboard.write([new ClipboardItem(data, { presentationStyle: 'inline' })]);
+}
+
+export async function copyPngImage(
+  imagePng: Blob | Promise<Blob>,
+  successMessage = '已复制图片',
+): Promise<ImageClipboardResult> {
+  if (
+    typeof navigator === 'undefined'
+    || !navigator.clipboard?.write
+    || typeof ClipboardItem === 'undefined'
+  ) {
+    throw new Error('Image clipboard API unavailable');
+  }
+  if (typeof ClipboardItem.supports === 'function' && !ClipboardItem.supports('image/png')) {
+    throw new Error('PNG clipboard format unsupported');
+  }
+
+  const pngPromise = Promise.resolve(imagePng).then((blob: Blob) => {
+    if (blob.size === 0 || blob.type !== 'image/png') {
+      throw new Error('Clipboard image must be a non-empty PNG');
+    }
+    return blob;
+  });
+
+  try {
+    // Keep this item image-only. Rich-text targets such as Feishu may otherwise
+    // prefer text/html and paste a fallback link instead of the PNG bytes.
+    await navigator.clipboard.write([
+      new ClipboardItem({ 'image/png': pngPromise }),
+    ]);
+  } catch (error) {
+    logger.error('clipboard PNG-only write failed', errorText(error));
+    throw error;
+  }
+
+  return {
+    copiedImageBinary: true,
+    message: successMessage,
+  };
 }
 
 export async function copyRichContent(options: {

@@ -5,6 +5,7 @@ jest.mock('@lark-apaas/client-toolkit/logger', () => ({
 import {
   buildClipboardHtml,
   buildClipboardPlainText,
+  copyPngImage,
   copyRichContent,
 } from '../../client/src/utils/clipboard';
 
@@ -31,6 +32,10 @@ describe('clipboard fallbacks', () => {
     writeText?: jest.Mock<Promise<void>, [string]>;
   }): void {
     class MockClipboardItem {
+      static supports(type: string): boolean {
+        return type === 'image/png';
+      }
+
       constructor(
         public readonly items: Record<string, Blob | Promise<Blob>>,
       ) {}
@@ -77,6 +82,39 @@ describe('clipboard fallbacks', () => {
 
     expect(html).toContain('&lt;建议&gt;');
     expect(html).toContain('x=1&amp;y=2');
+  });
+
+  it('writes case images as PNG-only clipboard items', async () => {
+    const write = jest.fn<Promise<void>, [ClipboardItem[]]>().mockResolvedValue();
+    installClipboardMocks({ write });
+
+    const result = await copyPngImage(
+      Promise.resolve(new Blob(['png'], { type: 'image/png' })),
+      '已复制案例图片',
+    );
+
+    expect(result.copiedImageBinary).toBe(true);
+    expect(result.message).toBe('已复制案例图片');
+    expect(write).toHaveBeenCalledTimes(1);
+    const clipboardItem = write.mock.calls[0][0][0] as unknown as {
+      items: Record<string, Blob | Promise<Blob>>;
+    };
+    expect(Object.keys(clipboardItem.items)).toEqual(['image/png']);
+  });
+
+  it('rejects invalid PNG payloads instead of copying a fallback link', async () => {
+    const write = jest.fn<Promise<void>, [ClipboardItem[]]>(async (items: ClipboardItem[]) => {
+      const clipboardItem = items[0] as unknown as {
+        items: Record<string, Blob | Promise<Blob>>;
+      };
+      await Promise.all(Object.values(clipboardItem.items));
+    });
+    installClipboardMocks({ write });
+
+    await expect(copyPngImage(
+      Promise.resolve(new Blob(['not-png'], { type: 'image/jpeg' })),
+    )).rejects.toThrow('Clipboard image must be a non-empty PNG');
+    expect(write).toHaveBeenCalledTimes(1);
   });
 
   it('falls back to HTML with image links when binary image writing fails', async () => {
