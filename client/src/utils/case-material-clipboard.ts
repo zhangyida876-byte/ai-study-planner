@@ -10,36 +10,28 @@ interface LoadedClipboardImage {
   element: HTMLImageElement;
   width: number;
   height: number;
-  objectUrl: string;
+  objectUrl?: string;
 }
 
 const compositePngCache = new Map<string, Promise<Blob>>();
+const resolvedCompositePngCache = new Map<string, Blob>();
 const MAX_COMPOSITE_CACHE_ENTRIES = 18;
 
 export function resolveCaseMaterialImageUrl(imageUrl: string, origin: string): string {
   return new URL(imageUrl, origin).toString();
 }
 
-async function loadClipboardImage(imageUrl: string): Promise<LoadedClipboardImage> {
-  const response = await fetch(imageUrl, {
-    credentials: 'include',
-    cache: 'force-cache',
-  });
-  if (!response.ok) throw new Error(`Image request failed: ${response.status}`);
-  const blob = await response.blob();
-  if (blob.size === 0) throw new Error('Storage object is empty');
-
-  const objectUrl = URL.createObjectURL(blob);
+async function decodeClipboardImage(src: string, objectUrl?: string): Promise<LoadedClipboardImage> {
   const element = new Image();
   element.decoding = 'async';
   try {
     await new Promise<void>((resolve, reject) => {
       element.onload = () => resolve();
       element.onerror = () => reject(new Error('Image decode failed'));
-      element.src = objectUrl;
+      element.src = src;
     });
   } catch (error) {
-    URL.revokeObjectURL(objectUrl);
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
     throw error;
   }
 
@@ -49,6 +41,34 @@ async function loadClipboardImage(imageUrl: string): Promise<LoadedClipboardImag
     height: element.naturalHeight,
     objectUrl,
   };
+}
+
+async function loadClipboardImage(imageUrl: string): Promise<LoadedClipboardImage> {
+  try {
+    const response = await fetch(imageUrl, {
+      credentials: 'include',
+      cache: 'force-cache',
+    });
+    if (!response.ok) throw new Error(`Image request failed: ${response.status}`);
+    const blob = await response.blob();
+    if (blob.size === 0) throw new Error('Storage object is empty');
+    if (!blob.type.startsWith('image/')) {
+      throw new Error(`Storage response is not an image: ${blob.type || 'unknown type'}`);
+    }
+    const objectUrl = URL.createObjectURL(blob);
+    return await decodeClipboardImage(objectUrl, objectUrl);
+  } catch (fetchError) {
+    // Miaoda storage links can redirect anonymous fetches to login while the
+    // authenticated <img> request still succeeds. Reusing the browser image
+    // loader preserves those credentials for same-origin storage resources.
+    try {
+      return await decodeClipboardImage(imageUrl);
+    } catch (imageError) {
+      const fetchMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+      const imageMessage = imageError instanceof Error ? imageError.message : String(imageError);
+      throw new Error(`Image fetch failed: ${fetchMessage}; direct load failed: ${imageMessage}`);
+    }
+  }
 }
 
 function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -149,7 +169,9 @@ async function createCompositePng(imageUrls: string[], text = ''): Promise<Blob>
     });
     return await canvasToPng(canvas);
   } finally {
-    loaded.forEach((image: LoadedClipboardImage) => URL.revokeObjectURL(image.objectUrl));
+    loaded.forEach((image: LoadedClipboardImage) => {
+      if (image.objectUrl) URL.revokeObjectURL(image.objectUrl);
+    });
   }
 }
 
@@ -159,17 +181,28 @@ function getCompositeCacheKey(imageUrls: string[], text: string): string {
 
 function getCompositePng(imageUrls: string[], text: string): Promise<Blob> {
   const cacheKey = getCompositeCacheKey(imageUrls, text);
+  const resolved = resolvedCompositePngCache.get(cacheKey);
+  if (resolved) return Promise.resolve(resolved);
   const cached = compositePngCache.get(cacheKey);
   if (cached) return cached;
 
-  const composite = createCompositePng(imageUrls, text).catch((error: unknown) => {
-    compositePngCache.delete(cacheKey);
-    throw error;
-  });
+  const composite = createCompositePng(imageUrls, text)
+    .then((blob: Blob) => {
+      resolvedCompositePngCache.set(cacheKey, blob);
+      return blob;
+    })
+    .catch((error: unknown) => {
+      compositePngCache.delete(cacheKey);
+      resolvedCompositePngCache.delete(cacheKey);
+      throw error;
+    });
   compositePngCache.set(cacheKey, composite);
   if (compositePngCache.size > MAX_COMPOSITE_CACHE_ENTRIES) {
     const oldestKey = compositePngCache.keys().next().value;
-    if (typeof oldestKey === 'string') compositePngCache.delete(oldestKey);
+    if (typeof oldestKey === 'string') {
+      compositePngCache.delete(oldestKey);
+      resolvedCompositePngCache.delete(oldestKey);
+    }
   }
   return composite;
 }
@@ -212,4 +245,16 @@ export function getCaseMaterialCompositePng(options: {
     }
     return pngBlob;
   });
+}
+
+export function getPreparedCaseMaterialPng(options: {
+  imageUrls: string[];
+  text: string;
+  includeText: boolean;
+}): Blob | Promise<Blob> {
+  if (options.imageUrls.length === 0) return Promise.reject(new Error('No images to copy'));
+  const { absoluteUrls, compositeText } = resolveClipboardOptions(options);
+  const cacheKey = getCompositeCacheKey(absoluteUrls, compositeText);
+  return resolvedCompositePngCache.get(cacheKey)
+    || getCaseMaterialCompositePng(options);
 }

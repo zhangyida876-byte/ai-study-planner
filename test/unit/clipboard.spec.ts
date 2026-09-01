@@ -83,7 +83,13 @@ describe('clipboard fallbacks', () => {
 
     const result = await copyText('学情报告');
 
-    expect(result).toEqual({ ok: true, mode: 'text-only', message: '已复制文本' });
+    expect(result).toEqual({
+      ok: true,
+      mode: 'text-only',
+      imageWritten: false,
+      textWritten: true,
+      message: '已复制文本',
+    });
     expect(writeText).toHaveBeenCalledWith('学情报告');
   });
 
@@ -99,16 +105,35 @@ describe('clipboard fallbacks', () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(result.mode).toBe('rich-image');
+    expect(result.mode).toBe('image-only');
+    expect(result.imageWritten).toBe(true);
     const clipboardItem = write.mock.calls[0][0][0] as unknown as {
       items: Record<string, Blob | Promise<Blob>>;
     };
     expect(Object.keys(clipboardItem.items)).toEqual(['image/png']);
   });
 
+  it('writes an already prepared PNG Blob in one browser call', async () => {
+    const write = jest.fn<Promise<void>, [ClipboardItem[]]>().mockResolvedValue();
+    installClipboardMocks({ write });
+
+    const result = await copyRichContent({
+      imageUrl,
+      imageBlob: new Blob(['png'], { type: 'image/png' }),
+    });
+
+    expect(result.imageWritten).toBe(true);
+    expect(write).toHaveBeenCalledTimes(1);
+    const clipboardItem = write.mock.calls[0][0][0] as unknown as {
+      items: Record<string, Blob | Promise<Blob>>;
+    };
+    expect(clipboardItem.items['image/png']).toBeInstanceOf(Blob);
+  });
+
   it('falls back to HTML and links when binary image writing is blocked', async () => {
     const write = jest.fn<Promise<void>, [ClipboardItem[]]>()
       .mockRejectedValueOnce(new Error('image write blocked'))
+      .mockRejectedValueOnce(new Error('resolved image write blocked'))
       .mockResolvedValueOnce();
     const writeText = jest.fn<Promise<void>, [string]>().mockResolvedValue();
     installClipboardMocks({ write, writeText });
@@ -123,10 +148,10 @@ describe('clipboard fallbacks', () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(result.mode).toBe('rich-html');
-    expect(result.message).toContain('话术和图片链接');
-    expect(write).toHaveBeenCalledTimes(2);
-    const fallbackItem = write.mock.calls[1][0][0] as unknown as {
+    expect(result.mode).toBe('html-with-image');
+    expect(result.imageWritten).toBe(false);
+    expect(write).toHaveBeenCalledTimes(3);
+    const fallbackItem = write.mock.calls[2][0][0] as unknown as {
       items: Record<string, Blob | Promise<Blob>>;
     };
     const plainBlob = fallbackItem.items['text/plain'] as Blob;
@@ -155,6 +180,26 @@ describe('clipboard fallbacks', () => {
     expect(result.mode).toBe('text-with-image-link');
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('案例：案例标题'));
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining(imageUrl));
+  });
+
+  it('retries a pending image as a resolved Blob for Chromium', async () => {
+    const write = jest.fn<Promise<void>, [ClipboardItem[]]>()
+      .mockRejectedValueOnce(new Error('promise representation rejected'))
+      .mockResolvedValueOnce();
+    installClipboardMocks({ write });
+
+    const result = await copyRichContent({
+      imageUrl,
+      imageBlob: Promise.resolve(new Blob(['png'], { type: 'image/png' })),
+    });
+
+    expect(result.mode).toBe('image-only');
+    expect(result.imageWritten).toBe(true);
+    expect(write).toHaveBeenCalledTimes(2);
+    const retriedItem = write.mock.calls[1][0][0] as unknown as {
+      items: Record<string, Blob | Promise<Blob>>;
+    };
+    expect(retriedItem.items['image/png']).toBeInstanceOf(Blob);
   });
 
   it('copies text and links when ClipboardItem is unavailable in a webview', async () => {

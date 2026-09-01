@@ -1,8 +1,9 @@
 import { logger } from '@lark-apaas/client-toolkit/logger';
 
 export type ClipboardMode =
-  | 'rich-image'
-  | 'rich-html'
+  | 'image-only'
+  | 'image-with-text'
+  | 'html-with-image'
   | 'text-with-image-link'
   | 'text-only'
   | 'failed';
@@ -10,8 +11,18 @@ export type ClipboardMode =
 export interface ClipboardResult {
   ok: boolean;
   mode: ClipboardMode;
+  imageWritten: boolean;
+  textWritten: boolean;
   message: string;
   error?: string;
+}
+
+export interface CopyImageOptions {
+  imageUrl: string;
+  imageBlob?: Blob | Promise<Blob>;
+  plainText?: string;
+  html?: string;
+  title?: string;
 }
 
 export interface RichClipboardOptions {
@@ -22,6 +33,7 @@ export interface RichClipboardOptions {
   title?: string;
   tags?: string[];
   sourceUrl?: string;
+  imageContainsText?: boolean;
 }
 
 function errorText(error: unknown): string {
@@ -108,6 +120,8 @@ export async function copyText(text: string): Promise<ClipboardResult> {
     return {
       ok: false,
       mode: 'failed',
+      imageWritten: false,
+      textWritten: false,
       message: '没有可复制的内容',
       error: 'Clipboard text is empty',
     };
@@ -116,19 +130,38 @@ export async function copyText(text: string): Promise<ClipboardResult> {
   try {
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(normalizedText);
-      return { ok: true, mode: 'text-only', message: '已复制文本' };
+      return {
+        ok: true,
+        mode: 'text-only',
+        imageWritten: false,
+        textWritten: true,
+        message: '已复制文本',
+      };
     }
   } catch (error) {
     logger.error('clipboard.writeText failed', errorText(error));
   }
 
   if (execCommandCopyText(normalizedText)) {
-    return { ok: true, mode: 'text-only', message: '已复制文本' };
+    return {
+      ok: true,
+      mode: 'text-only',
+      imageWritten: false,
+      textWritten: true,
+      message: '已复制文本',
+    };
   }
 
   const error = 'Text clipboard unavailable';
   logger.error('clipboard text fallback failed', error);
-  return { ok: false, mode: 'failed', message: '复制失败，请手动选择内容', error };
+  return {
+    ok: false,
+    mode: 'failed',
+    imageWritten: false,
+    textWritten: false,
+    message: '复制失败，请手动选择内容',
+    error,
+  };
 }
 
 function canWriteRichClipboard(): boolean {
@@ -151,20 +184,42 @@ async function writePngImage(imageBlob: Blob | Promise<Blob>): Promise<void> {
   if (typeof ClipboardItem.supports === 'function' && !ClipboardItem.supports('image/png')) {
     throw new Error('PNG clipboard format unsupported');
   }
-  const pngPromise = Promise.resolve(imageBlob).then((blob: Blob) => {
+  const validatePng = (blob: Blob): Blob => {
     if (blob.size === 0 || blob.type !== 'image/png') {
       throw new Error('Clipboard image must be a non-empty PNG');
     }
     return blob;
-  });
-  // Keep binary image writes image-only. Feishu otherwise prefers text/html
-  // and pastes the image as a downloadable "图片1" link.
-  await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngPromise })]);
+  };
+
+  if (imageBlob instanceof Blob) {
+    const pngBlob = validatePng(imageBlob);
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+    return;
+  }
+
+  const pngPromise = Promise.resolve(imageBlob).then(validatePng);
+  try {
+    // Safari needs the ClipboardItem to be created before async image work
+    // finishes so that the write remains associated with the click gesture.
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngPromise })]);
+  } catch (promiseError) {
+    // Chromium works more reliably with a resolved Blob. This second path is
+    // especially important when the image was still being prepared on click.
+    const pngBlob = await pngPromise;
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+    } catch (blobError) {
+      throw new Error(
+        `Promise write failed: ${errorText(promiseError)}; Blob write failed: ${errorText(blobError)}`,
+      );
+    }
+  }
 }
 
 function richMessage(mode: ClipboardMode, hasText: boolean): string {
-  if (mode === 'rich-image') return hasText ? '已复制图文图片' : '已复制图片';
-  if (mode === 'rich-html') return '已复制话术和图片链接，图片未能直接写入';
+  if (mode === 'image-with-text') return '已复制图文图片';
+  if (mode === 'image-only') return '已复制图片';
+  if (mode === 'html-with-image') return '已复制图文，粘贴效果取决于目标应用';
   if (mode === 'text-with-image-link') return '已复制话术和图片链接，图片未能直接写入';
   return '已复制话术，图片请手动保存';
 }
@@ -182,10 +237,15 @@ export async function copyRichContent(
       // ClipboardItem is constructed before awaiting the image promise so the
       // browser still sees this operation inside the original click gesture.
       await writePngImage(options.imageBlob);
+      const mode: ClipboardMode = options.imageContainsText
+        ? 'image-with-text'
+        : 'image-only';
       return {
         ok: true,
-        mode: 'rich-image',
-        message: richMessage('rich-image', Boolean(options.plainText?.trim())),
+        mode,
+        imageWritten: true,
+        textWritten: Boolean(options.imageContainsText && options.plainText?.trim()),
+        message: richMessage(mode, Boolean(options.plainText?.trim())),
       };
     } catch (error) {
       const reason = errorText(error);
@@ -202,8 +262,10 @@ export async function copyRichContent(
       });
       return {
         ok: true,
-        mode: 'rich-html',
-        message: richMessage('rich-html', Boolean(options.plainText?.trim())),
+        mode: 'html-with-image',
+        imageWritten: false,
+        textWritten: Boolean(fallbackText),
+        message: richMessage('html-with-image', Boolean(options.plainText?.trim())),
         error: errors.join(' | ') || undefined,
       };
     } catch (error) {
@@ -219,6 +281,8 @@ export async function copyRichContent(
     return {
       ok: true,
       mode,
+      imageWritten: false,
+      textWritten: true,
       message: richMessage(mode, Boolean(options.plainText?.trim())),
       error: errors.join(' | ') || undefined,
     };
@@ -229,7 +293,19 @@ export async function copyRichContent(
   return {
     ok: false,
     mode: 'failed',
+    imageWritten: false,
+    textWritten: false,
     message: '复制失败，请手动选择内容',
     error,
   };
+}
+
+export async function copyImage(options: CopyImageOptions): Promise<ClipboardResult> {
+  return copyRichContent({
+    imageUrl: options.imageUrl,
+    imageBlob: options.imageBlob,
+    plainText: options.plainText,
+    html: options.html,
+    title: options.title,
+  });
 }

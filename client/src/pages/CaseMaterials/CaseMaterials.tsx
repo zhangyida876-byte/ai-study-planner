@@ -23,7 +23,7 @@ import {
   violatesCaseMaterialProtectedTerm,
 } from '@client/src/utils/case-material-search';
 import {
-  getCaseMaterialCompositePng,
+  getPreparedCaseMaterialPng,
   prepareCaseMaterialImages,
 } from '@client/src/utils/case-material-clipboard';
 import { copyRichContent, copyText } from '@client/src/utils/clipboard';
@@ -163,18 +163,20 @@ const CaseMaterials: React.FC = () => {
       ].filter(Boolean),
       plainText: buildShareText(material),
       imageUrl: material.images,
-      imageBlob: getCaseMaterialCompositePng({
+      imageBlob: getPreparedCaseMaterialPng({
         imageUrls: material.images,
         text: buildShareText(material),
         includeText,
       }),
+      imageContainsText: includeText,
       sourceUrl: SOURCE_BASE_URL,
     });
     if (result.ok) {
-      const message = result.mode === 'rich-image'
+      const message = result.imageWritten
         ? includeText ? '已复制案例图文图片' : '已复制案例图片'
         : result.message;
-      toast.success(message);
+      if (result.imageWritten) toast.success(message);
+      else toast.warning(message);
       return;
     }
     toast.error(result.message);
@@ -292,6 +294,10 @@ const CaseMaterials: React.FC = () => {
                     src={imageUrl}
                     alt={`${material.title} 第${imageIndex + 1}张`}
                     loading="lazy"
+                    onLoad={() => {
+                      preloadClipboardImage(material, false);
+                      preloadClipboardImage(material, true);
+                    }}
                     className="max-h-[330px] min-w-full snap-center object-contain"
                   />
                 ))}
