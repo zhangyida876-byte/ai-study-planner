@@ -7,7 +7,7 @@ import { Streamdown } from '@client/src/components/ui/streamdown';
 import { Button } from '@client/src/components/ui/button';
 import { Input } from '@client/src/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@client/src/components/ui/tabs';
-import { copyPlainText } from '@client/src/utils/clipboard';
+import { copyText } from '@client/src/utils/clipboard';
 import {
   Select,
   SelectContent,
@@ -1438,12 +1438,12 @@ const Plan: React.FC<PlanProps> = ({ embedded = false }) => {
 
   const handleCopyReport = useCallback(async (): Promise<void> => {
     if (!reportContent) return;
-    try {
-      await copyPlainText(reportContent);
+    const result = await copyText(reportContent);
+    if (result.ok) {
       toast.success('已复制到剪贴板');
-    } catch {
-      toast.error('复制失败');
+      return;
     }
+    toast.error(result.message);
   }, [reportContent]);
 
   const config = EXAM_TYPE_CONFIG[stageConfig.examType];

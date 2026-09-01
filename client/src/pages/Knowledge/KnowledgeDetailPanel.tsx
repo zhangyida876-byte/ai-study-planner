@@ -12,7 +12,7 @@ import { getInternalScriptAnchor } from '@client/src/config/internal-resource-li
 
 import type { StageProfile } from '@client/src/types/stage-profile';
 import type { StageSlug } from '@client/src/config/stages';
-import { copyPlainText } from '@client/src/utils/clipboard';
+import { copyText } from '@client/src/utils/clipboard';
 
 interface KnowledgeDetailPanelProps {
   detail: KnowledgePoint | null;
@@ -38,14 +38,14 @@ const SectionBlock: React.FC<SectionBlockProps> = ({
 }) => {
   const [copied, setCopied] = React.useState(false);
 
-  const handleCopy = async () => {
-    try {
-      await copyPlainText(content);
+  const handleCopy = async (): Promise<void> => {
+    const result = await copyText(content);
+    if (result.ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
+      return;
     }
+    setCopied(false);
   };
 
   return (

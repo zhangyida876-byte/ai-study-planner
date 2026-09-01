@@ -26,7 +26,7 @@ import {
   type PersonalizedLearningPlanInput,
 } from '@client/src/api/plugins';
 import { toSelectValue } from '@client/src/lib/utils';
-import { copyPlainText } from '@client/src/utils/clipboard';
+import { copyText } from '@client/src/utils/clipboard';
 import { loadModuleSession, saveModuleSession } from '@client/src/utils/module-session';
 import { caseArchive as caseArchiveApi } from '@client/src/api';
 
@@ -419,15 +419,15 @@ const StudyPlan: React.FC<StudyPlanProps> = ({ embedded = false }) => {
     diagnosisContext, profile,
   ]);
 
-  const handleCopy = async () => {
-    try {
-      await copyPlainText(report);
+  const handleCopy = async (): Promise<void> => {
+    const result = await copyText(report);
+    if (result.ok) {
       setCopied(true);
       toast.success('已复制');
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error('复制失败');
+      return;
     }
+    toast.error(result.message);
   };
 
   const handleJumpToReport = () => {

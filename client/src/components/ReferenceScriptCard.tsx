@@ -3,7 +3,7 @@ import { Copy, MessageCircleMore, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Button } from '@/components/ui/button';
-import { copyPlainText } from '@client/src/utils/clipboard';
+import { copyText } from '@client/src/utils/clipboard';
 
 interface ReferenceScriptCardProps {
   onGenerate: () => string;
@@ -28,14 +28,14 @@ const ReferenceScriptCard: React.FC<ReferenceScriptCardProps> = ({
     toast.success('参考话术已生成');
   };
 
-  const handleCopy = async () => {
+  const handleCopy = async (): Promise<void> => {
     if (!script) return;
-    try {
-      await copyPlainText(script);
+    const result = await copyText(script);
+    if (result.ok) {
       toast.success('参考话术已复制');
-    } catch {
-      toast.error('复制失败，请重试');
+      return;
     }
+    toast.error(result.message);
   };
 
   return (

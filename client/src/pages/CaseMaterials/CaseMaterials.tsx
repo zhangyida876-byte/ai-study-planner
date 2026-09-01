@@ -26,7 +26,7 @@ import {
   getCaseMaterialCompositePng,
   prepareCaseMaterialImages,
 } from '@client/src/utils/case-material-clipboard';
-import { copyPlainText, copyPngImage } from '@client/src/utils/clipboard';
+import { copyRichContent, copyText } from '@client/src/utils/clipboard';
 
 interface CaseMaterial {
   id: string;
@@ -138,38 +138,46 @@ const CaseMaterials: React.FC = () => {
     setPage(1);
   }, [query, selectedStages, selectedGrades, selectedImageTypes, selectedTags]);
 
-  const copyText = async (material: CaseMaterial): Promise<void> => {
-    try {
-      await copyPlainText(buildShareText(material));
+  const copyMaterialText = async (material: CaseMaterial): Promise<void> => {
+    const result = await copyText(buildShareText(material));
+    if (result.ok) {
       setCopiedId(material.id);
       toast.success('推荐话术已复制');
       window.setTimeout(() => setCopiedId(''), 1600);
-    } catch {
-      toast.error('复制失败，请手动选择话术');
+      return;
     }
+    toast.error(result.message);
   };
 
   const copyPackage = async (
     material: CaseMaterial,
     includeText: boolean,
   ): Promise<void> => {
-    try {
-      const result = await copyPngImage(
-        getCaseMaterialCompositePng({
-          imageUrls: material.images,
-          text: buildShareText(material),
-          includeText,
-        }),
-        includeText ? '已复制案例图文图片' : '已复制案例图片',
-      );
-      toast.success(result.message);
-    } catch {
-      toast.error(
-        includeText
-          ? '图文图片未写入剪贴板，本次未复制链接'
-          : '案例图片未写入剪贴板，本次未复制链接',
-      );
+    const result = await copyRichContent({
+      title: material.title,
+      tags: [
+        material.stage,
+        material.grade,
+        material.imageType,
+        ...material.aiTags.slice(0, 3),
+      ].filter(Boolean),
+      plainText: buildShareText(material),
+      imageUrl: material.images,
+      imageBlob: getCaseMaterialCompositePng({
+        imageUrls: material.images,
+        text: buildShareText(material),
+        includeText,
+      }),
+      sourceUrl: SOURCE_BASE_URL,
+    });
+    if (result.ok) {
+      const message = result.mode === 'rich-image'
+        ? includeText ? '已复制案例图文图片' : '已复制案例图片'
+        : result.message;
+      toast.success(message);
+      return;
     }
+    toast.error(result.message);
   };
 
   const clearFilters = (): void => {
@@ -338,7 +346,7 @@ const CaseMaterials: React.FC = () => {
                     variant="outline"
                     size="sm"
                     className="px-2 font-hand text-xs"
-                    onClick={() => copyText(material)}
+                    onClick={() => copyMaterialText(material)}
                   >
                     {copiedId === material.id
                       ? <Check className="mr-1 size-3.5" />

@@ -5,8 +5,8 @@ jest.mock('@lark-apaas/client-toolkit/logger', () => ({
 import {
   buildClipboardHtml,
   buildClipboardPlainText,
-  copyPngImage,
   copyRichContent,
+  copyText,
 } from '../../client/src/utils/clipboard';
 
 describe('clipboard fallbacks', () => {
@@ -61,7 +61,7 @@ describe('clipboard fallbacks', () => {
     jest.clearAllMocks();
   });
 
-  it('keeps both text and remote image links in rich HTML fallback', () => {
+  it('keeps text and remote image links in rich HTML fallback', () => {
     const html = buildClipboardHtml('家长话术', [imageUrl]);
 
     expect(html).toContain('家长话术');
@@ -77,47 +77,36 @@ describe('clipboard fallbacks', () => {
     expect(text).toContain(imageUrl);
   });
 
-  it('escapes untrusted text and URL attributes in HTML fallback', () => {
-    const html = buildClipboardHtml('<建议>', ['https://example.com/a.png?x=1&y=2']);
+  it('uses writeText for the basic copy operation', async () => {
+    const writeText = jest.fn<Promise<void>, [string]>().mockResolvedValue();
+    installClipboardMocks({ writeText });
 
-    expect(html).toContain('&lt;建议&gt;');
-    expect(html).toContain('x=1&amp;y=2');
+    const result = await copyText('学情报告');
+
+    expect(result).toEqual({ ok: true, mode: 'text-only', message: '已复制文本' });
+    expect(writeText).toHaveBeenCalledWith('学情报告');
   });
 
-  it('writes case images as PNG-only clipboard items', async () => {
+  it('writes a prepared case image as an image-only clipboard item', async () => {
     const write = jest.fn<Promise<void>, [ClipboardItem[]]>().mockResolvedValue();
     installClipboardMocks({ write });
 
-    const result = await copyPngImage(
-      Promise.resolve(new Blob(['png'], { type: 'image/png' })),
-      '已复制案例图片',
-    );
+    const result = await copyRichContent({
+      title: '案例标题',
+      plainText: '家长话术',
+      imageUrl,
+      imageBlob: Promise.resolve(new Blob(['png'], { type: 'image/png' })),
+    });
 
-    expect(result.copiedImageBinary).toBe(true);
-    expect(result.message).toBe('已复制案例图片');
-    expect(write).toHaveBeenCalledTimes(1);
+    expect(result.ok).toBe(true);
+    expect(result.mode).toBe('rich-image');
     const clipboardItem = write.mock.calls[0][0][0] as unknown as {
       items: Record<string, Blob | Promise<Blob>>;
     };
     expect(Object.keys(clipboardItem.items)).toEqual(['image/png']);
   });
 
-  it('rejects invalid PNG payloads instead of copying a fallback link', async () => {
-    const write = jest.fn<Promise<void>, [ClipboardItem[]]>(async (items: ClipboardItem[]) => {
-      const clipboardItem = items[0] as unknown as {
-        items: Record<string, Blob | Promise<Blob>>;
-      };
-      await Promise.all(Object.values(clipboardItem.items));
-    });
-    installClipboardMocks({ write });
-
-    await expect(copyPngImage(
-      Promise.resolve(new Blob(['not-png'], { type: 'image/jpeg' })),
-    )).rejects.toThrow('Clipboard image must be a non-empty PNG');
-    expect(write).toHaveBeenCalledTimes(1);
-  });
-
-  it('falls back to HTML with image links when binary image writing fails', async () => {
+  it('falls back to HTML and links when binary image writing is blocked', async () => {
     const write = jest.fn<Promise<void>, [ClipboardItem[]]>()
       .mockRejectedValueOnce(new Error('image write blocked'))
       .mockResolvedValueOnce();
@@ -125,36 +114,62 @@ describe('clipboard fallbacks', () => {
     installClipboardMocks({ write, writeText });
 
     const result = await copyRichContent({
-      text: '家长话术',
-      imageUrls: [imageUrl],
-      imagePng: Promise.resolve(new Blob(['png'], { type: 'image/png' })),
+      title: '案例标题',
+      tags: ['初中', '提分'],
+      plainText: '家长话术',
+      imageUrl,
+      imageBlob: Promise.resolve(new Blob(['png'], { type: 'image/png' })),
+      sourceUrl: 'https://example.com/source',
     });
 
-    expect(result.mode).toBe('html-links');
-    expect(result.copiedText).toBe(true);
-    expect(result.copiedImageBinary).toBe(false);
-    expect(result.copiedImageLinks).toBe(true);
-    expect(result.message).toContain('已复制话术和图片链接');
+    expect(result.ok).toBe(true);
+    expect(result.mode).toBe('rich-html');
+    expect(result.message).toContain('话术和图片链接');
     expect(write).toHaveBeenCalledTimes(2);
+    const fallbackItem = write.mock.calls[1][0][0] as unknown as {
+      items: Record<string, Blob | Promise<Blob>>;
+    };
+    const plainBlob = fallbackItem.items['text/plain'] as Blob;
+    const fallbackText = await plainBlob.text();
+    expect(fallbackText).toContain('案例：案例标题');
+    expect(fallbackText).toContain('标签：初中、提分');
+    expect(fallbackText).toContain(imageUrl);
+    expect(fallbackText).toContain('https://example.com/source');
     expect(writeText).not.toHaveBeenCalled();
   });
 
-  it('falls back to plain text with image links when rich APIs are blocked', async () => {
+  it('falls back to text and image links when rich APIs are blocked', async () => {
     const write = jest.fn<Promise<void>, [ClipboardItem[]]>()
       .mockRejectedValue(new Error('rich clipboard blocked'));
     const writeText = jest.fn<Promise<void>, [string]>().mockResolvedValue();
     installClipboardMocks({ write, writeText });
 
     const result = await copyRichContent({
-      text: '家长话术',
-      imageUrls: [imageUrl],
-      imagePng: Promise.resolve(new Blob(['png'], { type: 'image/png' })),
+      title: '案例标题',
+      plainText: '家长话术',
+      imageUrl,
+      imageBlob: Promise.resolve(new Blob(['png'], { type: 'image/png' })),
     });
 
-    expect(result.mode).toBe('text-links');
-    expect(result.copiedText).toBe(true);
-    expect(result.copiedImageLinks).toBe(true);
-    expect(write).toHaveBeenCalledTimes(2);
+    expect(result.ok).toBe(true);
+    expect(result.mode).toBe('text-with-image-link');
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('案例：案例标题'));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining(imageUrl));
+  });
+
+  it('copies text and links when ClipboardItem is unavailable in a webview', async () => {
+    const writeText = jest.fn<Promise<void>, [string]>().mockResolvedValue();
+    installClipboardMocks({ writeText });
+    Reflect.deleteProperty(globalThis, 'ClipboardItem');
+
+    const result = await copyRichContent({
+      plainText: '家长话术',
+      imageUrl,
+      imageBlob: Promise.resolve(new Blob(['png'], { type: 'image/png' })),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.mode).toBe('text-with-image-link');
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining(imageUrl));
   });
 });
