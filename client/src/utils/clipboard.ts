@@ -26,7 +26,7 @@ export interface CopyImageOptions {
 }
 
 export interface CopyPngOptions {
-  imageBlob: Blob;
+  imageBlob: Blob | Promise<Blob>;
   containsText?: boolean;
 }
 
@@ -228,6 +228,7 @@ async function writePngImage(imageBlob: Blob | Promise<Blob>): Promise<void> {
 export async function copyPngBlob(options: CopyPngOptions): Promise<ClipboardResult> {
   const mode: ClipboardMode = options.containsText ? 'image-with-text' : 'image-only';
   try {
+    logger.info(`clipboard capabilities secure=${typeof window !== 'undefined' ? window.isSecureContext : false} write=${typeof navigator !== 'undefined' && Boolean(navigator.clipboard?.write)} item=${typeof ClipboardItem !== 'undefined'}`);
     await writePngImage(options.imageBlob);
     return {
       ok: true,
@@ -239,12 +240,19 @@ export async function copyPngBlob(options: CopyPngOptions): Promise<ClipboardRes
   } catch (error) {
     const reason = errorText(error);
     logger.error('clipboard strict PNG write failed', reason);
+    const message = typeof window !== 'undefined' && !window.isSecureContext
+      ? '当前页面不是安全上下文，图片复制需要 HTTPS'
+      : !canWriteRichClipboard()
+        ? '当前浏览器或内嵌环境不支持图片剪贴板，请在外部 Chrome 或 Edge 中打开'
+        : /Image request|not an image|empty|decode|Canvas|Composite/iu.test(reason)
+          ? '素材图片读取或 PNG 转换失败，请稍后重试'
+          : '图片剪贴板写入被浏览器拒绝，请确认页面位于前台后重试';
     return {
       ok: false,
       mode: 'failed',
       imageWritten: false,
       textWritten: false,
-      message: '当前浏览器未能写入图片剪贴板，请在外部 Chrome 或 Edge 中重试',
+      message,
       error: reason,
     };
   }

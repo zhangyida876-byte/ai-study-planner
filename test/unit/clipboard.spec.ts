@@ -150,6 +150,20 @@ describe('clipboard fallbacks', () => {
     expect(Object.keys(clipboardItem.items)).toEqual(['image/png']);
   });
 
+  it('strict image copy accepts a pending same-origin PNG conversion', async () => {
+    const write = jest.fn<Promise<void>, [ClipboardItem[]]>().mockResolvedValue();
+    installClipboardMocks({ write });
+
+    const result = await copyPngBlob({
+      imageBlob: Promise.resolve(new Blob(['png'], { type: 'image/png' })),
+      containsText: true,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.mode).toBe('image-with-text');
+    expect(result.imageWritten).toBe(true);
+  });
+
   it('strict image copy never degrades to text or an image URL', async () => {
     const write = jest.fn<Promise<void>, [ClipboardItem[]]>()
       .mockRejectedValue(new Error('clipboard-write denied'));

@@ -23,6 +23,7 @@ import {
   violatesCaseMaterialProtectedTerm,
 } from '@client/src/utils/case-material-search';
 import {
+  getPreparedCaseMaterialPng,
   peekPreparedCaseMaterialPng,
   prepareCaseMaterialImages,
 } from '@client/src/utils/case-material-clipboard';
@@ -195,11 +196,8 @@ const CaseMaterials: React.FC = () => {
     material: CaseMaterial,
     includeText: boolean,
   ): Promise<void> => {
-    const imageBlob = peekPreparedCaseMaterialPng(clipboardOptions(material, includeText));
-    if (!imageBlob) {
-      toast.error('图片仍在准备中，请稍后再试');
-      return;
-    }
+    const imageBlob = peekPreparedCaseMaterialPng(clipboardOptions(material, includeText))
+      || getPreparedCaseMaterialPng(clipboardOptions(material, includeText));
     const result = await copyPngBlob({ imageBlob, containsText: includeText });
     if (result.ok) {
       toast.success(includeText ? '已复制案例图文图片' : '已复制案例图片');
@@ -362,16 +360,13 @@ const CaseMaterials: React.FC = () => {
                     variant="outline"
                     size="sm"
                     className="px-2 font-hand text-xs"
-                    disabled={imagePreparation[`${material.id}:image`] !== 'ready'}
                     title={imagePreparation[`${material.id}:image`] === 'error'
-                      ? '图片处理失败，请刷新页面重试'
+                      ? '预加载失败，点击后将重新读取并复制图片'
                       : '复制图片本体'}
                     onClick={() => copyPackage(material, false)}
                   >
                     <Images className="mr-1 size-3.5" />
-                    {imagePreparation[`${material.id}:image`] === 'ready'
-                      ? '图片'
-                      : imagePreparation[`${material.id}:image`] === 'error' ? '图片失败' : '准备中'}
+                    图片
                   </Button>
                   <Button
                     type="button"
@@ -389,16 +384,13 @@ const CaseMaterials: React.FC = () => {
                     type="button"
                     size="sm"
                     className="px-2 font-hand text-xs"
-                    disabled={imagePreparation[`${material.id}:rich`] !== 'ready'}
                     title={imagePreparation[`${material.id}:rich`] === 'error'
-                      ? '图文图片处理失败，请刷新页面重试'
+                      ? '预加载失败，点击后将重新生成图文图片'
                       : '复制包含标题、标签和推荐话术的合成图片'}
                     onClick={() => copyPackage(material, true)}
                   >
                     <Copy className="mr-1 size-3.5" />
-                    {imagePreparation[`${material.id}:rich`] === 'ready'
-                      ? '图文'
-                      : imagePreparation[`${material.id}:rich`] === 'error' ? '图文失败' : '准备中'}
+                    图文
                   </Button>
                 </div>
               </div>

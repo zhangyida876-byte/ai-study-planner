@@ -1,3 +1,5 @@
+import { logger } from '@lark-apaas/client-toolkit/logger';
+
 const MAX_COMPOSITE_WIDTH = 1200;
 const MAX_COMPOSITE_HEIGHT = 14000;
 const IMAGE_GAP = 16;
@@ -19,6 +21,18 @@ const MAX_COMPOSITE_CACHE_ENTRIES = 36;
 
 export function resolveCaseMaterialImageUrl(imageUrl: string, origin: string): string {
   return new URL(imageUrl, origin).toString();
+}
+
+export function buildCaseMaterialProxyUrl(
+  imageUrl: string,
+  origin: string,
+  pathname = '/',
+): string {
+  const absoluteUrl = new URL(imageUrl, origin);
+  const appPrefix = pathname.match(/^\/app\/[^/]+/u)?.[0] || '';
+  const proxyUrl = new URL(`${appPrefix}/api/image-proxy`, origin);
+  proxyUrl.searchParams.set('path', absoluteUrl.pathname);
+  return proxyUrl.toString();
 }
 
 async function decodeClipboardImage(src: string, objectUrl?: string): Promise<LoadedClipboardImage> {
@@ -44,31 +58,21 @@ async function decodeClipboardImage(src: string, objectUrl?: string): Promise<Lo
 }
 
 async function loadClipboardImage(imageUrl: string): Promise<LoadedClipboardImage> {
-  try {
-    const response = await fetch(imageUrl, {
-      credentials: 'include',
-      cache: 'force-cache',
-    });
-    if (!response.ok) throw new Error(`Image request failed: ${response.status}`);
-    const blob = await response.blob();
-    if (blob.size === 0) throw new Error('Storage object is empty');
-    if (!blob.type.startsWith('image/')) {
-      throw new Error(`Storage response is not an image: ${blob.type || 'unknown type'}`);
-    }
-    const objectUrl = URL.createObjectURL(blob);
-    return await decodeClipboardImage(objectUrl, objectUrl);
-  } catch (fetchError) {
-    // Miaoda storage links can redirect anonymous fetches to login while the
-    // authenticated <img> request still succeeds. Reusing the browser image
-    // loader preserves those credentials for same-origin storage resources.
-    try {
-      return await decodeClipboardImage(imageUrl);
-    } catch (imageError) {
-      const fetchMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
-      const imageMessage = imageError instanceof Error ? imageError.message : String(imageError);
-      throw new Error(`Image fetch failed: ${fetchMessage}; direct load failed: ${imageMessage}`);
-    }
+  const response = await fetch(imageUrl, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const contentType = response.headers.get('content-type') || '';
+  logger.info(`clipboard image response status=${response.status} type=${contentType || 'unknown'} url=${imageUrl}`);
+  if (!response.ok) throw new Error(`Image request failed: ${response.status}`);
+  const blob = await response.blob();
+  logger.info(`clipboard image blob type=${blob.type || 'unknown'} size=${blob.size}`);
+  if (blob.size === 0) throw new Error('Storage object is empty');
+  if (!blob.type.startsWith('image/')) {
+    throw new Error(`Storage response is not an image: ${blob.type || 'unknown type'}`);
   }
+  const objectUrl = URL.createObjectURL(blob);
+  return decodeClipboardImage(objectUrl, objectUrl);
 }
 
 function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -214,7 +218,7 @@ function resolveClipboardOptions(options: {
 }): { absoluteUrls: string[]; compositeText: string } {
   return {
     absoluteUrls: options.imageUrls.map((url: string) => (
-      resolveCaseMaterialImageUrl(url, window.location.origin)
+      buildCaseMaterialProxyUrl(url, window.location.origin, window.location.pathname)
     )),
     compositeText: options.includeText ? options.text : '',
   };

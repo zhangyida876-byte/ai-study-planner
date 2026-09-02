@@ -10,6 +10,7 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { PolicyModule } from './modules/policy/policy.module';
 import { CaseArchiveModule } from './modules/case-archive/case-archive.module';
 import { ViewModule } from './modules/view/view.module';
+import { ImageProxyModule } from './modules/image-proxy/image-proxy.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ViewModule } from './modules/view/view.module';
     KnowledgeModule,
     PolicyModule,
     CaseArchiveModule,
+    ImageProxyModule,
     // ====== @route-section: business-modules END ======
 
     // ⚠️ @route-order: last
