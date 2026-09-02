@@ -23,10 +23,10 @@ import {
   violatesCaseMaterialProtectedTerm,
 } from '@client/src/utils/case-material-search';
 import {
-  getPreparedCaseMaterialPng,
+  peekPreparedCaseMaterialPng,
   prepareCaseMaterialImages,
 } from '@client/src/utils/case-material-clipboard';
-import { copyRichContent, copyText } from '@client/src/utils/clipboard';
+import { copyPngBlob, copyText } from '@client/src/utils/clipboard';
 
 interface CaseMaterial {
   id: string;
@@ -64,13 +64,29 @@ function buildShareText(material: CaseMaterial): string {
     || '您可以先看一下这个真实案例。';
 }
 
-function preloadClipboardImage(material: CaseMaterial, includeText: boolean): void {
-  void prepareCaseMaterialImages({
-    imageUrls: material.images,
-    text: buildShareText(material),
-    includeText,
-  }).catch(() => undefined);
+function buildCompositeText(material: CaseMaterial): string {
+  const tags = [
+    material.stage,
+    material.grade,
+    material.imageType,
+    ...material.aiTags.slice(0, 5),
+  ].filter(Boolean);
+  return [
+    `案例：${material.title}`,
+    tags.length ? `标签：${tags.join('、')}` : '',
+    `推荐话术：${buildShareText(material)}`,
+  ].filter(Boolean).join('\n\n');
 }
+
+function clipboardOptions(material: CaseMaterial, includeText: boolean) {
+  return {
+    imageUrls: material.images,
+    text: includeText ? buildCompositeText(material) : '',
+    includeText,
+  };
+}
+
+type ImagePreparationState = 'loading' | 'ready' | 'error';
 
 const CaseMaterials: React.FC = () => {
   const { stageConfig } = useRequiredStage();
@@ -81,6 +97,7 @@ const CaseMaterials: React.FC = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [copiedId, setCopiedId] = useState('');
+  const [imagePreparation, setImagePreparation] = useState<Record<string, ImagePreparationState>>({});
 
   useEffect(() => {
     setSelectedStages([stageConfig.label]);
@@ -132,11 +149,36 @@ const CaseMaterials: React.FC = () => {
       selectedTags,
     ]);
   const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
-  const visibleResults = results.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const visibleResults = useMemo(
+    () => results.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [page, results],
+  );
 
   useEffect(() => {
     setPage(1);
   }, [query, selectedStages, selectedGrades, selectedImageTypes, selectedTags]);
+
+  useEffect(() => {
+    let active = true;
+    visibleResults.forEach((material) => {
+      [false, true].forEach((includeText) => {
+        const key = `${material.id}:${includeText ? 'rich' : 'image'}`;
+        setImagePreparation((current) => (
+          current[key] ? current : { ...current, [key]: 'loading' }
+        ));
+        void prepareCaseMaterialImages(clipboardOptions(material, includeText))
+          .then(() => {
+            if (active) setImagePreparation((current) => ({ ...current, [key]: 'ready' }));
+          })
+          .catch(() => {
+            if (active) setImagePreparation((current) => ({ ...current, [key]: 'error' }));
+          });
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, [visibleResults]);
 
   const copyMaterialText = async (material: CaseMaterial): Promise<void> => {
     const result = await copyText(buildShareText(material));
@@ -153,30 +195,14 @@ const CaseMaterials: React.FC = () => {
     material: CaseMaterial,
     includeText: boolean,
   ): Promise<void> => {
-    const result = await copyRichContent({
-      title: material.title,
-      tags: [
-        material.stage,
-        material.grade,
-        material.imageType,
-        ...material.aiTags.slice(0, 3),
-      ].filter(Boolean),
-      plainText: buildShareText(material),
-      imageUrl: material.images,
-      imageBlob: getPreparedCaseMaterialPng({
-        imageUrls: material.images,
-        text: buildShareText(material),
-        includeText,
-      }),
-      imageContainsText: includeText,
-      sourceUrl: SOURCE_BASE_URL,
-    });
+    const imageBlob = peekPreparedCaseMaterialPng(clipboardOptions(material, includeText));
+    if (!imageBlob) {
+      toast.error('图片仍在准备中，请稍后再试');
+      return;
+    }
+    const result = await copyPngBlob({ imageBlob, containsText: includeText });
     if (result.ok) {
-      const message = result.imageWritten
-        ? includeText ? '已复制案例图文图片' : '已复制案例图片'
-        : result.message;
-      if (result.imageWritten) toast.success(message);
-      else toast.warning(message);
+      toast.success(includeText ? '已复制案例图文图片' : '已复制案例图片');
       return;
     }
     toast.error(result.message);
@@ -294,10 +320,6 @@ const CaseMaterials: React.FC = () => {
                     src={imageUrl}
                     alt={`${material.title} 第${imageIndex + 1}张`}
                     loading="lazy"
-                    onLoad={() => {
-                      preloadClipboardImage(material, false);
-                      preloadClipboardImage(material, true);
-                    }}
                     className="max-h-[330px] min-w-full snap-center object-contain"
                   />
                 ))}
@@ -340,12 +362,16 @@ const CaseMaterials: React.FC = () => {
                     variant="outline"
                     size="sm"
                     className="px-2 font-hand text-xs"
-                    onPointerEnter={() => preloadClipboardImage(material, false)}
-                    onPointerDown={() => preloadClipboardImage(material, false)}
-                    onFocus={() => preloadClipboardImage(material, false)}
+                    disabled={imagePreparation[`${material.id}:image`] !== 'ready'}
+                    title={imagePreparation[`${material.id}:image`] === 'error'
+                      ? '图片处理失败，请刷新页面重试'
+                      : '复制图片本体'}
                     onClick={() => copyPackage(material, false)}
                   >
-                    <Images className="mr-1 size-3.5" />图片
+                    <Images className="mr-1 size-3.5" />
+                    {imagePreparation[`${material.id}:image`] === 'ready'
+                      ? '图片'
+                      : imagePreparation[`${material.id}:image`] === 'error' ? '图片失败' : '准备中'}
                   </Button>
                   <Button
                     type="button"
@@ -363,12 +389,16 @@ const CaseMaterials: React.FC = () => {
                     type="button"
                     size="sm"
                     className="px-2 font-hand text-xs"
-                    onPointerEnter={() => preloadClipboardImage(material, true)}
-                    onPointerDown={() => preloadClipboardImage(material, true)}
-                    onFocus={() => preloadClipboardImage(material, true)}
+                    disabled={imagePreparation[`${material.id}:rich`] !== 'ready'}
+                    title={imagePreparation[`${material.id}:rich`] === 'error'
+                      ? '图文图片处理失败，请刷新页面重试'
+                      : '复制包含标题、标签和推荐话术的合成图片'}
                     onClick={() => copyPackage(material, true)}
                   >
-                    <Copy className="mr-1 size-3.5" />图文
+                    <Copy className="mr-1 size-3.5" />
+                    {imagePreparation[`${material.id}:rich`] === 'ready'
+                      ? '图文'
+                      : imagePreparation[`${material.id}:rich`] === 'error' ? '图文失败' : '准备中'}
                   </Button>
                 </div>
               </div>

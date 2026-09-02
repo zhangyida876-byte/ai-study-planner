@@ -5,6 +5,7 @@ jest.mock('@lark-apaas/client-toolkit/logger', () => ({
 import {
   buildClipboardHtml,
   buildClipboardPlainText,
+  copyPngBlob,
   copyRichContent,
   copyText,
 } from '../../client/src/utils/clipboard';
@@ -128,6 +129,43 @@ describe('clipboard fallbacks', () => {
       items: Record<string, Blob | Promise<Blob>>;
     };
     expect(clipboardItem.items['image/png']).toBeInstanceOf(Blob);
+  });
+
+  it('strict image copy writes only image/png data', async () => {
+    const write = jest.fn<Promise<void>, [ClipboardItem[]]>().mockResolvedValue();
+    const writeText = jest.fn<Promise<void>, [string]>().mockResolvedValue();
+    installClipboardMocks({ write, writeText });
+
+    const result = await copyPngBlob({
+      imageBlob: new Blob(['png'], { type: 'image/png' }),
+    });
+
+    expect(result.mode).toBe('image-only');
+    expect(result.imageWritten).toBe(true);
+    expect(result.textWritten).toBe(false);
+    expect(writeText).not.toHaveBeenCalled();
+    const clipboardItem = write.mock.calls[0][0][0] as unknown as {
+      items: Record<string, Blob>;
+    };
+    expect(Object.keys(clipboardItem.items)).toEqual(['image/png']);
+  });
+
+  it('strict image copy never degrades to text or an image URL', async () => {
+    const write = jest.fn<Promise<void>, [ClipboardItem[]]>()
+      .mockRejectedValue(new Error('clipboard-write denied'));
+    const writeText = jest.fn<Promise<void>, [string]>().mockResolvedValue();
+    installClipboardMocks({ write, writeText });
+
+    const result = await copyPngBlob({
+      imageBlob: new Blob(['png'], { type: 'image/png' }),
+      containsText: true,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.mode).toBe('failed');
+    expect(result.imageWritten).toBe(false);
+    expect(result.textWritten).toBe(false);
+    expect(writeText).not.toHaveBeenCalled();
   });
 
   it('falls back to HTML and links when binary image writing is blocked', async () => {

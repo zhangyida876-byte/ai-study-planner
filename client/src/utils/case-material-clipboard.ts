@@ -15,7 +15,7 @@ interface LoadedClipboardImage {
 
 const compositePngCache = new Map<string, Promise<Blob>>();
 const resolvedCompositePngCache = new Map<string, Blob>();
-const MAX_COMPOSITE_CACHE_ENTRIES = 18;
+const MAX_COMPOSITE_CACHE_ENTRIES = 36;
 
 export function resolveCaseMaterialImageUrl(imageUrl: string, origin: string): string {
   return new URL(imageUrl, origin).toString();
@@ -224,10 +224,10 @@ export async function prepareCaseMaterialImages(options: {
   imageUrls: string[];
   text: string;
   includeText: boolean;
-}): Promise<void> {
-  if (options.imageUrls.length === 0) return;
+}): Promise<Blob> {
+  if (options.imageUrls.length === 0) throw new Error('No images to copy');
   const { absoluteUrls, compositeText } = resolveClipboardOptions(options);
-  await getCompositePng(absoluteUrls, compositeText);
+  return getCompositePng(absoluteUrls, compositeText);
 }
 
 export function getCaseMaterialCompositePng(options: {
@@ -257,4 +257,14 @@ export function getPreparedCaseMaterialPng(options: {
   const cacheKey = getCompositeCacheKey(absoluteUrls, compositeText);
   return resolvedCompositePngCache.get(cacheKey)
     || getCaseMaterialCompositePng(options);
+}
+
+export function peekPreparedCaseMaterialPng(options: {
+  imageUrls: string[];
+  text: string;
+  includeText: boolean;
+}): Blob | undefined {
+  if (options.imageUrls.length === 0) return undefined;
+  const { absoluteUrls, compositeText } = resolveClipboardOptions(options);
+  return resolvedCompositePngCache.get(getCompositeCacheKey(absoluteUrls, compositeText));
 }

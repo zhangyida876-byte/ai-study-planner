@@ -25,6 +25,11 @@ export interface CopyImageOptions {
   title?: string;
 }
 
+export interface CopyPngOptions {
+  imageBlob: Blob;
+  containsText?: boolean;
+}
+
 export interface RichClipboardOptions {
   plainText?: string;
   html?: string;
@@ -213,6 +218,35 @@ async function writePngImage(imageBlob: Blob | Promise<Blob>): Promise<void> {
         `Promise write failed: ${errorText(promiseError)}; Blob write failed: ${errorText(blobError)}`,
       );
     }
+  }
+}
+
+/**
+ * Writes only PNG binary data. This intentionally has no text or URL fallback:
+ * callers using an "image" action must never report a copied link as success.
+ */
+export async function copyPngBlob(options: CopyPngOptions): Promise<ClipboardResult> {
+  const mode: ClipboardMode = options.containsText ? 'image-with-text' : 'image-only';
+  try {
+    await writePngImage(options.imageBlob);
+    return {
+      ok: true,
+      mode,
+      imageWritten: true,
+      textWritten: false,
+      message: options.containsText ? '已复制图文图片' : '已复制图片',
+    };
+  } catch (error) {
+    const reason = errorText(error);
+    logger.error('clipboard strict PNG write failed', reason);
+    return {
+      ok: false,
+      mode: 'failed',
+      imageWritten: false,
+      textWritten: false,
+      message: '当前浏览器未能写入图片剪贴板，请在外部 Chrome 或 Edge 中重试',
+      error: reason,
+    };
   }
 }
 
