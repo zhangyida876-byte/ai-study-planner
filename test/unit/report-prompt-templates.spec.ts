@@ -12,7 +12,12 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('## 2. 各科家长可观察现象');
     expect(prompt).toContain('## 3. 各科核心问题与根因');
     expect(prompt).toContain('### 跨科共性问题');
-    expect(prompt).toContain('## 4. 当前日期、学期阶段与真实教学进度');
+    expect(prompt).toContain('## 4. 阶段学情解读');
+    expect(prompt).toContain('### 4.1 当前日期与学期阶段判断');
+    expect(prompt).toContain('### 4.3 各科本学期学情解读');
+    expect(prompt).toContain('### 4.4 跨学科影响');
+    expect(prompt).toContain('### 4.5 当前阶段家长最该做什么');
+    expect(prompt).toContain('### 4.6 给课程顾问/主播的讲法');
     expect(prompt).toContain('## 5. 升学或阶段目标影响');
     expect(prompt).toContain('## 6. 家长可执行动作');
     expect(prompt).toContain('### A. 未来一周');
@@ -29,6 +34,8 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('按常规校历推测，需用学校课表/教材目录/最近作业核实');
     expect(prompt).toContain('为什么现在做');
     expect(prompt).toContain('现在不要提前做什么');
+    expect(prompt).toContain('注意力、自主性、情绪抗压');
+    expect(prompt).toContain('具体知识点/题型 → 家长可见表现 → 深层原因');
   });
 
   it('keeps three observations and problems for one subject', () => {

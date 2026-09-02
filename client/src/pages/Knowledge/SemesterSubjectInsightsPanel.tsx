@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ArrowLeft, BookOpenCheck, Brain, Eye, ListChecks, Route } from 'lucide-react';
+import { ArrowLeft, BookOpenCheck, Brain, Eye, GitBranch, ListChecks, MessageCircleMore, Route } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import WobblyCard from '@client/src/components/WobblyCard';
 import type { StageSlug } from '@client/src/config/stages';
@@ -36,6 +36,15 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
   );
   const timing = useMemo(() => resolveAcademicTiming(), []);
   const useOpeningActions = timing.id.includes('opening') || timing.id.includes('break');
+  const currentPhaseId = timing.id.includes('opening')
+    ? 'opening-week'
+    : timing.id.includes('break')
+      ? 'before-school'
+      : timing.id.includes('midterm')
+        ? 'before-midterm'
+        : timing.id.includes('final')
+          ? 'before-final'
+          : 'first-month';
 
   if (!grade || !semester) {
     return (
@@ -61,6 +70,8 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
   }
 
   if (selected) {
+    const currentPhase = selected.phaseFocuses.find((phase) => phase.id === currentPhaseId)
+      || selected.phaseFocuses[0];
     return (
       <WobblyCard hoverable={false} wobblyIndex={1} className="mb-6 p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b-2 border-dashed border-ink/15 pb-4">
@@ -84,9 +95,20 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
           <div className="border-2 border-dashed border-ink/20 bg-white p-4">
             <h3 className="font-marker mb-2 font-bold">{displaySubject(selected.subject)}当前学习重点</h3>
             <p className="font-hand text-sm leading-6">{selected.subjectCharacteristics}</p>
-            <p className="font-hand mt-2 text-sm"><strong>近期先做：</strong>{(useOpeningActions ? selected.openingActions : selected.weeklyActions).join('；')}</p>
-            <p className="font-hand mt-2 text-xs text-ink/55"><strong>年龄与节奏：</strong>{selected.agePsychology[0]}；{selected.learningTraits[0]}</p>
+            <p className="font-hand mt-2 text-sm"><strong>本学期必须形成：</strong>{selected.coreGoals.join('；')}</p>
+            <p className="font-hand mt-2 text-sm"><strong>当前先做：</strong>{currentPhase.parentAction}</p>
           </div>
+        </section>
+
+        <section className="mt-4 border-2 border-dashed border-ink/20 bg-postit-yellow/20 p-4">
+          <h3 className="font-marker mb-3 flex items-center gap-2 font-bold"><Brain className="size-4 text-pen-blue" />年龄段身心特点与家长边界</h3>
+          <div className="grid gap-2 font-hand text-sm md:grid-cols-2">
+            <p><strong>注意力：</strong>{selected.parentGuidance.attention}</p>
+            <p><strong>自主学习：</strong>{selected.parentGuidance.autonomy}</p>
+            <p><strong>情绪与压力：</strong>{selected.parentGuidance.emotionAndStress}</p>
+            <p><strong>监督边界：</strong>{selected.parentGuidance.supervisionBoundary}</p>
+          </div>
+          <p className="font-hand mt-2 border-l-4 border-marker-red pl-3 text-sm"><strong>本阶段风险：</strong>{selected.parentGuidance.commonRisk}</p>
         </section>
 
         <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -107,22 +129,42 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
           <h3 className="font-marker mb-3 flex items-center gap-2 text-lg font-bold"><Eye className="size-5 text-marker-red" />家长看到的现象与真正根因</h3>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[620px] border-collapse font-hand text-sm">
-              <thead><tr className="bg-accent"><th className="border-2 border-ink/20 p-2 text-left">家长能看到什么</th><th className="border-2 border-ink/20 p-2 text-left">背后根因</th><th className="border-2 border-ink/20 p-2 text-left">当前先做什么</th></tr></thead>
-              <tbody>{selected.observablePhenomena.map((phenomenon, index) => <tr key={phenomenon}><td className="border-2 border-ink/15 p-2">{phenomenon}</td><td className="border-2 border-ink/15 p-2">{selected.rootCauses[index] || selected.rootCauses[0]}</td><td className="border-2 border-ink/15 p-2">{(useOpeningActions ? selected.openingActions : selected.weeklyActions)[index] || (useOpeningActions ? selected.openingActions : selected.weeklyActions)[0]}</td></tr>)}</tbody>
+              <thead><tr className="bg-accent"><th className="border-2 border-ink/20 p-2 text-left">家长能看到什么</th><th className="border-2 border-ink/20 p-2 text-left">背后根因</th><th className="border-2 border-ink/20 p-2 text-left">后续影响</th><th className="border-2 border-ink/20 p-2 text-left">怎么验证</th></tr></thead>
+              <tbody>{selected.phenomenonCauseLinks.map((link) => <tr key={link.phenomenon}><td className="border-2 border-ink/15 p-2">{link.phenomenon}</td><td className="border-2 border-ink/15 p-2">{link.cause}</td><td className="border-2 border-ink/15 p-2">{link.impact}</td><td className="border-2 border-ink/15 p-2">{link.verification}</td></tr>)}</tbody>
             </table>
+          </div>
+        </section>
+
+        <section className="mt-5">
+          <h3 className="font-marker mb-3 flex items-center gap-2 text-lg font-bold"><ListChecks className="size-5 text-pen-blue" />当前阶段家长最该做什么</h3>
+          <div className="grid gap-3 lg:grid-cols-3">
+            {selected.phaseFocuses.slice(0, 3).map((phase) => (
+              <div key={phase.id} className={`border-2 border-dashed p-3 ${phase.id === currentPhase.id ? 'border-marker-red bg-marker-red/5' : 'border-ink/20'}`}>
+                <h4 className="font-marker font-bold">{phase.label}</h4>
+                <p className="font-hand mt-2 text-sm"><strong>做什么：</strong>{phase.parentAction}</p>
+                <p className="font-hand mt-1 text-sm"><strong>多久：</strong>{phase.duration}</p>
+                <p className="font-hand mt-1 text-sm"><strong>怎么查：</strong>{phase.checkMethod}</p>
+                <p className="font-hand mt-1 text-sm"><strong>有效：</strong>{phase.effectiveStandard}</p>
+                <p className="font-hand mt-1 text-sm text-marker-red"><strong>不要：</strong>{phase.avoid}</p>
+              </div>
+            ))}
           </div>
         </section>
 
         <section className="mt-5 grid gap-4 lg:grid-cols-2">
           <div className="border-2 border-dashed border-ink/20 p-4">
-            <h3 className="font-marker mb-2 flex items-center gap-2 font-bold"><ListChecks className="size-4 text-pen-blue" />{timing.actionWindows[0]}行动</h3>
-            {(useOpeningActions ? selected.openingActions : selected.weeklyActions).map((item) => <p key={item} className="font-hand mb-1 text-sm">• {item}</p>)}
-            <p className="font-hand mt-2 text-xs text-ink/55">后续窗口：{timing.actionWindows.slice(1).join(' → ')}</p>
+            <h3 className="font-marker mb-2 flex items-center gap-2 font-bold"><GitBranch className="size-4 text-pen-blue" />跨学科影响</h3>
+            {selected.crossSubjectImpacts.map((link) => <div key={link.ability} className="font-hand text-sm leading-6"><p><strong>{link.ability} → {link.relatedSubjects.join('、')}</strong></p><p>{link.mechanism}</p><p className="text-ink/60">家长会看到：{link.observablePhenomenon}</p></div>)}
           </div>
           <div className="border-2 border-dashed border-marker-red/30 bg-marker-red/5 p-4">
             <h3 className="font-marker mb-2 flex items-center gap-2 font-bold"><Route className="size-4 text-marker-red" />洋葱学园承接</h3>
             {selected.onionRecommendations.map((item) => <p key={item} className="font-hand mb-1 text-sm">• {item}</p>)}
           </div>
+        </section>
+
+        <section className="mt-4 border-2 border-dashed border-ink/20 bg-white p-4">
+          <h3 className="font-marker mb-2 flex items-center gap-2 font-bold"><MessageCircleMore className="size-4 text-pen-blue" />给家长的讲法</h3>
+          <p className="font-hand text-sm leading-6">“这个阶段先别只看孩子作业写没写完。更值得看的是：{selected.observablePhenomena[0]}。这通常不是简单粗心，而是{selected.rootCauses[0]}。现在先围绕{currentPhase.learningFocus[0]}做小范围验证，做到{currentPhase.effectiveStandard}，再决定要不要加量。”</p>
         </section>
       </WobblyCard>
     );
@@ -154,9 +196,9 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
               <span className="font-hand text-xs text-pen-blue">查看深度分析</span>
             </div>
             <p className="font-hand line-clamp-2 text-sm leading-5 text-ink/75">{item.subjectCharacteristics}</p>
-            <p className="font-hand mt-3 text-xs font-bold text-marker-red">当前容易掉队：</p>
-            <p className="font-hand mt-1 line-clamp-2 text-sm">{item.commonMistakes.slice(0, 2).join('；')}</p>
-            <p className="font-hand mt-2 line-clamp-2 text-xs text-ink/60">当前先做：{(useOpeningActions ? item.openingActions : item.weeklyActions)[0]}</p>
+            <p className="font-hand mt-3 text-xs font-bold text-marker-red">家长最容易看到：</p>
+            <p className="font-hand mt-1 line-clamp-2 text-sm">{item.observablePhenomena.slice(0, 2).join('；')}</p>
+            <p className="font-hand mt-2 line-clamp-2 text-xs text-ink/60">核心目标：{item.coreGoals[0]}</p>
           </button>
         ))}
       </div>

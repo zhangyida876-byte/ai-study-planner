@@ -37,6 +37,13 @@ const STAGE_RULES: Record<StageSlug, string> = {
 - 输出须标注数据来源与年份；禁止编造政策/分数线/薪资。`,
 };
 
+const STAGE_INTERPRETATION_RULE = `【阶段学情解读通用规则】
+- 必须使用结构化教研上下文中的当前学期主题、五阶段任务、现象-根因-影响-验证链和跨学科关联，不得自行用整册目录替代。
+- 每科按“当前内容、核心目标、具体重难点、高频错法、常见卡点、家长现象、深层原因、后续影响”展开。
+- 年龄段分析必须覆盖注意力、自主性、情绪压力、监督接受度和家长沟通边界，并说明家长最容易误判的表现。
+- 跨学科影响至少给出2条可验证关联；家长动作必须写明时长、检查方法、有效标准和不建议做什么。
+- “打好基础、加强练习、培养习惯、提高能力、查漏补缺”不得单独作为结论，后面必须紧跟知识点、题型和验收动作。`;
+
 export function getStageAnalysisAppendix(stageSlug: StageSlug): string {
   return STAGE_RULES[stageSlug];
 }
@@ -73,7 +80,7 @@ export function appendProfileAndStageRules(
     }
   }
 
-  parts.push(`\n${getStageAnalysisAppendix(stageSlug)}`);
+  parts.push(`\n${getStageAnalysisAppendix(stageSlug)}\n\n${STAGE_INTERPRETATION_RULE}`);
   parts.push(`\n【数据准确性】至少两来源交叉验证；官方优先；无法确认须写「暂无官方确认信息」；禁止编造。`);
 
   return parts.join('\n');

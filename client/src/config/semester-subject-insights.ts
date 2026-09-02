@@ -1,7 +1,11 @@
 import type { StageSlug } from '@client/src/config/stages';
 import { buildAcademicTimingPromptContext } from '../utils/academic-phase';
+import {
+  buildStageInterpretationFields,
+  type StageInterpretationFields,
+} from './stage-learning-interpretation';
 
-export interface SemesterSubjectInsight {
+export interface SemesterSubjectInsight extends StageInterpretationFields {
   stage: StageSlug;
   grade: string;
   semester: string;
@@ -25,9 +29,11 @@ const ensureList = (items: string[] | undefined, fallback: string[]): string[] =
   items?.filter(Boolean).length ? items.filter(Boolean) : fallback
 );
 
-function normalizeInsight(insight: SemesterSubjectInsight): SemesterSubjectInsight {
+type BaseSemesterSubjectInsight = Omit<SemesterSubjectInsight, keyof StageInterpretationFields>;
+
+function normalizeInsight(insight: BaseSemesterSubjectInsight): SemesterSubjectInsight {
   const subjectFallback = `${insight.subject}当前章节需结合最近作业和测评进一步核对`;
-  return {
+  const normalized = {
     ...insight,
     agePsychology: ensureList(insight.agePsychology, ['需要用清晰的小目标和及时反馈稳定学习节奏']),
     learningTraits: ensureList(insight.learningTraits, ['先用最近作业和测评区分知识、方法与执行问题']),
@@ -42,9 +48,13 @@ function normalizeInsight(insight: SemesterSubjectInsight): SemesterSubjectInsig
     weeklyActions: ensureList(insight.weeklyActions, ['完成一次章节小测并复盘同类错误']),
     onionRecommendations: ensureList(insight.onionRecommendations, ['先用测评定位，再按知识点课程、解题课和错题复盘闭环学习']),
   };
+  return {
+    ...normalized,
+    ...buildStageInterpretationFields(normalized),
+  };
 }
 
-type SubjectSeed = Omit<SemesterSubjectInsight, 'stage' | 'grade' | 'semester' | 'agePsychology' | 'learningTraits'>;
+type SubjectSeed = Omit<BaseSemesterSubjectInsight, 'stage' | 'grade' | 'semester' | 'agePsychology' | 'learningTraits'>;
 
 const MIDDLE_SUBJECTS = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治'] as const;
 const PERIODS = ['七年级上学期', '七年级下学期', '八年级上学期', '八年级下学期', '九年级上学期', '九年级下学期'] as const;
@@ -432,19 +442,27 @@ export function buildSemesterInsightPromptContext(
   const timingContext = buildAcademicTimingPromptContext(date);
   if (insights.length === 0) return timingContext;
   const first = insights[0];
+  const stageLinks = insights
+    .flatMap((item) => item.crossSubjectImpacts)
+    .filter((item, index, all) => all.findIndex((candidate) => (
+      candidate.ability === item.ability
+      && candidate.relatedSubjects.join('|') === item.relatedSubjects.join('|')
+    )) === index)
+    .slice(0, 4);
   return [
     timingContext,
     `当前学期：${normalizeInsightGrade(grade)}${semester}`,
     `年龄段心理：${first.agePsychology.join('；')}`,
     `学习节奏：${first.learningTraits.join('；')}`,
+    `家长沟通边界：注意力=${first.parentGuidance.attention}；自主性=${first.parentGuidance.autonomy}；情绪压力=${first.parentGuidance.emotionAndStress}；监督边界=${first.parentGuidance.supervisionBoundary}；本阶段风险=${first.parentGuidance.commonRisk}`,
     ...insights.map((item) => [
       `${item.subject}：特点=${item.subjectCharacteristics}`,
-      `核心模块=${item.keyDifficulties.slice(0, 5).join('、')}`,
+      `核心目标=${item.coreGoals.join('、')}；核心模块=${item.keyDifficulties.slice(0, 5).join('、')}`,
       `常见错点=${item.commonMistakes.slice(0, 3).join('、')}`,
-      `家长现象=${item.observablePhenomena.slice(0, 3).join('、')}`,
-      `深层根因=${item.rootCauses.slice(0, 3).join('、')}`,
+      `现象-根因-影响-验证链=${item.phenomenonCauseLinks.map((link) => `${link.phenomenon}→${link.cause}→${link.impact}→验证:${link.verification}`).join('；')}`,
       `后续影响=${item.futureImpacts.slice(0, 3).join('、')}`,
-      `近期动作=${item.openingActions.slice(0, 2).join('、')}`,
+      `五阶段任务（报告重点展开前三阶段）=${item.phaseFocuses.slice(0, 3).map((phase) => `${phase.label}[重点:${phase.learningFocus.join('、')}；动作:${phase.parentAction}；时长:${phase.duration}；检查:${phase.checkMethod}；有效:${phase.effectiveStandard}；不要:${phase.avoid}]`).join('；')}`,
     ].join('；')),
+    `跨学科影响：${stageLinks.map((link) => `${link.ability}影响${link.relatedSubjects.join('、')}：${link.mechanism}；家长现象=${link.observablePhenomenon}；验证动作=${link.parentAction}`).join('\n')}`,
   ].join('\n');
 }

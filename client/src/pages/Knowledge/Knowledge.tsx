@@ -680,6 +680,8 @@ const Knowledge: React.FC = () => {
                   loading={detailLoading}
                   stageSlug={stageSlug}
                   profile={profile}
+                  grade={grade}
+                  semester={semester}
                 />
               </WobblyCard>
             </div>
@@ -697,6 +699,8 @@ const Knowledge: React.FC = () => {
                   loading={detailLoading}
                   stageSlug={stageSlug}
                   profile={profile}
+                  grade={grade}
+                  semester={semester}
                 />
               </WobblyCard>
             </div>

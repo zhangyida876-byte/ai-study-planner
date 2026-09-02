@@ -9,6 +9,7 @@ import type { KnowledgePoint } from '@shared/api.interface';
 import KnowledgeGraph from './KnowledgeGraph';
 import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
 import { getInternalScriptAnchor } from '@client/src/config/internal-resource-library';
+import { getSemesterSubjectInsight } from '@client/src/config/semester-subject-insights';
 
 import type { StageProfile } from '@client/src/types/stage-profile';
 import type { StageSlug } from '@client/src/config/stages';
@@ -19,6 +20,8 @@ interface KnowledgeDetailPanelProps {
   loading: boolean;
   stageSlug?: StageSlug;
   profile?: StageProfile;
+  grade?: string;
+  semester?: string;
 }
 
 interface SectionBlockProps {
@@ -210,6 +213,8 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
   loading,
   stageSlug,
   profile,
+  grade = '',
+  semester = '',
 }) => {
   if (loading) {
     return (
@@ -237,6 +242,9 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
   const examProb = getExamProb(detail, stageSlug);
   const painPoints = buildPainPointHints(detail);
   const effectiveStageSlug: StageSlug = stageSlug || 'middle';
+  const semesterInsight = grade && semester
+    ? getSemesterSubjectInsight(effectiveStageSlug, grade, semester, detail.subject)
+    : undefined;
   const buildKnowledgeReferenceScript = () =>
     buildReferenceScript([
       `先按一个原则：${getInternalScriptAnchor(effectiveStageSlug, 'knowledge')}`,
@@ -311,6 +319,17 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
           ))}
         </div>
       </WobblyCard>
+
+      {semesterInsight && (
+        <WobblyCard variant="white" wobblyIndex={31} hoverable={false} className="p-4">
+          <h3 className="font-marker text-sm font-bold">所在年级学期的阶段影响</h3>
+          <p className="font-hand mt-2 text-sm"><strong>本学期目标：</strong>{semesterInsight.coreGoals[0]}</p>
+          <p className="font-hand mt-1 text-sm"><strong>常见卡点：</strong>{semesterInsight.bottlenecks.slice(0, 2).join('；')}</p>
+          <p className="font-hand mt-1 text-sm"><strong>后续影响：</strong>{semesterInsight.futureImpacts.slice(0, 2).join('；')}</p>
+          <p className="font-hand mt-1 text-sm"><strong>跨科关联：</strong>{semesterInsight.crossSubjectImpacts.slice(0, 2).map((item) => `${item.ability}会影响${item.relatedSubjects.join('、')}`).join('；')}</p>
+          <p className="font-hand mt-2 border-l-4 border-marker-red pl-2 text-xs text-ink/60">具体进度仍需用学校课表、教材目录和最近作业核实。</p>
+        </WobblyCard>
+      )}
 
       <KnowledgeGraph detail={detail} stageSlug={stageSlug} />
 

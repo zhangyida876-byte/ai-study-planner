@@ -5,6 +5,26 @@ import {
 } from '../../client/src/config/semester-subject-insights';
 
 describe('semester subject insights', () => {
+  it('covers every elementary and high-school grade-semester main subject', () => {
+    for (const grade of ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级']) {
+      for (const semester of ['上学期', '下学期']) {
+        expect(getSemesterSubjectInsights('elementary', grade, semester).map((item) => item.subject))
+          .toEqual(['语文', '数学', '英语']);
+      }
+    }
+    for (const grade of ['高一', '高二', '高三']) {
+      for (const semester of ['上学期', '下学期']) {
+        const insights = getSemesterSubjectInsights('high', grade, semester);
+        expect(insights).toHaveLength(9);
+        insights.forEach((insight) => {
+          expect(insight.phaseFocuses).toHaveLength(5);
+          expect(insight.phenomenonCauseLinks.length).toBeGreaterThanOrEqual(2);
+          expect(insight.crossSubjectImpacts.length).toBeGreaterThanOrEqual(2);
+        });
+      }
+    }
+  });
+
   it('covers all nine subjects across six middle-school semesters', () => {
     expect(SEMESTER_SUBJECT_INSIGHTS).toHaveLength(54);
 
@@ -91,5 +111,71 @@ describe('semester subject insights', () => {
     expect(context).toContain('数学：');
     expect(context).toContain('常见错点=');
     expect(context).toContain('后续影响=');
+  });
+
+  it('covers grade-four first-semester Chinese and mathematics with action chains', () => {
+    const insights = getSemesterSubjectInsights('elementary', '四年级', '上学期');
+    const chinese = insights.find((item) => item.subject === '语文');
+    const mathematics = insights.find((item) => item.subject === '数学');
+
+    expect(chinese?.keyDifficulties.join('')).toMatch(/概括|批注|记叙文/);
+    expect(chinese?.observablePhenomena.join('')).toMatch(/主要内容|作文/);
+    expect(mathematics?.keyDifficulties.join('')).toMatch(/大数|乘|角/);
+    expect(mathematics?.phenomenonCauseLinks[0]).toEqual(expect.objectContaining({
+      phenomenon: expect.any(String),
+      cause: expect.any(String),
+      impact: expect.any(String),
+      verification: expect.stringContaining('5道'),
+    }));
+    expect(mathematics?.phaseFocuses.map((item) => item.label)).toEqual([
+      '开学前', '开学第一周', '开学第一个月', '期中前', '期末前',
+    ]);
+  });
+
+  it('distinguishes grade-seven semesters and preserves future links', () => {
+    const firstSemester = getSemesterSubjectInsights('middle', '七年级', '上学期');
+    const secondSemesterMath = getSemesterSubjectInsights('middle', '七年级', '下学期')
+      .find((item) => item.subject === '数学');
+
+    expect(firstSemester.find((item) => item.subject === '数学')?.keyDifficulties.join(''))
+      .toMatch(/有理数|整式|方程|几何/);
+    expect(firstSemester.find((item) => item.subject === '英语')?.subjectCharacteristics)
+      .toMatch(/语篇|语法/);
+    expect(secondSemesterMath?.keyDifficulties).toEqual(expect.arrayContaining(['实数', '平面坐标系']));
+    expect(secondSemesterMath?.keyDifficulties.join('')).not.toContain('函数单调性');
+    expect(secondSemesterMath?.crossSubjectImpacts.some((item) => item.relatedSubjects.includes('物理'))).toBe(true);
+  });
+
+  it('provides high-one and high-two structured stage interpretation', () => {
+    const highOne = getSemesterSubjectInsights('high', '高一', '上学期');
+    const highOneMath = highOne.find((item) => item.subject === '数学');
+    const highOnePhysics = highOne.find((item) => item.subject === '物理');
+    const highTwo = getSemesterSubjectInsights('high', '高二', '上学期');
+    const highTwoMath = highTwo.find((item) => item.subject === '数学');
+    const highTwoPhysics = highTwo.find((item) => item.subject === '物理');
+
+    expect(highOneMath?.keyDifficulties.join('')).toMatch(/集合|逻辑|函数/);
+    expect(highOnePhysics?.keyDifficulties.join('')).toMatch(/运动学|牛顿|受力/);
+    expect(highTwoMath?.keyDifficulties.join('')).toMatch(/数列|空间向量|圆锥曲线/);
+    expect(highTwoPhysics?.keyDifficulties.join('')).toMatch(/电场|电路|磁场/);
+    expect(highTwoPhysics?.parentGuidance.commonRisk).toContain('赋分');
+    expect(highOneMath?.crossSubjectImpacts.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('injects phase actions, parent boundaries and cross-subject links into AI context', () => {
+    const context = buildSemesterInsightPromptContext(
+      'high',
+      '高一',
+      '上学期',
+      ['数学', '物理'],
+      new Date(2026, 8, 2, 10),
+    );
+
+    expect(context).toContain('家长沟通边界：注意力=');
+    expect(context).toContain('现象-根因-影响-验证链=');
+    expect(context).toContain('五阶段任务（报告重点展开前三阶段）=开学前');
+    expect(context).toContain('跨学科影响：');
+    expect(context).toContain('数学：');
+    expect(context).toContain('物理：');
   });
 });
