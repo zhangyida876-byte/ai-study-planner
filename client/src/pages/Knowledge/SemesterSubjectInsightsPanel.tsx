@@ -57,8 +57,8 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
           </div>
         </div>
 
-        <div className="font-hand mb-4 border-l-4 border-pen-blue bg-pen-blue/5 px-3 py-2 text-sm">
-          本页提供{selected.grade}{selected.semester}{displaySubject(selected.subject)}的共性教研参考，不依据某个孩子的分数判断升学档位或目标学校差距。
+        <div className="font-hand mt-4 border-l-4 border-pen-blue bg-pen-blue/5 px-3 py-2 text-sm">
+          {grade ? `已选择${grade}，` : ''}请继续选择学期。完成后可查看各科共性教研参考；本页不依据某个孩子的分数判断升学档位或目标学校差距。
         </div>
       </WobblyCard>
     );
@@ -100,7 +100,10 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
             <h3 className="font-marker mb-2 font-bold">{displaySubject(selected.subject)}当前学习重点</h3>
             <p className="font-hand text-sm leading-6">{selected.subjectCharacteristics}</p>
             <p className="font-hand mt-2 text-sm"><strong>本学期必须形成：</strong>{selected.coreGoals.join('；')}</p>
-            <p className="font-hand mt-2 text-sm"><strong>当前先做：</strong>{currentPhase.parentAction}</p>
+            <p className="font-hand mt-2 text-sm">
+              <strong>当前先做：</strong>
+              {currentPhase?.parentAction || selected.openingActions[0] || '先用最近作业核实当前教学进度和主要错因。'}
+            </p>
           </div>
         </section>
 
@@ -143,7 +146,7 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
           <h3 className="font-marker mb-3 flex items-center gap-2 text-lg font-bold"><ListChecks className="size-5 text-pen-blue" />当前阶段家长最该做什么</h3>
           <div className="grid gap-3 lg:grid-cols-3">
             {selected.phaseFocuses.slice(0, 3).map((phase) => (
-              <div key={phase.id} className={`border-2 border-dashed p-3 ${phase.id === currentPhase.id ? 'border-marker-red bg-marker-red/5' : 'border-ink/20'}`}>
+              <div key={phase.id} className={`border-2 border-dashed p-3 ${phase.id === currentPhase?.id ? 'border-marker-red bg-marker-red/5' : 'border-ink/20'}`}>
                 <h4 className="font-marker font-bold">{phase.label}</h4>
                 <p className="font-hand mt-2 text-sm"><strong>做什么：</strong>{phase.parentAction}</p>
                 <p className="font-hand mt-1 text-sm"><strong>多久：</strong>{phase.duration}</p>
@@ -170,7 +173,16 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
 
         <section className="mt-4 border-2 border-dashed border-ink/20 bg-white p-4">
           <h3 className="font-marker mb-2 flex items-center gap-2 font-bold"><MessageCircleMore className="size-4 text-pen-blue" />给家长的讲法</h3>
-          <p className="font-hand text-sm leading-6">“这个阶段先别只看孩子作业写没写完。更值得看的是：{selected.observablePhenomena[0]}。这通常不是简单粗心，而是{selected.rootCauses[0]}。现在先围绕{currentPhase.learningFocus[0]}做小范围验证，做到{currentPhase.effectiveStandard}，再决定要不要加量。”</p>
+          <p className="font-hand text-sm leading-6">
+            “这个阶段先别只看孩子作业写没写完。更值得看的是：
+            {selected.observablePhenomena[0] || '近期作业和考试中的重复失分'}。
+            这通常不是简单粗心，而是
+            {selected.rootCauses[0] || '知识、方法或执行环节存在尚未核实的断点'}。
+            现在先围绕
+            {currentPhase?.learningFocus?.[0] || selected.keyDifficulties[0] || '当前章节'}
+            做小范围验证，做到
+            {currentPhase?.effectiveStandard || '同类基础题正确率稳定达到 80%'}，再决定要不要加量。”
+          </p>
         </section>
       </WobblyCard>
     );

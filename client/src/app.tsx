@@ -96,13 +96,13 @@ const RoutesComponent = () => {
             </StageGuard>
           }
         />
-        <Route path=":stage/plan" element={<StageLegacyRedirect target="future" tab="path" />} />
-        <Route path=":stage/study-plan" element={<StageLegacyRedirect target="future" tab="schedule" />} />
+        <Route path=":stage/plan" element={<StageLegacyRedirect target="diagnosis" />} />
+        <Route path=":stage/study-plan" element={<StageLegacyRedirect target="diagnosis" />} />
         <Route path=":stage/advice" element={<StageLegacyRedirect target="scripts" tab="objection" />} />
         {/* 旧路径兼容 */}
         <Route path="diagnosis" element={<Navigate to="/middle/diagnosis" replace />} />
-        <Route path="plan" element={<Navigate to="/middle/future?tab=path" replace />} />
-        <Route path="study-plan" element={<Navigate to="/middle/future?tab=schedule" replace />} />
+        <Route path="plan" element={<Navigate to="/middle/diagnosis" replace />} />
+        <Route path="study-plan" element={<Navigate to="/middle/diagnosis" replace />} />
         <Route path="advice" element={<Navigate to="/middle/scripts?tab=objection" replace />} />
         <Route path="knowledge" element={<Navigate to="/middle/knowledge" replace />} />
         <Route path="materials" element={<Navigate to="/middle/materials" replace />} />

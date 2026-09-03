@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import { Link } from 'react-router-dom';
 import { ArrowRight, BookOpen, Layers, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '@lark-apaas/client-toolkit/logger';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Button } from '@/components/ui/button';
 import { knowledge } from '@client/src/api';
@@ -449,13 +451,33 @@ const Knowledge: React.FC = () => {
           />
         </WobblyCard>
 
-        <SemesterSubjectInsightsPanel
-          stageSlug={stageSlug}
-          grade={grade}
-          semester={semester}
-          subject={subject}
-          onSubjectChange={handleSubjectChange}
-        />
+        <ErrorBoundary
+          resetKeys={[stageSlug, grade, semester, subject]}
+          onError={(error) => logger.error('学期画像渲染失败', error)}
+          fallbackRender={({ resetErrorBoundary }) => (
+            <WobblyCard hoverable={false} wobblyIndex={1} className="mb-6 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-marker text-xl font-bold">学期全科画像暂未加载</h2>
+                  <p className="font-hand mt-1 text-sm text-ink/60">
+                    可继续使用下方知识点查询；切换年级或学期后可重新加载学期画像。
+                  </p>
+                </div>
+                <Button type="button" variant="outline" onClick={resetErrorBoundary}>
+                  重新加载
+                </Button>
+              </div>
+            </WobblyCard>
+          )}
+        >
+          <SemesterSubjectInsightsPanel
+            stageSlug={stageSlug}
+            grade={grade}
+            semester={semester}
+            subject={subject}
+            onSubjectChange={handleSubjectChange}
+          />
+        </ErrorBoundary>
 
         {(hasQueried || selectedId || effectiveSubject) && (
           <div className="mb-3 flex items-center gap-2">
