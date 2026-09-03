@@ -493,7 +493,7 @@ const Diagnosis: React.FC = () => {
           </Button>
           <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 学情诊断与升学规划</h1>
           <p className="font-hand mt-1 text-sm text-muted-foreground">
-            一次完成水平定位、各科优先问题、目标差距、分科行动和洋葱学园承接
+            业务可讲版：把孩子的问题、近期风险、下一步动作和顾问话术一次讲清
           </p>
         </div>
 
@@ -533,7 +533,7 @@ const Diagnosis: React.FC = () => {
               <div className="p-5">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-hand text-xs font-bold text-marker-red">STEP 2 · 结论与行动</p>
+                    <p className="font-hand text-xs font-bold text-marker-red">STEP 2 · 业务可讲版</p>
                     <h2 className="font-marker mt-1 text-2xl font-bold">
                       {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}学情诊断与升学规划报告
                     </h2>
@@ -660,7 +660,7 @@ const Diagnosis: React.FC = () => {
                 <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
                 <p className="font-marker mt-2 text-2xl font-bold text-ink">生成学情诊断与升学规划报告</p>
                 <p className="font-hand mt-2 max-w-md text-sm text-muted-foreground">
-                  生成后优先展示一句话判断、3个核心问题、家长行动方案和可直接转述的话术；详细分析按需展开。
+                  生成后按科目展示家长现象、关键根因、近期风险、行动方案和可直接复制的话术。
                 </p>
               </div>
             </WobblyCard>

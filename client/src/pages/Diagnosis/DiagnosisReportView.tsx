@@ -3,15 +3,19 @@ import { ErrorBoundary } from 'react-error-boundary';
 import {
   AlertCircle,
   CalendarDays,
+  Check,
   CheckSquare2,
+  Copy,
   Eye,
   GitBranch,
   MessageSquareQuote,
   PackageCheck,
   Sparkles,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { StageSlug } from '@client/src/config/stages';
 import { Streamdown } from '@client/src/components/ui/streamdown';
+import { copyText } from '@client/src/utils/clipboard';
 import {
   Accordion,
   AccordionContent,
@@ -50,7 +54,15 @@ const SECTION_ICONS: Record<number, React.FC<{ className?: string }>> = {
 };
 
 const SectionHeading: React.FC<{ section: ReportSection }> = ({ section }) => {
-  const Icon = SECTION_ICONS[section.index] || Sparkles;
+  const Icon = section.title.includes('话术')
+    ? MessageSquareQuote
+    : section.title.includes('洋葱')
+      ? PackageCheck
+      : section.title.includes('动作')
+        ? CheckSquare2
+        : section.title.includes('风险')
+          ? AlertCircle
+          : SECTION_ICONS[section.index] || Sparkles;
   return (
     <div className="mb-4 flex items-center gap-2">
       <span className="flex size-8 shrink-0 items-center justify-center border-2 border-ink bg-white shadow-hard-sm">
@@ -148,6 +160,28 @@ const ProblemsSection: React.FC<{ section: ReportSection }> = ({ section }) => {
   );
 };
 
+const RiskSection: React.FC<{ section: ReportSection }> = ({ section }) => {
+  const risks = parseSubjectSections(section.content);
+  if (risks.length === 0) return <GenericSection section={section} />;
+
+  return (
+    <section className="border-b-2 border-dashed border-ink/15 py-5">
+      <SectionHeading section={section} />
+      <div className="grid gap-3 lg:grid-cols-2">
+        {risks.map((risk) => (
+          <article key={risk.title} className="border-2 border-ink bg-white p-4 shadow-hard-sm">
+            <h4 className="font-marker mb-3 flex items-center gap-2 font-bold text-marker-red">
+              <CalendarDays className="size-4" />
+              {risk.title}
+            </h4>
+            <ProblemFields content={risk.content} />
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+};
+
 const CrossSubjectSection: React.FC<{ section: ReportSection }> = ({ section }) => {
   const links = parseSubjectSections(section.content);
   return (
@@ -172,7 +206,7 @@ const CrossSubjectSection: React.FC<{ section: ReportSection }> = ({ section }) 
 };
 
 const ActionPlanSection: React.FC<{ section: ReportSection }> = ({ section }) => {
-  const periods = parseNumberedSubsections(section.content, 6);
+  const periods = parseNumberedSubsections(section.content, section.index);
   const [activePeriod, setActivePeriod] = useState('1');
   if (periods.length === 0) return <GenericSection section={section} />;
 
@@ -205,6 +239,50 @@ const ActionPlanSection: React.FC<{ section: ReportSection }> = ({ section }) =>
   );
 };
 
+function cleanScriptText(content: string): string {
+  return content
+    .replace(/^\s*[-*>#]+\s*/gmu, '')
+    .replace(/\*\*/gu, '')
+    .replace(/__+/gu, '')
+    .trim();
+}
+
+const CopyableScriptCard: React.FC<{
+  title: string;
+  content: string;
+  featured?: boolean;
+}> = ({ title, content, featured = false }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async (): Promise<void> => {
+    const result = await copyText(cleanScriptText(content));
+    if (!result.ok) {
+      toast.error(result.message);
+      return;
+    }
+    setCopied(true);
+    toast.success(`已复制${title}`);
+    window.setTimeout(() => setCopied(false), 1800);
+  };
+
+  return (
+    <article className={`border-2 border-ink p-4 shadow-hard-sm ${featured ? 'bg-postit-yellow/40' : 'bg-white'}`}>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h4 className="font-marker font-bold">{title}</h4>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="flex size-8 shrink-0 items-center justify-center border-2 border-ink bg-white shadow-hard-sm transition-transform hover:-translate-y-0.5"
+          title={`复制${title}`}
+          aria-label={`复制${title}`}
+        >
+          {copied ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
+        </button>
+      </div>
+      <div className="font-hand text-sm leading-6"><Streamdown>{content}</Streamdown></div>
+    </article>
+  );
+};
+
 const MissingRequiredSection: React.FC<{ title: string }> = ({ title }) => (
   <section className="my-4 border-2 border-dashed border-marker-red/50 bg-marker-red/5 p-4">
     <h3 className="font-marker flex items-center gap-2 font-bold">
@@ -218,9 +296,30 @@ const MissingRequiredSection: React.FC<{ title: string }> = ({ title }) => (
 );
 
 const AdvisorScriptSection: React.FC<{ section?: ReportSection }> = ({ section }) => {
-  if (!section) return <MissingRequiredSection title="课程顾问转述话术" />;
-  const scripts = parseNumberedSubsections(section.content, 8);
+  if (!section) return <MissingRequiredSection title="课程顾问可复制话术" />;
+  const scripts = parseNumberedSubsections(section.content, section.index);
   if (scripts.length === 0) return <GenericSection section={section} />;
+
+  const isBusinessScripts = section.index === 7
+    && (section.title.includes('可复制') || scripts.length > 2);
+  if (isBusinessScripts) {
+    return (
+      <section className="border-b-2 border-dashed border-ink/15 py-5">
+        <SectionHeading section={section} />
+        <p className="font-hand mb-3 text-sm text-ink/60">每条都可单独复制，按沟通进度选择使用。</p>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {scripts.map((script) => (
+            <CopyableScriptCard
+              key={script.index}
+              title={script.title}
+              content={script.content}
+              featured={script.index === 1 || script.index === 6}
+            />
+          ))}
+        </div>
+      </section>
+    );
+  }
 
   const shortScript = scripts.find((script) => script.index === 1)
     || scripts.find((script) => script.title.includes('30秒'));
@@ -231,10 +330,7 @@ const AdvisorScriptSection: React.FC<{ section?: ReportSection }> = ({ section }
     <section className="border-b-2 border-dashed border-ink/15 py-5">
       <SectionHeading section={section} />
       {shortScript ? (
-        <article className="border-2 border-ink bg-postit-yellow/35 p-4 shadow-hard-sm">
-          <h4 className="font-marker mb-2 font-bold">30 秒短版</h4>
-          <div className="font-hand text-sm leading-6"><Streamdown>{shortScript.content}</Streamdown></div>
-        </article>
+        <CopyableScriptCard title="30 秒短版" content={shortScript.content} featured />
       ) : (
         <p className="font-hand border-l-4 border-marker-red bg-marker-red/5 p-3 text-sm">
           本次未识别到 30 秒话术，请重新生成报告。
@@ -282,6 +378,30 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
         <div className="font-hand prose-headings:font-marker"><Streamdown>{content}</Streamdown></div>
         <MissingRequiredSection title="洋葱学园承接方案" />
         <MissingRequiredSection title="课程顾问转述话术" />
+      </div>
+    );
+  }
+
+  if (layout.version === 'business-seven') {
+    const sectionOne = byIndex.get(1);
+    const sectionTwo = byIndex.get(2);
+    const sectionThree = byIndex.get(3);
+    const sectionFour = byIndex.get(4);
+    const sectionFive = byIndex.get(5);
+    const sectionSix = byIndex.get(6);
+    const sectionSeven = byIndex.get(7);
+
+    return (
+      <div className="bg-white/70 px-4 py-2">
+        {sectionOne && <GenericSection section={sectionOne} highlighted />}
+        {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
+        {sectionThree && <ProblemsSection section={sectionThree} />}
+        {sectionFour && <RiskSection section={sectionFour} />}
+        {sectionFive && <ActionPlanSection section={sectionFive} />}
+        {sectionSix
+          ? <GenericSection section={sectionSix} />
+          : <MissingRequiredSection title="洋葱学园承接方案" />}
+        <AdvisorScriptSection section={sectionSeven} />
       </div>
     );
   }

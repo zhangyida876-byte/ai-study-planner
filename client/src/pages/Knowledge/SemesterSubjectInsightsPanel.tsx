@@ -172,7 +172,8 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
         </section>
 
         <section className="mt-4 border-2 border-dashed border-ink/20 bg-white p-4">
-          <h3 className="font-marker mb-2 flex items-center gap-2 font-bold"><MessageCircleMore className="size-4 text-pen-blue" />给家长的讲法</h3>
+          <h3 className="font-marker mb-2 flex items-center gap-2 font-bold"><MessageCircleMore className="size-4 text-pen-blue" />专业内容转述参考</h3>
+          <p className="font-hand mb-2 text-xs text-ink/55">用于解释该年级学科的共性规律，不替代具体孩子的个性化诊断。</p>
           <p className="font-hand text-sm leading-6">
             “这个阶段先别只看孩子作业写没写完。更值得看的是：
             {selected.observablePhenomena[0] || '近期作业和考试中的重复失分'}。

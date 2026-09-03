@@ -33,9 +33,11 @@ const STAGE_MATERIALS: Record<StageSlug, string[]> = {
 
 const MODULE_RULES: Record<InternalModuleKey, string[]> = {
   diagnosis: [
-    '诊断输出必须先给结论，再给原因，最后给动作。',
-    '家长话术要口语化、有温度，避免空泛术语。',
-    '如果涉及产品建议，优先引用内部产品卖点与案例表达。',
+    '诊断输出必须先讲家长看得到的现象，再用大白话解释根因，最后给一个能马上执行的动作。',
+    '业务话术要像真人微信或电话沟通：允许“您看啊、咱们先别急、其实不是孩子不努力”等自然承接，避免报告腔。',
+    '专业背书只点名一个当前知识点或题型，不展开成教案；每个专业判断后必须翻译成家长听得懂的话。',
+    '风险提醒只连接最近一次真实考试或衔接节点，不恐吓；最后自然推进学情核实、优先科目或试学路径。',
+    '产品承接必须逐项对应问题，说清同步课、知识点拆解、解题课、AI、练习和错题复盘分别解决什么。',
   ],
   plan: [
     '升学规划输出顺序：当前分位 -> 目标差距 -> 时间节点 -> 执行动作。',
@@ -1175,7 +1177,11 @@ export function getInternalMaterialContext(input: {
   limit?: number;
 }): string {
   const { stageSlug, module, limit = 10 } = input;
-  const lines = [...COMMON_MATERIALS, ...(STAGE_MATERIALS[stageSlug] || []), ...(MODULE_RULES[module] || [])];
+  const lines = [
+    ...(MODULE_RULES[module] || []),
+    ...(STAGE_MATERIALS[stageSlug] || []),
+    ...COMMON_MATERIALS,
+  ];
   return lines.slice(0, limit).map((line, index) => `${index + 1}. ${line}`).join('\n');
 }
 

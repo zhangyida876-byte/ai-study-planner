@@ -13,7 +13,7 @@ export interface ReportSubsection {
 export interface ReportSectionLayout {
   primaryIndexes: number[];
   detailIndexes: number[];
-  version: 'current-eight' | 'compact-six' | 'legacy-eight';
+  version: 'business-seven' | 'current-eight' | 'compact-six' | 'legacy-eight';
 }
 
 const STRUCTURED_LABELS = [
@@ -22,6 +22,12 @@ const STRUCTURED_LABELS = [
   '背后根因',
   '后续影响',
   '怎么验证',
+  '专业判断',
+  '家长听得懂',
+  '马上先做',
+  '会暴露什么',
+  '为什么',
+  '现在先做',
   '底层能力',
   '影响科目',
   '影响机制',
@@ -64,6 +70,20 @@ function resolveSectionIndex(numberText: string | undefined, title: string): num
   const normalizedTitle = normalizeHeading(
     numberText && numberedIndex > 8 ? `${numberText}${title}` : title,
   );
+  const businessTitleIndexes: Array<[number, string[]]> = [
+    [1, ['一句话学情判断']],
+    [2, ['家长能看到的现象']],
+    [3, ['背后根因']],
+    [4, ['近期风险']],
+    [5, ['家长可执行动作']],
+    [6, ['洋葱学园承接方案', '洋葱承接方案']],
+    [7, ['课程顾问可复制话术']],
+  ];
+  for (const [index, aliases] of businessTitleIndexes) {
+    if (aliases.some((alias) => normalizedTitle.includes(normalizeHeading(alias)))) {
+      return index;
+    }
+  }
   for (const [indexText, aliases] of Object.entries(SECTION_TITLE_ALIASES)) {
     if (aliases.some((alias) => normalizedTitle.includes(normalizeHeading(alias)))) {
       return Number(indexText);
@@ -224,6 +244,18 @@ export function parseNumberedSubsections(
 }
 
 export function resolveReportSectionLayout(sections: ReportSection[]): ReportSectionLayout {
+  const isBusinessSeven = sections.some((section) => (
+    section.index === 1 && section.title.includes('一句话学情判断')
+  )) || sections.some((section) => (
+    section.index === 7 && section.title.includes('课程顾问可复制话术')
+  ));
+  if (isBusinessSeven) {
+    return {
+      primaryIndexes: [1, 2, 3, 4, 5, 6, 7],
+      detailIndexes: [],
+      version: 'business-seven',
+    };
+  }
   const sectionSix = sections.find((section) => section.index === 6);
   const isCurrentEight = sections.some((section) => (
     section.index === 1 && section.title.includes('当前节点')

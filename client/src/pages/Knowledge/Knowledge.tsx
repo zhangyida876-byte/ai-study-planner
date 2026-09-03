@@ -416,7 +416,7 @@ const Knowledge: React.FC = () => {
           {stageConfig.label} · 学情及知识点查询
         </h1>
         <p className="font-hand mb-4 text-sm text-muted-foreground">
-          查询共性学情、重难点、易错卡点和知识点影响，不替代个性化诊断报告
+          专业补充版：查询共性学情、重难点、易错卡点和知识点影响，不替代个体诊断
         </p>
 
         <ProfileAutofillBanner
