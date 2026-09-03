@@ -71,6 +71,40 @@ describe('diagnosis report view layout', () => {
     });
   });
 
+  it('recognizes unnumbered product and advisor-script title variants', () => {
+    const sections = parseReportSections([
+      '## 当前节点与一句话结论',
+      '结论',
+      '## 行动方案',
+      '行动',
+      '## 产品承接方案',
+      '承接内容',
+      '## 30秒话术',
+      '短版内容',
+      '## 2分钟话术',
+      '完整版内容',
+    ].join('\n'));
+
+    expect(sections.find((section) => section.index === 7)).toEqual({
+      index: 7,
+      title: '洋葱学园承接方案',
+      content: '承接内容',
+    });
+    expect(sections.find((section) => section.index === 8)?.content).toContain('### 8.1 30秒短版');
+    expect(sections.find((section) => section.index === 8)?.content).toContain('### 8.2 2分钟完整版');
+  });
+
+  it('keeps the page in current layout when optional report sections are missing', () => {
+    const sections = parseReportSections([
+      '## 1. 当前节点与一句话结论',
+      '结论',
+      '## 6. 行动方案',
+      '行动',
+    ].join('\n'));
+
+    expect(resolveReportSectionLayout(sections).version).toBe('current-eight');
+  });
+
   it('keeps archived eight-section reports readable', () => {
     const sections = Array.from({ length: 8 }, (_, index) => ({
       index: index + 1,

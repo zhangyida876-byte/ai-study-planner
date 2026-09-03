@@ -9,7 +9,7 @@ describe('report prompt templates', () => {
     const prompt = buildProfessionalReportFramework('diagnosis');
 
     expect(prompt).toContain('## 1. 当前节点与一句话结论');
-    expect(prompt).toContain('## 2. 家长最有感的现象');
+    expect(prompt).toContain('## 2. 家长看到的现象');
     expect(prompt).toContain('## 3. 各科核心问题与根因');
     expect(prompt).toContain('**问题：**');
     expect(prompt).toContain('**背后根因：**');
@@ -29,6 +29,8 @@ describe('report prompt templates', () => {
     expect(prompt).not.toContain('### C. 开学第一个月');
     expect(prompt).toContain('## 7. 洋葱学园承接方案');
     expect(prompt).toContain('## 8. 课程顾问转述话术');
+    expect(prompt).toContain('8个章节必须全部输出');
+    expect(prompt).toContain('禁止省略第7节或第8节');
     expect(prompt).toContain('### 8.1 30秒短版');
     expect(prompt).toContain('### 8.2 2分钟完整版');
     expect(prompt).toContain('30秒短版');

@@ -11,7 +11,6 @@ import History from './pages/History/History';
 import { isStageSlug } from './config/stages';
 
 const CaseMaterials = React.lazy(() => import('./pages/CaseMaterials/CaseMaterials'));
-const Future = React.lazy(() => import('./pages/Future/Future'));
 const Scripts = React.lazy(() => import('./pages/Scripts/Scripts'));
 
 const PageLoader: React.FC = () => (
@@ -27,12 +26,13 @@ const StageGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const StageLegacyRedirect: React.FC<{
-  target: 'future' | 'scripts';
-  tab: string;
+  target: 'diagnosis' | 'future' | 'scripts';
+  tab?: string;
 }> = ({ target, tab }) => {
   const { stage } = useParams<{ stage: string }>();
   if (!isStageSlug(stage)) return <Navigate to="/" replace />;
-  return <Navigate to={`/${stage}/${target}?tab=${tab}`} replace />;
+  const search = tab ? `?tab=${tab}` : '';
+  return <Navigate to={`/${stage}/${target}${search}`} replace />;
 };
 
 const RoutesComponent = () => {
@@ -58,13 +58,7 @@ const RoutesComponent = () => {
         />
         <Route
           path=":stage/future"
-          element={
-            <StageGuard>
-              <Suspense fallback={<PageLoader />}>
-                <Future />
-              </Suspense>
-            </StageGuard>
-          }
+          element={<StageLegacyRedirect target="diagnosis" />}
         />
         <Route
           path=":stage/knowledge"

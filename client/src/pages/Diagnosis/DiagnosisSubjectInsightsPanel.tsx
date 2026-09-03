@@ -32,7 +32,7 @@ const displaySubject = (subject: string): string => subject === '政治' ? '道�
 
 const InsightList: React.FC<{ title: string; items: string[]; icon: React.ReactNode }> = ({
   title,
-  items,
+  items = [],
   icon,
 }) => (
   <div className="min-h-[150px] border-l-4 border-pen-blue bg-accent/40 p-3">
@@ -58,7 +58,7 @@ const DiagnosisSubjectInsightsPanel: React.FC<DiagnosisSubjectInsightsPanelProps
     [grade, semester, stageSlug],
   );
   const normalizedFilled: string[] = useMemo(
-    () => filledSubjects.map(normalizeSubject),
+    () => (Array.isArray(filledSubjects) ? filledSubjects : []).map(normalizeSubject),
     [filledSubjects],
   );
   const initialSubject: string = normalizedFilled.find((subject: string) => (
@@ -84,13 +84,25 @@ const DiagnosisSubjectInsightsPanel: React.FC<DiagnosisSubjectInsightsPanelProps
     );
   }
 
-  const currentPhase = selected.phaseFocuses.find((phase) => (
+  const phaseFocuses = Array.isArray(selected.phaseFocuses) ? selected.phaseFocuses : [];
+  const currentPhase = phaseFocuses.find((phase) => (
     timing.id.includes('opening') ? phase.id === 'opening-week'
       : timing.id.includes('break') ? phase.id === 'before-school'
         : timing.id.includes('midterm') ? phase.id === 'before-midterm'
           : timing.id.includes('final') ? phase.id === 'before-final'
             : phase.id === 'first-month'
-  )) || selected.phaseFocuses[0];
+  )) || phaseFocuses[0];
+  const parentGuidance = selected.parentGuidance || {
+    attention: '先用短任务观察专注情况。',
+    autonomy: '让孩子先独立完成，再由家长核验。',
+    emotionAndStress: '用具体任务反馈替代分数压力。',
+    supervisionBoundary: '家长检查过程证据，不代替完成。',
+    commonRisk: '需结合近期作业继续核实。',
+  };
+  const coreGoals = Array.isArray(selected.coreGoals) ? selected.coreGoals : [];
+  const phenomenonCauseLinks = Array.isArray(selected.phenomenonCauseLinks)
+    ? selected.phenomenonCauseLinks
+    : [];
 
   return (
     <section className="border-b-2 border-dashed border-ink/15 py-5">
@@ -142,7 +154,7 @@ const DiagnosisSubjectInsightsPanel: React.FC<DiagnosisSubjectInsightsPanelProps
         <section className="border-2 border-dashed border-ink/20 bg-white p-4">
           <h5 className="font-marker mb-2 font-bold">{displaySubject(selected.subject)}当前学习重点</h5>
           <p className="font-hand text-sm leading-6">{selected.subjectCharacteristics}</p>
-          <p className="font-hand mt-2 text-sm"><strong>本学期必须形成：</strong>{selected.coreGoals.join('；')}</p>
+          <p className="font-hand mt-2 text-sm"><strong>本学期必须形成：</strong>{coreGoals.join('；') || '需结合近期作业继续核实'}</p>
         </section>
       </div>
 
@@ -151,18 +163,18 @@ const DiagnosisSubjectInsightsPanel: React.FC<DiagnosisSubjectInsightsPanelProps
           <Brain className="size-4 text-pen-blue" />年龄段身心特点与家长边界
         </h5>
         <div className="grid gap-2 font-hand text-sm md:grid-cols-2">
-          <p><strong>注意力：</strong>{selected.parentGuidance.attention}</p>
-          <p><strong>自主学习：</strong>{selected.parentGuidance.autonomy}</p>
-          <p><strong>情绪压力：</strong>{selected.parentGuidance.emotionAndStress}</p>
-          <p><strong>监督边界：</strong>{selected.parentGuidance.supervisionBoundary}</p>
+          <p><strong>注意力：</strong>{parentGuidance.attention}</p>
+          <p><strong>自主学习：</strong>{parentGuidance.autonomy}</p>
+          <p><strong>情绪压力：</strong>{parentGuidance.emotionAndStress}</p>
+          <p><strong>监督边界：</strong>{parentGuidance.supervisionBoundary}</p>
         </div>
       </section>
 
       <section className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <InsightList title="当前优先重难点" items={selected.keyDifficulties} icon={<ListChecks className="size-4 text-pen-blue" />} />
-        <InsightList title="高频易错点" items={selected.commonMistakes} icon={<AlertTriangle className="size-4 text-marker-red" />} />
-        <InsightList title="常见卡点" items={selected.bottlenecks} icon={<Eye className="size-4 text-marker-red" />} />
-        <InsightList title="后续学习影响" items={selected.futureImpacts} icon={<GitBranch className="size-4 text-pen-blue" />} />
+        <InsightList title="当前优先重难点" items={selected.keyDifficulties || []} icon={<ListChecks className="size-4 text-pen-blue" />} />
+        <InsightList title="高频易错点" items={selected.commonMistakes || []} icon={<AlertTriangle className="size-4 text-marker-red" />} />
+        <InsightList title="常见卡点" items={selected.bottlenecks || []} icon={<Eye className="size-4 text-marker-red" />} />
+        <InsightList title="后续学习影响" items={selected.futureImpacts || []} icon={<GitBranch className="size-4 text-pen-blue" />} />
       </section>
 
       <section className="mt-4 overflow-x-auto">
@@ -177,7 +189,7 @@ const DiagnosisSubjectInsightsPanel: React.FC<DiagnosisSubjectInsightsPanelProps
             </tr>
           </thead>
           <tbody>
-            {selected.phenomenonCauseLinks.map((link) => (
+            {phenomenonCauseLinks.map((link) => (
               <tr key={link.phenomenon}>
                 <td className="border-2 border-ink/15 p-2">{link.phenomenon}</td>
                 <td className="border-2 border-ink/15 p-2">{link.cause}</td>
@@ -189,12 +201,14 @@ const DiagnosisSubjectInsightsPanel: React.FC<DiagnosisSubjectInsightsPanelProps
         </table>
       </section>
 
-      <section className="mt-4 border-l-4 border-marker-red bg-marker-red/5 p-3">
-        <h5 className="font-marker font-bold">当前阶段共性应对建议</h5>
-        <p className="font-hand mt-1 text-sm"><strong>先做：</strong>{currentPhase.parentAction}</p>
-        <p className="font-hand mt-1 text-sm"><strong>核验：</strong>{currentPhase.checkMethod}</p>
-        <p className="font-hand mt-1 text-sm"><strong>有效标准：</strong>{currentPhase.effectiveStandard}</p>
-      </section>
+      {currentPhase && (
+        <section className="mt-4 border-l-4 border-marker-red bg-marker-red/5 p-3">
+          <h5 className="font-marker font-bold">当前阶段共性应对建议</h5>
+          <p className="font-hand mt-1 text-sm"><strong>先做：</strong>{currentPhase.parentAction}</p>
+          <p className="font-hand mt-1 text-sm"><strong>核验：</strong>{currentPhase.checkMethod}</p>
+          <p className="font-hand mt-1 text-sm"><strong>有效标准：</strong>{currentPhase.effectiveStandard}</p>
+        </section>
+      )}
     </section>
   );
 };

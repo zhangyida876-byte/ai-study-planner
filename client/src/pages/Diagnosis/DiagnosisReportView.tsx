@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import {
   AlertCircle,
   CalendarDays,
@@ -204,6 +205,66 @@ const ActionPlanSection: React.FC<{ section: ReportSection }> = ({ section }) =>
   );
 };
 
+const MissingRequiredSection: React.FC<{ title: string }> = ({ title }) => (
+  <section className="my-4 border-2 border-dashed border-marker-red/50 bg-marker-red/5 p-4">
+    <h3 className="font-marker flex items-center gap-2 font-bold">
+      <AlertCircle className="size-4 text-marker-red" />
+      {title}
+    </h3>
+    <p className="font-hand mt-2 text-sm leading-6">
+      本次 AI 返回内容未包含该章节。请重新生成报告；页面已保留入口，不会再静默隐藏。
+    </p>
+  </section>
+);
+
+const AdvisorScriptSection: React.FC<{ section?: ReportSection }> = ({ section }) => {
+  if (!section) return <MissingRequiredSection title="课程顾问转述话术" />;
+  const scripts = parseNumberedSubsections(section.content, 8);
+  if (scripts.length === 0) return <GenericSection section={section} />;
+
+  const shortScript = scripts.find((script) => script.index === 1)
+    || scripts.find((script) => script.title.includes('30秒'));
+  const fullScript = scripts.find((script) => script.index === 2)
+    || scripts.find((script) => script.title.includes('2分钟'));
+
+  return (
+    <section className="border-b-2 border-dashed border-ink/15 py-5">
+      <SectionHeading section={section} />
+      {shortScript ? (
+        <article className="border-2 border-ink bg-postit-yellow/35 p-4 shadow-hard-sm">
+          <h4 className="font-marker mb-2 font-bold">30 秒短版</h4>
+          <div className="font-hand text-sm leading-6"><Streamdown>{shortScript.content}</Streamdown></div>
+        </article>
+      ) : (
+        <p className="font-hand border-l-4 border-marker-red bg-marker-red/5 p-3 text-sm">
+          本次未识别到 30 秒话术，请重新生成报告。
+        </p>
+      )}
+      {fullScript && (
+        <Accordion type="single" collapsible className="mt-3">
+          <AccordionItem value="full-script" className="border-2 border-dashed border-ink/20 bg-white px-4">
+            <AccordionTrigger className="font-marker font-bold no-underline hover:no-underline">
+              查看 2 分钟完整版话术
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="font-hand pt-2 text-sm leading-6"><Streamdown>{fullScript.content}</Streamdown></div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      )}
+    </section>
+  );
+};
+
+const DetailSection: React.FC<{
+  section: ReportSection;
+  children: React.ReactNode;
+}> = ({ section, children }) => (
+  <ErrorBoundary fallbackRender={() => <GenericSection section={section} />}>
+    {children}
+  </ErrorBoundary>
+);
+
 const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
   content,
   stageSlug,
@@ -216,7 +277,13 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
   const layout = useMemo(() => resolveReportSectionLayout(sections), [sections]);
 
   if (sections.length === 0) {
-    return <div className="font-hand prose-headings:font-marker bg-white/70 p-4"><Streamdown>{content}</Streamdown></div>;
+    return (
+      <div className="bg-white/70 p-4">
+        <div className="font-hand prose-headings:font-marker"><Streamdown>{content}</Streamdown></div>
+        <MissingRequiredSection title="洋葱学园承接方案" />
+        <MissingRequiredSection title="课程顾问转述话术" />
+      </div>
+    );
   }
 
   if (layout.version !== 'current-eight') {
@@ -259,34 +326,44 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
       {sectionOne && <GenericSection section={sectionOne} highlighted />}
       {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
       {sectionThree && <ProblemsSection section={sectionThree} />}
-      {sectionFour && stageSlug && grade ? (
-        <DiagnosisSubjectInsightsPanel
-          stageSlug={stageSlug}
-          grade={grade}
-          semester={semester}
-          filledSubjects={filledSubjects}
-          fallbackContent={sectionFour.content}
-        />
-      ) : sectionFour ? <GenericSection section={sectionFour} /> : null}
-      {sectionFive && <CrossSubjectSection section={sectionFive} />}
       {sectionSix && <ActionPlanSection section={sectionSix} />}
+      {sectionSeven
+        ? <GenericSection section={sectionSeven} />
+        : <MissingRequiredSection title="洋葱学园承接方案" />}
+      <AdvisorScriptSection section={sectionEight} />
 
-      {(sectionSeven || sectionEight) && (
+      {(sectionFour || sectionFive) && (
         <Accordion type="multiple" className="mt-4 space-y-3">
-          {sectionSeven && (
-            <AccordionItem value="section-7" className="border-2 border-dashed border-ink/20 bg-white px-4">
+          {sectionFour && (
+            <AccordionItem value="section-4" className="border-2 border-dashed border-ink/20 bg-white px-4">
               <AccordionTrigger className="font-marker font-bold no-underline hover:no-underline">
-                查看洋葱学园承接方案
+                查看年级学期特点与阶段目标影响
               </AccordionTrigger>
-              <AccordionContent><GenericSection section={sectionSeven} /></AccordionContent>
+              <AccordionContent>
+                <DetailSection section={sectionFour}>
+                  {stageSlug && grade ? (
+                    <DiagnosisSubjectInsightsPanel
+                      stageSlug={stageSlug}
+                      grade={grade}
+                      semester={semester || ''}
+                      filledSubjects={filledSubjects}
+                      fallbackContent={sectionFour.content}
+                    />
+                  ) : <GenericSection section={sectionFour} />}
+                </DetailSection>
+              </AccordionContent>
             </AccordionItem>
           )}
-          {sectionEight && (
-            <AccordionItem value="section-8" className="border-2 border-dashed border-ink/20 bg-white px-4">
+          {sectionFive && (
+            <AccordionItem value="section-5" className="border-2 border-dashed border-ink/20 bg-white px-4">
               <AccordionTrigger className="font-marker font-bold no-underline hover:no-underline">
-                查看课程顾问 30 秒与 2 分钟话术
+                查看跨学科影响
               </AccordionTrigger>
-              <AccordionContent><GenericSection section={sectionEight} /></AccordionContent>
+              <AccordionContent>
+                <DetailSection section={sectionFive}>
+                  <CrossSubjectSection section={sectionFive} />
+                </DetailSection>
+              </AccordionContent>
             </AccordionItem>
           )}
         </Accordion>

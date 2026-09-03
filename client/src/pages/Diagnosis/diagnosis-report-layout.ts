@@ -28,6 +28,62 @@ const STRUCTURED_LABELS = [
   '家长能看到',
 ] as const;
 
+const CANONICAL_SECTION_TITLES: Record<number, string> = {
+  1: '当前节点与一句话结论',
+  2: '家长看到的现象',
+  3: '各科核心问题与根因',
+  4: '各科本学期学情解读',
+  5: '跨学科影响',
+  6: '行动方案',
+  7: '洋葱学园承接方案',
+  8: '课程顾问转述话术',
+};
+
+const SECTION_TITLE_ALIASES: Record<number, string[]> = {
+  1: ['当前节点与一句话结论', '一句话结论'],
+  2: ['家长看到的现象', '家长最有感的现象'],
+  3: ['各科核心问题与根因', '核心问题与根因'],
+  4: ['各科本学期学情解读', '年级学期特点与目标影响'],
+  5: ['跨学科影响'],
+  6: ['行动方案', '未来7天家长可执行动作'],
+  7: ['洋葱学园承接方案', '洋葱承接方案', '产品承接方案'],
+  8: ['课程顾问转述话术', '课程顾问话术', '顾问话术', '30秒话术', '2分钟话术'],
+};
+
+function normalizeHeading(value: string): string {
+  return value
+    .replace(/[【】\[\]#*_：:，,。.!！?？+＋\s]/gu, '')
+    .toLowerCase();
+}
+
+function resolveSectionIndex(numberText: string | undefined, title: string): number | null {
+  const numberedIndex = Number(numberText);
+  if (Number.isInteger(numberedIndex) && numberedIndex >= 1 && numberedIndex <= 8) {
+    return numberedIndex;
+  }
+  const normalizedTitle = normalizeHeading(
+    numberText && numberedIndex > 8 ? `${numberText}${title}` : title,
+  );
+  for (const [indexText, aliases] of Object.entries(SECTION_TITLE_ALIASES)) {
+    if (aliases.some((alias) => normalizedTitle.includes(normalizeHeading(alias)))) {
+      return Number(indexText);
+    }
+  }
+  return null;
+}
+
+function mergeSection(sections: ReportSection[], section: ReportSection): void {
+  const existing = sections.find((candidate) => candidate.index === section.index);
+  if (!existing) {
+    sections.push(section);
+    return;
+  }
+  const subsectionTitle = `### ${section.index}.${existing.content ? 2 : 1} ${section.title}`;
+  existing.content = section.content.startsWith(`### ${section.index}.`)
+    ? [existing.content, section.content].filter(Boolean).join('\n\n').trim()
+    : [existing.content, subsectionTitle, section.content].filter(Boolean).join('\n\n').trim();
+}
+
 export function parseLabeledFields(content: string): Array<{ label: string; value: string }> {
   const fields: Array<{ label: string; value: string }> = [];
   let current: { label: string; value: string } | null = null;
@@ -48,25 +104,50 @@ export function parseLabeledFields(content: string): Array<{ label: string; valu
 }
 
 export function parseReportSections(content: string): ReportSection[] {
-  const lines = content.split('\n');
+  const lines = String(content || '').split('\n');
   const sections: ReportSection[] = [];
   let active: ReportSection | null = null;
 
+  const flushActive = () => {
+    if (!active) return;
+    mergeSection(sections, { ...active, content: active.content.trim() });
+    active = null;
+  };
+
   for (const line of lines) {
-    const match = line.match(/^##\s*(\d+)[.、．]?\s*(.+?)\s*$/u);
-    if (match) {
-      if (active) sections.push({ ...active, content: active.content.trim() });
+    const headingMatch = line.match(/^##\s*(.+?)\s*$/u);
+    if (headingMatch) {
+      const heading = headingMatch[1];
+      const numberedMatch = heading.match(/^(\d+)(?:[.、．]\s*|\s+)(.+?)\s*$/u);
+      const numberText = numberedMatch?.[1];
+      const headingTitle = numberedMatch?.[2] || heading;
+      const index = resolveSectionIndex(numberText, headingTitle);
+      if (!index) {
+        if (active) active.content += `${line}\n`;
+        continue;
+      }
+      flushActive();
+      const hasCanonicalNumber = Number(numberText) >= 1 && Number(numberText) <= 8;
+      const rawTitle = headingTitle;
+      const normalizedRawTitle = normalizeHeading(rawTitle);
+      const initialContent = index === 8 && normalizedRawTitle.includes('30秒')
+        ? '### 8.1 30秒短版\n'
+        : index === 8 && normalizedRawTitle.includes('2分钟')
+          ? '### 8.2 2分钟完整版\n'
+          : '';
       active = {
-        index: Number(match[1]),
-        title: match[2].replace(/[【】]/gu, '').trim(),
-        content: '',
+        index,
+        title: hasCanonicalNumber
+          ? headingTitle.replace(/[【】]/gu, '').trim()
+          : CANONICAL_SECTION_TITLES[index] || rawTitle.replace(/[【】]/gu, '').trim(),
+        content: initialContent,
       };
       continue;
     }
     if (active) active.content += `${line}\n`;
   }
 
-  if (active) sections.push({ ...active, content: active.content.trim() });
+  flushActive();
   return sections;
 }
 
