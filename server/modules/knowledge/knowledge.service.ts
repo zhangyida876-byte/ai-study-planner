@@ -9,6 +9,7 @@ import type {
   KnowledgePointSearchResponse,
   ChapterListResponse,
 } from '@shared/api.interface';
+import { getKnowledgeGradeChapterPatterns } from './knowledge-grade-patterns';
 
 @Injectable()
 export class KnowledgeService {
@@ -18,32 +19,13 @@ export class KnowledgeService {
 
   private buildGradeConditions(grade: string, semester?: string) {
     const conditions: ReturnType<typeof sql>[] = [];
-    if (/^[一二三四五六]年级$/.test(grade)) {
-      const sem = semester === '上学期' ? '上' : semester === '下学期' ? '下' : null;
-      if (sem) {
-        conditions.push(sql`${knowledgePoint.chapter} LIKE ${'%' + grade + sem + '册%'}`);
-      } else {
-        const patterns = [grade + '上', grade + '下'];
-        const orConditions = patterns.map((p) => sql`${knowledgePoint.chapter} LIKE ${'%' + p + '%'}`);
-        conditions.push(sql`(${sql.join(orConditions, sql` OR `)})`);
-      }
-    } else if (/^[七八九]年级$/.test(grade)) {
-      const sem = semester === '上学期' ? '上' : semester === '下学期' ? '下' : null;
-      if (sem) {
-        conditions.push(sql`${knowledgePoint.chapter} LIKE ${'%' + grade + sem + '册%'}`);
-      } else {
-        const patterns = [grade + '上', grade + '下', grade + '全'];
-        const orConditions = patterns.map((p) => sql`${knowledgePoint.chapter} LIKE ${'%' + p + '%'}`);
-        conditions.push(sql`(${sql.join(orConditions, sql` OR `)})`);
-      }
-    } else if (/^[高][一二三]$/.test(grade)) {
-      const sem = semester === '上学期' ? '上' : semester === '下学期' ? '下' : null;
-      if (sem) {
-        conditions.push(sql`${knowledgePoint.chapter} LIKE ${'%' + grade + sem + '%'}`);
-      } else {
-        conditions.push(sql`${knowledgePoint.chapter} LIKE ${'%' + grade + '%'}`);
-      }
-    }
+    const patterns = getKnowledgeGradeChapterPatterns(grade, semester);
+    if (patterns.length === 0) return conditions;
+
+    const orConditions = patterns.map((pattern: string) =>
+      sql`${knowledgePoint.chapter} LIKE ${`%${pattern}%`}`,
+    );
+    conditions.push(sql`(${sql.join(orConditions, sql` OR `)})`);
     return conditions;
   }
 

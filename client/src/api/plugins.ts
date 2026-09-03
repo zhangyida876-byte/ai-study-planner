@@ -943,9 +943,22 @@ export function buildPlanAdditionalInfo(ctx: PlanFormContext, options?: PromptBu
 
 export function buildKnowledgeGradeSemester(chapter: string): string {
   const gradeMatch = chapter.match(/([一二三四五六七八九]年级|高一|高二|高三)/);
-  const semMatch = chapter.match(/(上册|下册|全册|上学期|下学期)/);
   const grade = gradeMatch?.[1] || '';
-  const sem = semMatch?.[1] || '';
+  let sem = chapter.match(/(上册|下册|全册|上学期|下学期)/)?.[1] || '';
+
+  if (grade === '高一') {
+    if (chapter.includes('必修第一册')) sem = '上学期';
+    if (chapter.includes('必修第二册')) sem = '下学期';
+  } else if (grade === '高二') {
+    if (chapter.includes('选择性必修第一册')) sem = '上学期';
+    if (
+      chapter.includes('选择性必修第二册')
+      || chapter.includes('选择性必修第三册')
+    ) sem = '下学期';
+  } else if (grade === '高三' && chapter.includes('复习')) {
+    sem = '复习阶段';
+  }
+
   return grade + sem;
 }
 

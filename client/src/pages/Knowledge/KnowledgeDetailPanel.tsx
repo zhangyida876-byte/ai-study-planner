@@ -5,6 +5,7 @@ import ReferenceScriptCard from '@client/src/components/ReferenceScriptCard';
 import { Button } from '@/components/ui/button';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { streamKnowledgeAnalysis, buildKnowledgeGradeSemester } from '@client/src/api/plugins';
+import { logger } from '@lark-apaas/client-toolkit/logger';
 import type { KnowledgePoint } from '@shared/api.interface';
 import KnowledgeGraph from './KnowledgeGraph';
 import { buildReferenceScript, pickFirstSentence } from '@client/src/utils/reference-script';
@@ -132,7 +133,9 @@ const AIAnalysisSection: React.FC<{
   detail: KnowledgePoint;
   stageSlug?: StageSlug;
   profile?: StageProfile;
-}> = ({ detail, stageSlug, profile }) => {
+  grade: string;
+  semester: string;
+}> = ({ detail, stageSlug, profile, grade, semester }) => {
   const [analysisContent, setAnalysisContent] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
@@ -142,7 +145,9 @@ const AIAnalysisSection: React.FC<{
     setAnalysisContent('');
     setAnalysisError('');
     try {
-      const gradeSemester = buildKnowledgeGradeSemester(detail.chapter);
+      const gradeSemester = grade && semester
+        ? `${grade}${semester}`
+        : buildKnowledgeGradeSemester(detail.chapter);
       const generator = streamKnowledgeAnalysis({
         textbook_version: detail.version,
         subject: detail.subject,
@@ -155,30 +160,73 @@ const AIAnalysisSection: React.FC<{
         full += chunk;
         setAnalysisContent(full);
       }
-    } catch {
+      if (!full.trim()) {
+        setAnalysisError('未收到分析内容，请重新生成');
+      }
+    } catch (error) {
+      logger.error('知识点 AI 深度分析失败', String(error));
       setAnalysisError('分析生成失败，请稍后重试');
     } finally {
       setIsAnalyzing(false);
     }
-  }, [detail, stageSlug, profile]);
+  }, [detail, grade, semester, stageSlug, profile]);
+
+  const effectiveStageSlug: StageSlug = stageSlug || 'middle';
+  const semesterInsight = grade && semester
+    ? getSemesterSubjectInsight(
+      effectiveStageSlug,
+      grade,
+      semester,
+      detail.subject,
+    )
+    : undefined;
 
   return (
-    <WobblyCard variant="white" decoration="tape" wobblyIndex={3} hoverable={false} className="p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-pen-blue" />
-          <h3 className="font-marker text-sm font-bold">AI 深度分析</h3>
+    <WobblyCard
+      variant="white"
+      wobblyIndex={31}
+      hoverable={false}
+      className="p-4"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-marker text-sm font-bold">所在年级学期的阶段影响</h3>
+          {semesterInsight ? (
+            <div className="font-hand mt-2 space-y-1 text-sm leading-6">
+              <p><strong>本学期目标：</strong>{semesterInsight.coreGoals[0]}</p>
+              <p><strong>常见卡点：</strong>{semesterInsight.bottlenecks.slice(0, 2).join('；')}</p>
+              <p><strong>后续影响：</strong>{semesterInsight.futureImpacts.slice(0, 2).join('；')}</p>
+              <p>
+                <strong>跨科关联：</strong>
+                {semesterInsight.crossSubjectImpacts.length > 0
+                  ? semesterInsight.crossSubjectImpacts
+                    .slice(0, 2)
+                    .map((item) => `${item.ability}会影响${item.relatedSubjects.join('、')}，原因是${item.mechanism}`)
+                    .join('；')
+                  : '当前没有足够可靠的跨学科关联，不强行补充。'}
+              </p>
+              <p className="border-l-4 border-marker-red pl-2 text-xs text-ink/60">
+                具体进度仍需用学校课表、教材目录和最近作业核实。
+              </p>
+            </div>
+          ) : (
+            <p className="font-hand mt-2 text-sm text-ink/60">
+              选择年级和学期后可查看阶段影响；仍可直接生成当前知识点的 AI 深度分析。
+            </p>
+          )}
         </div>
         <Button
           variant="outline"
           size="sm"
-          className="font-hand"
+          className="font-hand shrink-0 border-pen-blue text-pen-blue"
           disabled={isAnalyzing}
           onClick={handleAnalyze}
         >
           {isAnalyzing ? (
             <><Loader2 className="mr-1 size-3.5 animate-spin" />分析中...</>
-          ) : analysisContent ? '重新分析' : '生成分析'}
+          ) : (
+            <><Sparkles className="mr-1 size-3.5" />{analysisContent ? '重新分析' : 'AI 深度分析'}</>
+          )}
         </Button>
       </div>
 
@@ -194,14 +242,14 @@ const AIAnalysisSection: React.FC<{
       )}
 
       {analysisContent && (
-        <div className="font-hand mt-3 prose-headings:font-marker border-t-2 border-dashed border-ink/10 pt-3">
+        <div className="font-hand mt-4 max-h-[560px] overflow-y-auto border-t-2 border-dashed border-ink/15 pr-2 pt-4 prose-headings:font-marker">
           <Streamdown>{analysisContent}</Streamdown>
         </div>
       )}
 
       {!analysisContent && !isAnalyzing && (
-        <p className="font-hand mt-2 text-xs text-muted-foreground">
-          点击“生成分析”获取共性学情、重难点、后续影响和一周学习动作
+        <p className="font-hand mt-3 border-t-2 border-dashed border-ink/10 pt-3 text-xs text-muted-foreground">
+          点击右侧“AI 深度分析”，获取重难点、后续影响和近期学习动作
         </p>
       )}
     </WobblyCard>
@@ -242,9 +290,6 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
   const examProb = getExamProb(detail, stageSlug);
   const painPoints = buildPainPointHints(detail);
   const effectiveStageSlug: StageSlug = stageSlug || 'middle';
-  const semesterInsight = grade && semester
-    ? getSemesterSubjectInsight(effectiveStageSlug, grade, semester, detail.subject)
-    : undefined;
   const buildKnowledgeReferenceScript = () =>
     buildReferenceScript([
       `先按一个原则：${getInternalScriptAnchor(effectiveStageSlug, 'knowledge')}`,
@@ -273,39 +318,41 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
         </div>
       </div>
 
-      <div className={`rounded-lg border-2 p-3 ${importance.color}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Star className="size-4" />
-            <span className="font-marker text-sm font-bold">重要程度</span>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className={`rounded-lg border-2 p-3 ${importance.color}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Star className="size-4" />
+              <span className="font-marker text-sm font-bold">重要程度</span>
+            </div>
+            <span className="font-marker text-sm font-bold">{importance.level}</span>
           </div>
-          <span className="font-marker text-sm font-bold">{importance.level}</span>
+          <div className="mt-1.5 flex gap-0.5">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className={`h-1.5 flex-1 rounded-full ${i <= importance.stars ? 'bg-current opacity-100' : 'bg-current opacity-20'}`}
+              />
+            ))}
+          </div>
         </div>
-        <div className="mt-1.5 flex gap-0.5">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className={`h-1.5 flex-1 rounded-full ${i <= importance.stars ? 'bg-current opacity-100' : 'bg-current opacity-20'}`}
-            />
-          ))}
-        </div>
-      </div>
 
-      <div className="rounded-lg border-2 border-ink/15 bg-accent/30 p-3">
-        <div className="flex items-center justify-between">
-          <span className="font-hand text-xs text-ink/70">{examProb.title}</span>
-          <span className="font-marker text-sm font-bold text-marker-red">
-            {examProb.label}
-          </span>
-        </div>
-        <div className="mt-1.5 h-2 overflow-hidden rounded-full border border-ink/20 bg-white">
-          <div
-            className={`h-full rounded-full ${examProb.color}`}
-            style={{ width: `${examProb.percent}%` }}
-          />
-        </div>
-        <div className="mt-1 text-right font-hand text-[10px] text-muted-foreground">
-          {examProb.percent}%
+        <div className="rounded-lg border-2 border-ink/15 bg-accent/30 p-3">
+          <div className="flex items-center justify-between">
+            <span className="font-hand text-xs text-ink/70">{examProb.title}</span>
+            <span className="font-marker text-sm font-bold text-marker-red">
+              {examProb.label}
+            </span>
+          </div>
+          <div className="mt-1.5 h-2 overflow-hidden rounded-full border border-ink/20 bg-white">
+            <div
+              className={`h-full rounded-full ${examProb.color}`}
+              style={{ width: `${examProb.percent}%` }}
+            />
+          </div>
+          <div className="mt-1 text-right font-hand text-[10px] text-muted-foreground">
+            {examProb.percent}%
+          </div>
         </div>
       </div>
 
@@ -320,34 +367,31 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
         </div>
       </WobblyCard>
 
-      {semesterInsight && (
-        <WobblyCard variant="white" wobblyIndex={31} hoverable={false} className="p-4">
-          <h3 className="font-marker text-sm font-bold">所在年级学期的阶段影响</h3>
-          <p className="font-hand mt-2 text-sm"><strong>本学期目标：</strong>{semesterInsight.coreGoals[0]}</p>
-          <p className="font-hand mt-1 text-sm"><strong>常见卡点：</strong>{semesterInsight.bottlenecks.slice(0, 2).join('；')}</p>
-          <p className="font-hand mt-1 text-sm"><strong>后续影响：</strong>{semesterInsight.futureImpacts.slice(0, 2).join('；')}</p>
-          <p className="font-hand mt-1 text-sm"><strong>跨科关联：</strong>{semesterInsight.crossSubjectImpacts.length > 0
-            ? semesterInsight.crossSubjectImpacts.slice(0, 2).map((item) => `${item.ability}会影响${item.relatedSubjects.join('、')}，原因是${item.mechanism}`).join('；')
-            : '当前没有足够可靠的跨学科关联，不强行补充。'}</p>
-          <p className="font-hand mt-2 border-l-4 border-marker-red pl-2 text-xs text-ink/60">具体进度仍需用学校课表、教材目录和最近作业核实。</p>
-        </WobblyCard>
-      )}
+      <AIAnalysisSection
+        detail={detail}
+        stageSlug={stageSlug}
+        profile={profile}
+        grade={grade}
+        semester={semester}
+      />
 
       <KnowledgeGraph detail={detail} stageSlug={stageSlug} />
 
-      <SectionBlock
-        title="核心知识点梳理"
-        content={detail.content.coreKnowledge}
-        variant="white"
-        wobblyIndex={1}
-      />
+      <div className="grid items-start gap-4 xl:grid-cols-2">
+        <SectionBlock
+          title="核心知识点梳理"
+          content={detail.content.coreKnowledge}
+          variant="white"
+          wobblyIndex={1}
+        />
 
-      <SectionBlock
-        title="核心解题方法总结"
-        content={detail.content.solutionMethods}
-        variant="yellow"
-        wobblyIndex={2}
-      />
+        <SectionBlock
+          title="核心解题方法总结"
+          content={detail.content.solutionMethods}
+          variant="yellow"
+          wobblyIndex={2}
+        />
+      </div>
 
       <div className="rounded-lg border-[3px] border-dashed border-marker-red p-0">
         <div className="border-b-2 border-dashed border-marker-red/30 bg-marker-red/5 px-4 py-2">
@@ -366,8 +410,6 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
         hint="基于当前知识点详情生成可直接沟通的话术（300字内）。"
         wobblyIndex={34}
       />
-
-      <AIAnalysisSection detail={detail} stageSlug={stageSlug} profile={profile} />
     </div>
   );
 };

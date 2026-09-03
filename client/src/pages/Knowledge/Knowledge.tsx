@@ -93,7 +93,8 @@ const Knowledge: React.FC = () => {
       const res = await knowledge.getKnowledgePoints(params);
       setItems(res.items);
       setTotal(res.total);
-    } catch {
+    } catch (error) {
+      logger.error('知识点列表加载失败', error);
       setItems([]);
       setTotal(0);
     } finally {
@@ -108,7 +109,8 @@ const Knowledge: React.FC = () => {
       const res = await knowledge.searchKnowledgePoints(kw.trim(), searchPage, PAGE_SIZE);
       setItems(res.items);
       setTotal(res.total);
-    } catch {
+    } catch (error) {
+      logger.error('知识点搜索失败', error);
       setItems([]);
       setTotal(0);
     } finally {
@@ -143,7 +145,8 @@ const Knowledge: React.FC = () => {
       const res = await knowledge.searchKnowledgePointsFiltered(params);
       setItems(res.items);
       setTotal(res.total);
-    } catch {
+    } catch (error) {
+      logger.error('知识点条件搜索失败', error);
       setItems([]);
       setTotal(0);
     } finally {
@@ -153,7 +156,7 @@ const Knowledge: React.FC = () => {
 
   useEffect(() => {
     if (keyword) return;
-    if (grade && effectiveSubject) {
+    if (grade) {
       setHasQueried(true);
       setPage(1);
       setSelectedChapter('');
@@ -285,14 +288,20 @@ const Knowledge: React.FC = () => {
   }, [updateProfile, province, city, grade]);
 
   const handleSearch = () => {
-    if (!searchInput.trim()) return;
     const kw = searchInput.trim();
-    setKeyword(kw);
     setPage(1);
     setHasQueried(true);
     setSelectedId(null);
     setDetail(null);
     setSelectedChapter('');
+
+    if (!kw) {
+      setKeyword('');
+      void fetchList(1);
+      return;
+    }
+
+    setKeyword(kw);
     if (effectiveVersion || effectiveSubject || grade || semester) {
       fetchFilteredSearch(kw, 1);
     } else {
@@ -377,7 +386,8 @@ const Knowledge: React.FC = () => {
     try {
       const res = await knowledge.getKnowledgePoint(id);
       setDetail(res);
-    } catch {
+    } catch (error) {
+      logger.error('知识点详情加载失败', error);
       setDetail(null);
     } finally {
       setDetailLoading(false);
@@ -395,7 +405,7 @@ const Knowledge: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-paper-dots p-4 lg:p-6">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-[1480px]">
         <Button variant="ghost" size="sm" className="font-hand mb-2 -ml-2" asChild>
           <Link to={stagePath(stageSlug)}>
             <ArrowLeft className="mr-1 size-4" />
@@ -487,8 +497,8 @@ const Knowledge: React.FC = () => {
         )}
 
         {(hasQueried || effectiveSubject) && (
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
-          <div className="min-w-0 lg:w-[330px] lg:shrink-0">
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(320px,0.8fr)_minmax(0,1.7fr)] lg:gap-6 xl:grid-cols-[390px_minmax(0,1fr)]">
+            <aside className="min-w-0 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-1">
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <p className="font-hand text-lg text-muted-foreground">
@@ -688,15 +698,10 @@ const Knowledge: React.FC = () => {
                 )}
               </>
             )}
-          </div>
+            </aside>
 
-          <div className="hidden min-w-0 flex-1 lg:block">
-            <div className="sticky top-6">
-              <WobblyCard
-                hoverable={false}
-                wobblyIndex={2}
-                className="p-5"
-              >
+            <section className="hidden min-w-0 border-l-2 border-dashed border-ink/15 pl-6 lg:block">
+              <div className="min-h-[620px]">
                 <KnowledgeDetailPanel
                   detail={detail}
                   loading={detailLoading}
@@ -705,29 +710,28 @@ const Knowledge: React.FC = () => {
                   grade={grade}
                   semester={semester}
                 />
-              </WobblyCard>
-            </div>
-          </div>
+              </div>
+            </section>
 
-          {selectedId && (
-            <div className="lg:hidden">
-              <WobblyCard
-                hoverable={false}
-                wobblyIndex={2}
-                className="p-5"
-              >
-                <KnowledgeDetailPanel
-                  detail={detail}
-                  loading={detailLoading}
-                  stageSlug={stageSlug}
-                  profile={profile}
-                  grade={grade}
-                  semester={semester}
-                />
-              </WobblyCard>
-            </div>
-          )}
-        </div>
+            {selectedId && (
+              <div className="lg:hidden">
+                <WobblyCard
+                  hoverable={false}
+                  wobblyIndex={2}
+                  className="p-5"
+                >
+                  <KnowledgeDetailPanel
+                    detail={detail}
+                    loading={detailLoading}
+                    stageSlug={stageSlug}
+                    profile={profile}
+                    grade={grade}
+                    semester={semester}
+                  />
+                </WobblyCard>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
