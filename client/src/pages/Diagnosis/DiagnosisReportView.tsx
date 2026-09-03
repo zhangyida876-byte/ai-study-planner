@@ -8,8 +8,6 @@ import {
   ChevronRight,
   Eye,
   GitBranch,
-  ListChecks,
-  MessageCircleMore,
   MessageSquareQuote,
   PackageCheck,
   Sparkles,
@@ -21,20 +19,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@client/src/components/ui/accordion';
-
-interface ReportSection {
-  index: number;
-  title: string;
-  content: string;
-}
+import {
+  parseReportSections,
+  parseStageSubsections,
+  parseSubjectBlocks,
+  resolveReportSectionLayout,
+  type ReportSection,
+} from './diagnosis-report-layout';
 
 interface DiagnosisReportViewProps {
-  content: string;
-}
-
-interface ReportSubsection {
-  index: number;
-  title: string;
   content: string;
 }
 
@@ -42,69 +35,14 @@ const SECTION_ICONS: Record<number, React.FC<{ className?: string }>> = {
   1: Sparkles,
   2: Eye,
   3: AlertCircle,
+  4: CalendarDays,
+  5: CheckSquare2,
   6: CheckSquare2,
   7: PackageCheck,
   8: MessageSquareQuote,
 };
 
-function parseReportSections(content: string): ReportSection[] {
-  const lines = content.split('\n');
-  const sections: ReportSection[] = [];
-  let active: ReportSection | null = null;
-
-  for (const line of lines) {
-    const match = line.match(/^##\s*(\d+)[.、．]?\s*(.+?)\s*$/u);
-    if (match) {
-      if (active) sections.push({ ...active, content: active.content.trim() });
-      active = {
-        index: Number(match[1]),
-        title: match[2].replace(/[【】]/gu, '').trim(),
-        content: '',
-      };
-      continue;
-    }
-    if (active) active.content += `${line}\n`;
-  }
-
-  if (active) sections.push({ ...active, content: active.content.trim() });
-  return sections;
-}
-
-function parseStageSubsections(content: string): ReportSubsection[] {
-  const lines = content.split('\n');
-  const sections: ReportSubsection[] = [];
-  let active: ReportSubsection | null = null;
-  for (const line of lines) {
-    const match = line.match(/^###\s*4[.、．](\d+)\s*(.+?)\s*$/u);
-    if (match) {
-      if (active) sections.push({ ...active, content: active.content.trim() });
-      active = { index: Number(match[1]), title: match[2].trim(), content: '' };
-      continue;
-    }
-    if (active) active.content += `${line}\n`;
-  }
-  if (active) sections.push({ ...active, content: active.content.trim() });
-  return sections;
-}
-
-function parseSubjectBlocks(content: string): Array<{ title: string; content: string }> {
-  const lines = content.split('\n');
-  const blocks: Array<{ title: string; content: string }> = [];
-  let active: { title: string; content: string } | null = null;
-  for (const line of lines) {
-    const match = line.match(/^####\s+(.+?)\s*$/u);
-    if (match) {
-      if (active) blocks.push({ ...active, content: active.content.trim() });
-      active = { title: match[1].trim(), content: '' };
-      continue;
-    }
-    if (active) active.content += `${line}\n`;
-  }
-  if (active) blocks.push({ ...active, content: active.content.trim() });
-  return blocks;
-}
-
-const STAGE_ICONS = [CalendarDays, Brain, BookOpenCheck, GitBranch, ListChecks, MessageCircleMore];
+const STAGE_ICONS = [CalendarDays, Brain, BookOpenCheck, GitBranch];
 
 const StageInterpretationSection: React.FC<{ section: ReportSection }> = ({ section }) => {
   const subsections = parseStageSubsections(section.content);
@@ -122,14 +60,13 @@ const StageInterpretationSection: React.FC<{ section: ReportSection }> = ({ sect
         {subsections.map((subsection) => {
           const Icon = STAGE_ICONS[subsection.index - 1] || ChevronRight;
           const subjectBlocks = subsection.index === 3 ? parseSubjectBlocks(subsection.content) : [];
-          const isAction = subsection.index === 5;
           return (
             <div
               key={subsection.index}
-              className={`border-2 border-dashed border-ink/20 p-4 ${subsection.index === 1 ? 'bg-postit-yellow/35' : isAction ? 'bg-pen-blue/5' : 'bg-white'}`}
+              className={`border-2 border-dashed border-ink/20 p-4 ${subsection.index === 1 ? 'bg-postit-yellow/35' : 'bg-white'}`}
             >
               <h4 className="font-marker mb-3 flex items-center gap-2 text-base font-bold">
-                <Icon className={`size-4 ${isAction ? 'text-marker-red' : 'text-pen-blue'}`} />
+                <Icon className="size-4 text-pen-blue" />
                 {subsection.title}
               </h4>
               {subjectBlocks.length > 0 ? (
@@ -181,10 +118,11 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({ content }) =>
     () => new Map(sections.map((section) => [section.index, section])),
     [sections],
   );
-  const primarySections = [1, 2, 3, 4, 6, 7, 8]
+  const layout = useMemo(() => resolveReportSectionLayout(sections), [sections]);
+  const primarySections = layout.primaryIndexes
     .map((index) => byIndex.get(index))
     .filter((section): section is ReportSection => Boolean(section));
-  const detailSections = [5]
+  const detailSections = layout.detailIndexes
     .map((index) => byIndex.get(index))
     .filter((section): section is ReportSection => Boolean(section));
 
@@ -198,32 +136,41 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({ content }) =>
 
   return (
     <div className="bg-white/70 px-4 py-2">
-      {primarySections.map((section) => section.index === 4
-        ? <StageInterpretationSection key={section.index} section={section} />
-        : <PrimarySection key={section.index} section={section} />)}
+      {primarySections.map((section) => <PrimarySection key={section.index} section={section} />)}
 
       {detailSections.length > 0 && (
-        <Accordion type="single" collapsible className="mt-3 border-2 border-dashed border-ink/15 px-4">
-          <AccordionItem value="details" className="border-0">
-            <AccordionTrigger className="font-marker text-base font-bold no-underline hover:no-underline">
-              查看升学或阶段目标影响
-            </AccordionTrigger>
-            <AccordionContent className="space-y-5">
-              {detailSections.map((section) => (
-                <section key={section.index}>
-                  <h3 className="font-marker mb-2 text-base font-bold">{section.title}</h3>
-                  <div className="font-hand text-sm leading-6">
-                    <Streamdown>{section.content}</Streamdown>
-                  </div>
-                </section>
-              ))}
-            </AccordionContent>
-          </AccordionItem>
+        <Accordion type="multiple" className="mt-3 space-y-3">
+          {detailSections.map((section) => (
+            <AccordionItem
+              key={section.index}
+              value={`section-${section.index}`}
+              className="border-2 border-dashed border-ink/15 bg-white/55 px-4"
+            >
+              <AccordionTrigger className="font-marker text-base font-bold no-underline hover:no-underline">
+                {section.index === 4
+                  ? '查看年级学期特点与阶段目标影响'
+                  : section.index === 6 && !layout.isLegacy
+                    ? '查看洋葱承接方案与完整顾问话术'
+                    : `查看${section.title}`}
+              </AccordionTrigger>
+              <AccordionContent>
+                {section.index === 4
+                  ? <StageInterpretationSection section={section} />
+                  : (
+                    <section>
+                      <h3 className="font-marker mb-2 text-base font-bold">{section.title}</h3>
+                      <div className="font-hand text-sm leading-6">
+                        <Streamdown>{section.content}</Streamdown>
+                      </div>
+                    </section>
+                  )}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
         </Accordion>
       )}
     </div>
   );
 };
 
-export { parseReportSections, parseStageSubsections, parseSubjectBlocks };
 export default DiagnosisReportView;

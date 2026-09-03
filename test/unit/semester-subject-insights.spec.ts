@@ -178,4 +178,20 @@ describe('semester subject insights', () => {
     expect(context).toContain('数学：');
     expect(context).toContain('物理：');
   });
+
+  it('can provide phase background without duplicating detailed diagnosis actions', () => {
+    const context = buildSemesterInsightPromptContext(
+      'high',
+      '高一',
+      '上学期',
+      ['数学'],
+      new Date(2026, 8, 2, 10),
+      { includePhaseActions: false },
+    );
+
+    expect(context).toContain('阶段进度参考（仅用于判断背景，禁止原样输出多阶段行动）=');
+    expect(context).not.toContain('五阶段任务（报告重点展开前三阶段）=');
+    expect(context).not.toContain('动作:');
+    expect(context).toContain('不要提前:');
+  });
 });

@@ -435,6 +435,7 @@ export function buildSemesterInsightPromptContext(
   semester: string,
   subjects: string[],
   date: Date = new Date(),
+  options: { includePhaseActions?: boolean } = {},
 ): string {
   const normalizedSubjects = subjects.map((subject) => subject === '政治&道法' ? '政治' : subject);
   const insights = getSemesterSubjectInsights(stage, grade, semester)
@@ -455,14 +456,19 @@ export function buildSemesterInsightPromptContext(
     `年龄段心理：${first.agePsychology.join('；')}`,
     `学习节奏：${first.learningTraits.join('；')}`,
     `家长沟通边界：注意力=${first.parentGuidance.attention}；自主性=${first.parentGuidance.autonomy}；情绪压力=${first.parentGuidance.emotionAndStress}；监督边界=${first.parentGuidance.supervisionBoundary}；本阶段风险=${first.parentGuidance.commonRisk}`,
-    ...insights.map((item) => [
-      `${item.subject}：特点=${item.subjectCharacteristics}`,
-      `核心目标=${item.coreGoals.join('、')}；核心模块=${item.keyDifficulties.slice(0, 5).join('、')}`,
-      `常见错点=${item.commonMistakes.slice(0, 3).join('、')}`,
-      `现象-根因-影响-验证链=${item.phenomenonCauseLinks.map((link) => `${link.phenomenon}→${link.cause}→${link.impact}→验证:${link.verification}`).join('；')}`,
-      `后续影响=${item.futureImpacts.slice(0, 3).join('、')}`,
-      `五阶段任务（报告重点展开前三阶段）=${item.phaseFocuses.slice(0, 3).map((phase) => `${phase.label}[重点:${phase.learningFocus.join('、')}；动作:${phase.parentAction}；时长:${phase.duration}；检查:${phase.checkMethod}；有效:${phase.effectiveStandard}；不要:${phase.avoid}]`).join('；')}`,
-    ].join('；')),
+    ...insights.map((item) => {
+      const phaseContext = options.includePhaseActions === false
+        ? `阶段进度参考（仅用于判断背景，禁止原样输出多阶段行动）=${item.phaseFocuses.slice(0, 3).map((phase) => `${phase.label}[重点:${phase.learningFocus.join('、')}；不要提前:${phase.avoid}]`).join('；')}`
+        : `五阶段任务（报告重点展开前三阶段）=${item.phaseFocuses.slice(0, 3).map((phase) => `${phase.label}[重点:${phase.learningFocus.join('、')}；动作:${phase.parentAction}；时长:${phase.duration}；检查:${phase.checkMethod}；有效:${phase.effectiveStandard}；不要:${phase.avoid}]`).join('；')}`;
+      return [
+        `${item.subject}：特点=${item.subjectCharacteristics}`,
+        `核心目标=${item.coreGoals.join('、')}；核心模块=${item.keyDifficulties.slice(0, 5).join('、')}`,
+        `常见错点=${item.commonMistakes.slice(0, 3).join('、')}`,
+        `现象-根因-影响-验证链=${item.phenomenonCauseLinks.map((link) => `${link.phenomenon}→${link.cause}→${link.impact}→验证:${link.verification}`).join('；')}`,
+        `后续影响=${item.futureImpacts.slice(0, 3).join('、')}`,
+        phaseContext,
+      ].join('；');
+    }),
     `跨学科影响：${stageLinks.map((link) => `${link.ability}影响${link.relatedSubjects.join('、')}：${link.mechanism}；家长现象=${link.observablePhenomenon}；验证动作=${link.parentAction}`).join('\n')}`,
   ].join('\n');
 }
