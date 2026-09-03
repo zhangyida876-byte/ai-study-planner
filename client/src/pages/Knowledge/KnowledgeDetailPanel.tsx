@@ -326,7 +326,9 @@ const KnowledgeDetailPanel: React.FC<KnowledgeDetailPanelProps> = ({
           <p className="font-hand mt-2 text-sm"><strong>本学期目标：</strong>{semesterInsight.coreGoals[0]}</p>
           <p className="font-hand mt-1 text-sm"><strong>常见卡点：</strong>{semesterInsight.bottlenecks.slice(0, 2).join('；')}</p>
           <p className="font-hand mt-1 text-sm"><strong>后续影响：</strong>{semesterInsight.futureImpacts.slice(0, 2).join('；')}</p>
-          <p className="font-hand mt-1 text-sm"><strong>跨科关联：</strong>{semesterInsight.crossSubjectImpacts.slice(0, 2).map((item) => `${item.ability}会影响${item.relatedSubjects.join('、')}`).join('；')}</p>
+          <p className="font-hand mt-1 text-sm"><strong>跨科关联：</strong>{semesterInsight.crossSubjectImpacts.length > 0
+            ? semesterInsight.crossSubjectImpacts.slice(0, 2).map((item) => `${item.ability}会影响${item.relatedSubjects.join('、')}，原因是${item.mechanism}`).join('；')
+            : '当前没有足够可靠的跨学科关联，不强行补充。'}</p>
           <p className="font-hand mt-2 border-l-4 border-marker-red pl-2 text-xs text-ink/60">具体进度仍需用学校课表、教材目录和最近作业核实。</p>
         </WobblyCard>
       )}

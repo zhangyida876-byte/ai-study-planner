@@ -110,61 +110,90 @@ function buildParentGuidance(stage: StageSlug, grade: string): ParentGuidance {
   };
 }
 
-const CROSS_SUBJECT_MAP: Record<string, Omit<CrossSubjectImpact, 'parentAction'>> = {
-  语文: {
-    ability: '阅读证据与规范表达',
-    relatedSubjects: ['数学', '英语', '历史', '地理', '政治'],
-    mechanism: '题干限定、材料证据和答案组织是应用题与材料题的共同底层步骤。',
-    observablePhenomenon: '语文阅读答案点不全时，其他学科也常出现“会知识但答非所问”。',
-  },
-  数学: {
-    ability: '符号运算、数量关系与图像转换',
-    relatedSubjects: ['物理', '化学', '地理'],
-    mechanism: '方程、比例、函数图像和单位运算直接参与理科建模与定量计算。',
-    observablePhenomenon: '数学列式或图像转换不稳时，物理公式题和化学计算也容易卡在第一步。',
-  },
-  英语: {
-    ability: '长句拆分与语篇逻辑',
-    relatedSubjects: ['语文', '历史', '地理', '政治'],
-    mechanism: '抓主干、识别连接关系和定位证据会迁移到长材料阅读。',
-    observablePhenomenon: '英语逐词翻译仍读不懂时，长材料题也容易漏条件和转折。',
-  },
-  物理: {
-    ability: '过程建模与图像解释',
-    relatedSubjects: ['数学', '化学'],
-    mechanism: '物理量关系依赖代数、函数图像、单位和守恒思想。',
-    observablePhenomenon: '公式都会背，但题目换情境后不知道先画图还是先列式。',
-  },
-  化学: {
-    ability: '符号、比例与实验论证',
-    relatedSubjects: ['数学', '物理', '生物'],
-    mechanism: '化学计算依赖比例方程，实验结论依赖变量控制和证据表达。',
-    observablePhenomenon: '现象能复述，但方程式、数量关系或结论条件经常不完整。',
-  },
-  生物: {
-    ability: '机制链与实验变量',
-    relatedSubjects: ['语文', '化学'],
-    mechanism: '材料信息提取和变量关系决定机制题、实验题是否能完整作答。',
-    observablePhenomenon: '教材背熟，换成图表或实验材料后仍找不到答题入口。',
-  },
-  历史: {
-    ability: '时空定位、因果与材料概括',
-    relatedSubjects: ['语文', '政治', '地理'],
-    mechanism: '时间空间框架和证据化表达是文科材料题的共同能力。',
-    observablePhenomenon: '史实背了很多，但材料一变就不知道该调用哪一段。',
-  },
-  地理: {
-    ability: '空间图表与多因素因果链',
-    relatedSubjects: ['数学', '物理', '历史'],
-    mechanism: '比例、图像、自然过程和区域背景需要同步整合。',
-    observablePhenomenon: '单项结论会背，换一张地图就无法解释原因和影响。',
-  },
-  政治: {
-    ability: '概念边界与材料论证',
-    relatedSubjects: ['语文', '历史'],
-    mechanism: '设问限定、主体、观点和材料证据共同决定采分点。',
-    observablePhenomenon: '答案写得很长，但观点和材料没有一一对应。',
-  },
+interface CrossSubjectSeed extends Omit<CrossSubjectImpact, 'parentAction'> {
+  verification: string;
+}
+
+const CROSS_SUBJECT_MAP: Record<string, CrossSubjectSeed[]> = {
+  语文: [
+    {
+      ability: '题干阅读与信息提取',
+      relatedSubjects: ['数学', '物理', '化学'],
+      mechanism: '读准条件、限定词和问题目标，会直接影响应用题与理科题干的信息提取。',
+      observablePhenomenon: '孩子会知识点，却常因漏看“至少、恰好、忽略”等条件而列错式或答非所问。',
+      verification: '各抽1道数学应用题和理科情境题，只让孩子圈条件并复述题目要求，不进行计算。',
+    },
+    {
+      ability: '材料证据与规范表达',
+      relatedSubjects: ['历史', '地理', '政治'],
+      mechanism: '从材料定位证据并按设问组织答案，是文科材料题共享的表达步骤。',
+      observablePhenomenon: '材料看懂了，但答案写得很长、采分点少，或观点与材料没有对应。',
+      verification: '各抽1道阅读题和材料题，检查答案中的每个观点能否指回原文证据。',
+    },
+  ],
+  数学: [
+    {
+      ability: '代数关系与定量计算',
+      relatedSubjects: ['物理', '化学'],
+      mechanism: '方程、比例、单位换算和运算稳定性直接参与物理公式建模与化学定量计算。',
+      observablePhenomenon: '理化概念能说清，但一到列式、变形或单位换算就卡住。',
+      verification: '分别抽1道数学方程题和理化计算题，对照检查列式、变形、单位三步。',
+    },
+    {
+      ability: '函数与图像转换',
+      relatedSubjects: ['物理', '地理'],
+      mechanism: '坐标、斜率、变化趋势和图像对应关系，会用于运动图像及统计图表解释。',
+      observablePhenomenon: '文字关系能复述，换成坐标图、变化曲线或统计图后判断不稳定。',
+      verification: '用同一组关系分别做文字、表格和图像表达，检查三种表示能否互相转换。',
+    },
+  ],
+  英语: [],
+  物理: [],
+  化学: [
+    {
+      ability: '实验变量控制与证据论证',
+      relatedSubjects: ['物理', '生物'],
+      mechanism: '控制变量、记录现象和由证据得出结论，是理化生实验探究共享的方法。',
+      observablePhenomenon: '实验步骤会背，但无法解释为什么只改变一个条件，结论也常缺少成立范围。',
+      verification: '各抽1道化学和生物或物理实验题，只检查自变量、因变量和控制变量。',
+    },
+  ],
+  生物: [
+    {
+      ability: '图表证据与实验变量',
+      relatedSubjects: ['化学'],
+      mechanism: '从图表提取变化关系并控制实验变量，会影响生化实验材料题的证据判断。',
+      observablePhenomenon: '教材结论会背，换成曲线、表格或实验材料后无法说明证据。',
+      verification: '选1道生物图表题和1道化学实验题，只口述变量、趋势和结论依据。',
+    },
+  ],
+  历史: [
+    {
+      ability: '时空定位与因果链',
+      relatedSubjects: ['地理', '政治'],
+      mechanism: '时间、区域背景和事件因果能帮助理解区域变化与社会制度材料。',
+      observablePhenomenon: '史实背过，但材料换了地区或时代后不知道调用哪条知识。',
+      verification: '用同一事件画时间、地点、原因、影响四格，再核对地理或政治材料中的对应条件。',
+    },
+  ],
+  地理: [
+    {
+      ability: '空间定位与区域背景',
+      relatedSubjects: ['历史'],
+      mechanism: '地图位置、地形气候与资源条件，会影响历史事件和区域发展的解释。',
+      observablePhenomenon: '历史事件记得住，但说不清为什么发生在该区域、产生何种差异。',
+      verification: '选1个历史事件，在空白地图上标位置并说明两项区域条件。',
+    },
+  ],
+  政治: [
+    {
+      ability: '设问限定与材料论证',
+      relatedSubjects: ['历史'],
+      mechanism: '识别主体、限定词、观点和材料证据，会影响政史材料题的采分点组织。',
+      observablePhenomenon: '答案内容很多，但主体写错、观点越界或缺少材料依据。',
+      verification: '各抽1道政治和历史材料题，先不作答，只圈主体、范围和证据词。',
+    },
+  ],
 };
 
 function buildPhaseFocuses(input: InterpretationInput): SemesterPhaseFocus[] {
@@ -222,15 +251,16 @@ export function buildStageInterpretationFields(input: InterpretationInput): Stag
     impact: input.futureImpacts[index] || input.futureImpacts[0] || `影响${input.subject}后续章节迁移`,
     verification: `从最近${input.subject}作业或测评抽取5道同类题，比较原题、变式题和口述依据。`,
   }));
-  const cross = CROSS_SUBJECT_MAP[input.subject] || CROSS_SUBJECT_MAP.语文;
+  const crossLinks = CROSS_SUBJECT_MAP[input.subject] || [];
   return {
     phaseFocuses: buildPhaseFocuses(input),
     phenomenonCauseLinks,
-    crossSubjectImpacts: cross.relatedSubjects.slice(0, 3).map((relatedSubject) => ({
-      ...cross,
-      relatedSubjects: [relatedSubject],
-      mechanism: `${cross.mechanism}当前重点核对${input.subject}与${relatedSubject}之间的迁移。`,
-      parentAction: `本周各抽1道${input.subject}与${relatedSubject}相关题，让孩子圈条件、讲依据，确认是否为共性能力问题。`,
+    crossSubjectImpacts: crossLinks.map((cross) => ({
+      ability: cross.ability,
+      relatedSubjects: cross.relatedSubjects,
+      mechanism: cross.mechanism,
+      observablePhenomenon: cross.observablePhenomenon,
+      parentAction: cross.verification,
     })),
     parentGuidance: buildParentGuidance(input.stage, input.grade),
   };

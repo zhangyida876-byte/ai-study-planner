@@ -461,6 +461,10 @@ const Diagnosis: React.FC = () => {
   const countdown = studentInfo?.examDate ? getCountdown(studentInfo.examDate) : null;
   const examLabel = studentInfo ? getExamLabel(studentInfo.grade) : '';
   const studentStage = studentInfo ? getEducationStage(studentInfo.grade) : 'middle';
+  const reportSemester = getAcademicPeriod().includes('下学期') ? '下学期' : '上学期';
+  const reportSubjects = studentInfo
+    ? resolveFilledSubjects(studentInfo).map((key) => SUBJECT_LABELS[key])
+    : [];
   const totalScore = studentInfo
     ? (studentStage === 'high'
         ? ['chinese', 'math', 'english', 'physics', 'chemistry', 'biology', 'history', 'geography', 'politics']
@@ -639,7 +643,13 @@ const Diagnosis: React.FC = () => {
 
                 {reportContent && (
                   <>
-                    <DiagnosisReportView content={reportContent} />
+                    <DiagnosisReportView
+                      content={reportContent}
+                      stageSlug={stageSlug}
+                      grade={studentInfo?.grade}
+                      semester={reportSemester}
+                      filledSubjects={reportSubjects}
+                    />
                   </>
                 )}
               </div>

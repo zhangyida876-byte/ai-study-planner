@@ -8,33 +8,39 @@ describe('report prompt templates', () => {
   it('unifies diagnosis, target gap and executable planning', () => {
     const prompt = buildProfessionalReportFramework('diagnosis');
 
-    expect(prompt).toContain('## 1. 一句话结论');
+    expect(prompt).toContain('## 1. 当前节点与一句话结论');
     expect(prompt).toContain('## 2. 家长最有感的现象');
     expect(prompt).toContain('## 3. 各科核心问题与根因');
-    expect(prompt).toContain('### 跨科共性问题');
-    expect(prompt).toContain('## 4. 年级学期特点与目标影响');
-    expect(prompt).toContain('### 4.1 当前日期与学期阶段判断');
-    expect(prompt).toContain('### 4.3 各科本学期学情解读');
-    expect(prompt).toContain('### 4.4 跨学科影响');
-    expect(prompt).not.toContain('### 4.5 当前阶段家长最该做什么');
-    expect(prompt).not.toContain('### 4.6 给课程顾问/主播的讲法');
-    expect(prompt).toContain('## 5. 未来7天家长可执行动作');
+    expect(prompt).toContain('**问题：**');
+    expect(prompt).toContain('**背后根因：**');
+    expect(prompt).toContain('**怎么验证：**');
+    expect(prompt).toContain('不得使用竖线拼成一段');
+    expect(prompt).toContain('## 4. 各科本学期学情解读');
+    expect(prompt).toContain('## 5. 跨学科影响');
+    expect(prompt).toContain('底层能力');
+    expect(prompt).toContain('没有可靠关联时明确写');
+    expect(prompt).toContain('语文阅读只可关联数学应用题审题');
+    expect(prompt).toContain('禁止写成影响数学或物理符号运算');
+    expect(prompt).toContain('## 6. 行动方案');
+    expect(prompt).toContain('### 6.1 未来7天');
+    expect(prompt).toContain('### 6.2 未来1个月');
+    expect(prompt).toContain('### 6.3 当前学期');
     expect(prompt).not.toContain('### B. 开学第一周');
     expect(prompt).not.toContain('### C. 开学第一个月');
-    expect(prompt).toContain('## 6. 洋葱承接方案 + 顾问话术');
-    expect(prompt).toContain('### 6.1 洋葱承接方案');
-    expect(prompt).toContain('### 6.2 30秒短版');
-    expect(prompt).toContain('### 6.3 2分钟完整版');
+    expect(prompt).toContain('## 7. 洋葱学园承接方案');
+    expect(prompt).toContain('## 8. 课程顾问转述话术');
+    expect(prompt).toContain('### 8.1 30秒短版');
+    expect(prompt).toContain('### 8.2 2分钟完整版');
     expect(prompt).toContain('30秒短版');
     expect(prompt).toContain('2分钟完整版');
-    expect(prompt).toContain('单科1000-1500个中文字符');
+    expect(prompt).toContain('单科1400-2100个中文字符');
     expect(prompt).toContain('家长怎么检查');
     expect(prompt).toContain('教学进度校验（最高优先级）');
     expect(prompt).toContain('按常规校历推测，需用学校课表/教材目录/最近作业核实');
     expect(prompt).toContain('为什么现在做');
     expect(prompt).toContain('当前不适合提前做什么');
-    expect(prompt).toContain('注意力、自主性、情绪抗压');
-    expect(prompt).toContain('具体知识点/题型 → 家长可见表现 → 深层原因');
+    expect(prompt).toContain('当前年级、学期和科目上下文');
+    expect(prompt).toContain('具体知识点、题型或能力');
   });
 
   it('keeps three observations and problems for one subject', () => {
@@ -44,7 +50,7 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('数学');
     expect(prompt).toContain('3个家长可观察现象');
     expect(prompt).toContain('3个核心问题');
-    expect(prompt).toContain('唯一的未来7天行动表');
+    expect(prompt).toContain('按三个周期输出该科行动方案');
     expect(prompt).toContain('不输出跨科共性问题');
   });
 
@@ -98,6 +104,8 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('## 十、洋葱学园承接建议');
     expect(prompt).toContain('第四单元等后续内容只能作为次级提醒');
     expect(prompt).toContain('不对某个孩子下最终升学结论');
+    expect(prompt).toContain('只解释“年级 + 学期 + 学科 + 知识点”的共性学习规律');
+    expect(prompt).toContain('没有可靠关联就省略');
   });
 
   it.each(['diagnosis', 'plan', 'knowledge'] as const)(

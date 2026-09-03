@@ -19,7 +19,7 @@ describe('semester subject insights', () => {
         insights.forEach((insight) => {
           expect(insight.phaseFocuses).toHaveLength(5);
           expect(insight.phenomenonCauseLinks.length).toBeGreaterThanOrEqual(2);
-          expect(insight.crossSubjectImpacts.length).toBeGreaterThanOrEqual(2);
+          expect(Array.isArray(insight.crossSubjectImpacts)).toBe(true);
         });
       }
     }
@@ -162,6 +162,20 @@ describe('semester subject insights', () => {
     expect(highOneMath?.crossSubjectImpacts.length).toBeGreaterThanOrEqual(2);
   });
 
+  it('keeps cross-subject links evidence-based instead of forcing coverage', () => {
+    const highOne = getSemesterSubjectInsights('high', '高一', '上学期');
+    const chinese = highOne.find((item) => item.subject === '语文');
+    const english = highOne.find((item) => item.subject === '英语');
+
+    expect(english?.crossSubjectImpacts).toEqual([]);
+    expect(chinese?.crossSubjectImpacts.length).toBeGreaterThan(0);
+    expect(chinese?.crossSubjectImpacts.map((item) => item.mechanism).join(''))
+      .not.toMatch(/符号运算/u);
+    expect(chinese?.crossSubjectImpacts.some((item) => (
+      item.relatedSubjects.includes('数学') && item.mechanism.includes('应用题')
+    ))).toBe(true);
+  });
+
   it('injects phase actions, parent boundaries and cross-subject links into AI context', () => {
     const context = buildSemesterInsightPromptContext(
       'high',
@@ -174,7 +188,7 @@ describe('semester subject insights', () => {
     expect(context).toContain('家长沟通边界：注意力=');
     expect(context).toContain('现象-根因-影响-验证链=');
     expect(context).toContain('五阶段任务（报告重点展开前三阶段）=开学前');
-    expect(context).toContain('跨学科影响：');
+    expect(context).toContain('跨学科影响（只可使用以下已验证链路');
     expect(context).toContain('数学：');
     expect(context).toContain('物理：');
   });

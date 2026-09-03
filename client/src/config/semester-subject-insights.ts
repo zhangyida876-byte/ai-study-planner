@@ -469,6 +469,8 @@ export function buildSemesterInsightPromptContext(
         phaseContext,
       ].join('；');
     }),
-    `跨学科影响：${stageLinks.map((link) => `${link.ability}影响${link.relatedSubjects.join('、')}：${link.mechanism}；家长现象=${link.observablePhenomenon}；验证动作=${link.parentAction}`).join('\n')}`,
+    stageLinks.length > 0
+      ? `跨学科影响（只可使用以下已验证链路，不得自行扩写或硬凑）：${stageLinks.map((link) => `${link.ability}影响${link.relatedSubjects.join('、')}：${link.mechanism}；家长现象=${link.observablePhenomenon}；验证动作=${link.parentAction}`).join('\n')}`
+      : '跨学科影响：当前没有足够可靠的跨学科链路，禁止为了显得全面而硬凑。',
   ].join('\n');
 }

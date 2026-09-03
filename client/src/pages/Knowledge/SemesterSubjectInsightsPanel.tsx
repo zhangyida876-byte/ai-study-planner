@@ -56,6 +56,10 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
             <p className="font-hand text-sm text-ink/60">选择年级和学期，即可查看各科重难点、易错点、卡点和家长应对动作。</p>
           </div>
         </div>
+
+        <div className="font-hand mb-4 border-l-4 border-pen-blue bg-pen-blue/5 px-3 py-2 text-sm">
+          本页提供{selected.grade}{selected.semester}{displaySubject(selected.subject)}的共性教研参考，不依据某个孩子的分数判断升学档位或目标学校差距。
+        </div>
       </WobblyCard>
     );
   }
@@ -154,7 +158,9 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
         <section className="mt-5 grid gap-4 lg:grid-cols-2">
           <div className="border-2 border-dashed border-ink/20 p-4">
             <h3 className="font-marker mb-2 flex items-center gap-2 font-bold"><GitBranch className="size-4 text-pen-blue" />跨学科影响</h3>
-            {selected.crossSubjectImpacts.map((link) => <div key={link.ability} className="font-hand text-sm leading-6"><p><strong>{link.ability} → {link.relatedSubjects.join('、')}</strong></p><p>{link.mechanism}</p><p className="text-ink/60">家长会看到：{link.observablePhenomenon}</p></div>)}
+            {selected.crossSubjectImpacts.length > 0
+              ? selected.crossSubjectImpacts.map((link) => <div key={link.ability} className="font-hand mb-3 text-sm leading-6"><p><strong>{link.ability} → {link.relatedSubjects.join('、')}</strong></p><p>{link.mechanism}</p><p className="text-ink/60">家长会看到：{link.observablePhenomenon}</p><p className="text-ink/60">怎么验证：{link.parentAction}</p></div>)
+              : <p className="font-hand text-sm text-ink/60">当前没有足够可靠的跨学科关联，不为完整性强行补充。</p>}
           </div>
           <div className="border-2 border-dashed border-marker-red/30 bg-marker-red/5 p-4">
             <h3 className="font-marker mb-2 flex items-center gap-2 font-bold"><Route className="size-4 text-marker-red" />洋葱学园承接</h3>
@@ -182,6 +188,7 @@ const SemesterSubjectInsightsPanel: React.FC<SemesterSubjectInsightsPanelProps> 
           最近关注：<strong>{timing.nearestAssessment}</strong>
           <p className="mt-1 text-xs text-ink/55">当前优先：{timing.priorityFocus.join('；')}。{timing.confidenceNote}</p>
         </div>
+        <p className="font-hand mt-2 text-xs text-ink/55">本模块仅提供年级、学期与学科的共性学情，不对具体孩子做升学档位或目标差距判断。</p>
       </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {allInsights.map((item) => (
