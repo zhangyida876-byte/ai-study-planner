@@ -493,7 +493,7 @@ const Diagnosis: React.FC = () => {
           </Button>
           <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 学情诊断与升学规划</h1>
           <p className="font-hand mt-1 text-sm text-muted-foreground">
-            业务可讲版：把孩子的问题、近期风险、下一步动作和顾问话术一次讲清
+            业务可讲版：把孩子的问题、关键节点、量化危机、下一步动作和顾问话术一次讲清
           </p>
         </div>
 

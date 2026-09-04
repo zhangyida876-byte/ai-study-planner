@@ -60,7 +60,7 @@ const SectionHeading: React.FC<{ section: ReportSection }> = ({ section }) => {
       ? PackageCheck
       : section.title.includes('动作')
         ? CheckSquare2
-        : section.title.includes('风险')
+        : section.title.includes('风险') || section.title.includes('危机')
           ? AlertCircle
           : SECTION_ICONS[section.index] || Sparkles;
   return (
@@ -182,6 +182,18 @@ const RiskSection: React.FC<{ section: ReportSection }> = ({ section }) => {
   );
 };
 
+const StructuredBusinessSection: React.FC<{
+  section: ReportSection;
+  tone?: 'warning' | 'info';
+}> = ({ section, tone = 'info' }) => (
+  <section className="border-b-2 border-dashed border-ink/15 py-5">
+    <SectionHeading section={section} />
+    <article className={`border-2 border-ink p-4 shadow-hard-sm ${tone === 'warning' ? 'bg-marker-red/5' : 'bg-white'}`}>
+      <ProblemFields content={section.content} />
+    </article>
+  </section>
+);
+
 const CrossSubjectSection: React.FC<{ section: ReportSection }> = ({ section }) => {
   const links = parseSubjectSections(section.content);
   return (
@@ -220,7 +232,7 @@ const ActionPlanSection: React.FC<{ section: ReportSection }> = ({ section }) =>
     <section className="border-b-2 border-dashed border-ink/15 py-5">
       <SectionHeading section={section} />
       <p className="font-hand mb-3 text-sm text-ink/60">
-        顶部总结已包含三个周期的核心方向，需要落地时再展开查看执行明细。
+        顶部总结已包含未来 7 天的核心动作；月度节奏和学期目标可在这里按需展开。
       </p>
       <Accordion type="single" collapsible>
         <AccordionItem value="action-details" className="border-2 border-ink bg-white px-4 shadow-hard-sm">
@@ -403,6 +415,50 @@ const AdvisorScriptSection: React.FC<{ section?: ReportSection }> = ({ section }
   );
 };
 
+const OnionAndScriptsSection: React.FC<{ section?: ReportSection }> = ({ section }) => {
+  if (!section) return <MissingRequiredSection title="洋葱学园承接方案 + 可复制话术" />;
+  const subsections = parseNumberedSubsections(section.content, section.index);
+  if (subsections.length === 0) return <GenericSection section={section} />;
+  const onion = subsections.find((item) => item.index === 1);
+  const scripts = subsections.filter((item) => item.index > 1);
+
+  return (
+    <section className="border-b-2 border-dashed border-ink/15 py-5">
+      <SectionHeading section={section} />
+      {onion ? (
+        <article className="mb-4 border-2 border-marker-red/40 bg-marker-red/5 p-4 shadow-hard-sm">
+          <h4 className="font-marker mb-3 flex items-center gap-2 font-bold">
+            <PackageCheck className="size-4 text-marker-red" />
+            洋葱学园承接方案
+          </h4>
+          <div className="font-hand overflow-x-auto text-sm leading-6">
+            <Streamdown>{onion.content}</Streamdown>
+          </div>
+        </article>
+      ) : (
+        <MissingRequiredSection title="洋葱学园承接方案" />
+      )}
+      {scripts.length > 0 ? (
+        <>
+          <p className="font-hand mb-3 text-sm text-ink/60">以下话术可按沟通进度单独复制使用。</p>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {scripts.map((script) => (
+              <CopyableScriptCard
+                key={script.index}
+                title={script.title}
+                content={script.content}
+                featured={script.index === 2 || script.index === 4}
+              />
+            ))}
+          </div>
+        </>
+      ) : (
+        <MissingRequiredSection title="课程顾问可复制话术" />
+      )}
+    </section>
+  );
+};
+
 const DetailSection: React.FC<{
   section: ReportSection;
   children: React.ReactNode;
@@ -441,6 +497,25 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
     const sectionFive = byIndex.get(5);
     const sectionSix = byIndex.get(6);
     const sectionSeven = byIndex.get(7);
+    const isQuantifiedLayout = Boolean(
+      sectionFour?.title.includes('关键节点')
+      || sectionFive?.title.includes('量化危机')
+      || sectionSeven?.title.includes('洋葱学园承接方案 +'),
+    );
+
+    if (isQuantifiedLayout) {
+      return (
+        <div className="bg-white/70 px-4 py-2">
+          {sectionOne && <ConsultantSummarySection section={sectionOne} />}
+          {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
+          {sectionThree && <ProblemsSection section={sectionThree} />}
+          {sectionFour && <StructuredBusinessSection section={sectionFour} />}
+          {sectionFive && <StructuredBusinessSection section={sectionFive} tone="warning" />}
+          {sectionSix && <ActionPlanSection section={sectionSix} />}
+          <OnionAndScriptsSection section={sectionSeven} />
+        </div>
+      );
+    }
 
     return (
       <div className="bg-white/70 px-4 py-2">

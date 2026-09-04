@@ -249,7 +249,7 @@ const AIAnalysisSection: React.FC<{
 
       {!analysisContent && !isAnalyzing && (
         <p className="font-hand mt-3 border-t-2 border-dashed border-ink/10 pt-3 text-xs text-muted-foreground">
-          点击右侧“AI 深度分析”，获取重难点、后续影响和近期学习动作
+          点击右侧“AI 深度分析”，查看当前进度、重难点、易错卡点、后续影响和课程匹配
         </p>
       )}
     </WobblyCard>

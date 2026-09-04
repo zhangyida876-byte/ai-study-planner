@@ -18,10 +18,12 @@ export interface ReportSectionLayout {
 
 const STRUCTURED_LABELS = [
   '问题',
+  '核心问题',
   '家长看到',
   '背后根因',
   '后续影响',
   '怎么验证',
+  '家长怎么验证',
   '专业判断',
   '家长听得懂',
   '马上先做',
@@ -32,6 +34,18 @@ const STRUCTURED_LABELS = [
   '影响科目',
   '影响机制',
   '家长能看到',
+  '下一个关键节点',
+  '会影响的知识点/题型',
+  '预计暴露分值',
+  '预计成绩风险区间',
+  '判断依据',
+  '当前漏洞',
+  '当天作业影响',
+  '近期考试影响',
+  '其他科目与总分',
+  '信心与节奏',
+  '目标差距',
+  '家长现在验证',
 ] as const;
 
 const CANONICAL_SECTION_TITLES: Record<number, string> = {
@@ -135,7 +149,7 @@ export function parseReportSections(content: string): ReportSection[] {
   };
 
   for (const line of lines) {
-    const headingMatch = line.match(/^##\s*(.+?)\s*$/u);
+    const headingMatch = line.match(/^##(?!#)\s*(.+?)\s*$/u);
     if (headingMatch) {
       const heading = headingMatch[1];
       const numberedMatch = heading.match(/^(\d+)(?:[.、．]\s*|\s+)(.+?)\s*$/u);
