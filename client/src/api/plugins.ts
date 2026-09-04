@@ -16,6 +16,7 @@ import { resolveZhongkaoProfile, type ZhongkaoScoreProfile } from '@client/src/d
 import type { StageProfile } from '@client/src/types/stage-profile';
 import { buildAcademicTimingPromptContext } from '@client/src/utils/academic-phase';
 import { buildDiagnosisRiskPromptContext } from '@client/src/utils/diagnosis-risk-context';
+import { buildDiagnosisConcernPromptContext } from '@client/src/utils/diagnosis-concern-context';
 
 export const PLUGIN_IDS = {
   DIAGNOSIS_REPORT: 'academic_diagnosis_report_generator_1',
@@ -777,9 +778,6 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
     parts.push(`用户未填写具体目标，系统自动匹配的本地升学参照：\n${ctx.schoolReferenceContext}`);
   }
 
-  if (ctx.problemDesc && ctx.problemDesc.trim()) {
-    parts.push(`学生/家长自述痛点：${ctx.problemDesc.trim()}`);
-  }
   const filledSubjects = [...new Set(
     (ctx.filledSubjects || Object.keys(ctx.scores)).map((subject) => subject.trim()).filter(Boolean),
   )];
@@ -806,9 +804,18 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
     semester,
     subjects: filledSubjects,
   });
+  const concernContext = buildDiagnosisConcernPromptContext({
+    stage: currentStageSlug,
+    grade: ctx.grade,
+    concern: ctx.problemDesc,
+    scores: ctx.scores,
+    maxValues: ctx.scoreMaxValues,
+  });
   const riskContext = buildDiagnosisRiskPromptContext({
     stage: currentStageSlug,
     grade: ctx.grade,
+    region: ctx.region,
+    concern: ctx.problemDesc,
     scores: ctx.scores,
     maxValues: ctx.scoreMaxValues,
     targetScore: ctx.targetScore,
@@ -829,6 +836,7 @@ ${filledScoreTotals}
 
 已填写科目：${filledSubjectsText || '未提供'}
 未填写科目：${missingSubjectsText || '无'}
+${concernContext ? `\n【用户补充信息（业务最高优先级，不得忽略）】\n${concernContext}` : ''}
 ${semesterInsightContext ? `\n【本地教研学期上下文】\n${semesterInsightContext}` : ''}
 ${teachingProgressContext ? `\n【当前教学进度硬约束（最高优先级）】\n${teachingProgressContext}` : ''}
 ${riskContext ? `\n【关键节点与量化风险参考（必须标注为估算）】\n${riskContext}` : ''}
@@ -861,6 +869,11 @@ ${subjectCoverageRules}
 20. 第7节先输出7.1洋葱承接短表，再输出7.2-7.6五类独立话术；普通话术每条80-180字，风险提醒150-260字。先讲家长可见现象，再讲大白话原因，最后自然推进下一步。
 21. 风险提醒必须覆盖真实链路：当天作业效率或依赖、最近考试失分、单科限制或多科复习时间挤压、孩子自信和畏难变化、拖延后的补救成本。不得只写“影响成绩和信心”，也不得用恐吓式结论。
 22. 所有预测数字必须使用“预计/风险区间/按当前情景估算”，并明确需要最近3次考试、3天作业计时、错题分类和学校范围复核；禁止把情景估算写成事实。
+23. 用户补充信息是个体诊断的最高优先级证据，高于通用教研描述。只要补充信息非空，第1、2、3、4、5、6、7节都必须可见地回应，禁止仅复述一次后转回通用知识点分析。
+24. 补充信息若包含不想学、逃避、没兴趣、抗拒、厌学或拖延，必须分析“不会导致回避”和“回避扩大不会”两条可能链路，给出可当天验证的证据；不得把孩子定性为懒，也不得做心理疾病诊断。
+25. 学习阻抗场景的第6节必须先采用低阻启动、可完成题和短反馈建立正向体验，再增加变式与错因复盘；禁止第一天就安排大量刷题、压轴题或整套试卷。
+26. 初三9月必须识别为中考备考启动期。第4节须以“初三中考节点预警”呈现9-10月、11月、12月至次年1月和次年春季的阶段路线；一模只能写为常用于定位、俗称“小中考”，不得写成正式录取依据。
+27. 用户明确提供的当前章节、最近作业或考试范围优先于系统推测；没有真实进度证据时只能用“若学校已进入…则…”表达，并要求核实课本目录、近期作业或学校课表。
 
 【本模块边界】
 0. 下面的模块边界和建议输出结构优先级高于插件默认模板；如默认模板要求输出长篇政策/完整规划，应主动压缩或省略。

@@ -185,14 +185,23 @@ const RiskSection: React.FC<{ section: ReportSection }> = ({ section }) => {
 const StructuredBusinessSection: React.FC<{
   section: ReportSection;
   tone?: 'warning' | 'info';
-}> = ({ section, tone = 'info' }) => (
-  <section className="border-b-2 border-dashed border-ink/15 py-5">
-    <SectionHeading section={section} />
-    <article className={`border-2 border-ink p-4 shadow-hard-sm ${tone === 'warning' ? 'bg-marker-red/5' : 'bg-white'}`}>
-      <ProblemFields content={section.content} />
-    </article>
-  </section>
-);
+}> = ({ section, tone = 'info' }) => {
+  const isGradeNineWarning = /初三中考节点预警|中考备考(?:正式)?启动/u.test(section.content);
+  return (
+    <section className="border-b-2 border-dashed border-ink/15 py-5">
+      <SectionHeading section={section} />
+      {isGradeNineWarning && (
+        <div className="font-marker mb-3 inline-flex items-center gap-2 border-2 border-marker-red bg-marker-red/5 px-3 py-2 font-bold text-marker-red shadow-hard-sm">
+          <CalendarDays className="size-4" />
+          初三中考节点预警
+        </div>
+      )}
+      <article className={`border-2 border-ink p-4 shadow-hard-sm ${tone === 'warning' ? 'bg-marker-red/5' : 'bg-white'}`}>
+        <ProblemFields content={section.content} />
+      </article>
+    </section>
+  );
+};
 
 const CrossSubjectSection: React.FC<{ section: ReportSection }> = ({ section }) => {
   const links = parseSubjectSections(section.content);

@@ -1619,7 +1619,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
               <FormLabel>当前最担心的问题（选填）</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="可补充错题表现、听课状态、做题习惯，例如：数学压轴题不会列式，英语完形总靠感觉"
+                  placeholder="请写最真实的担心或学习状态，例如：孩子一提数学就烦、拖延逃避；也可写当前章节、最近作业或考试范围"
                   className="min-h-[64px] resize-none"
                   value={field.value ?? ''}
                   onChange={field.onChange}
