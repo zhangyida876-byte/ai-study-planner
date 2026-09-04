@@ -35,7 +35,7 @@ const STRUCTURED_LABELS = [
 ] as const;
 
 const CANONICAL_SECTION_TITLES: Record<number, string> = {
-  1: '当前节点与一句话结论',
+  1: '顾问先讲：诊断总结',
   2: '家长看到的现象',
   3: '各科核心问题与根因',
   4: '各科本学期学情解读',
@@ -46,7 +46,7 @@ const CANONICAL_SECTION_TITLES: Record<number, string> = {
 };
 
 const SECTION_TITLE_ALIASES: Record<number, string[]> = {
-  1: ['当前节点与一句话结论', '一句话结论'],
+  1: ['顾问先讲：诊断总结', '顾问先讲', '诊断总结', '当前节点与一句话结论', '一句话结论'],
   2: ['家长看到的现象', '家长最有感的现象'],
   3: ['各科核心问题与根因', '核心问题与根因'],
   4: ['各科本学期学情解读', '年级学期特点与目标影响'],
@@ -71,7 +71,7 @@ function resolveSectionIndex(numberText: string | undefined, title: string): num
     numberText && numberedIndex > 8 ? `${numberText}${title}` : title,
   );
   const businessTitleIndexes: Array<[number, string[]]> = [
-    [1, ['一句话学情判断']],
+    [1, ['顾问先讲：诊断总结', '顾问先讲', '诊断总结', '一句话学情判断']],
     [2, ['家长能看到的现象']],
     [3, ['背后根因']],
     [4, ['近期风险']],
@@ -245,7 +245,11 @@ export function parseNumberedSubsections(
 
 export function resolveReportSectionLayout(sections: ReportSection[]): ReportSectionLayout {
   const isBusinessSeven = sections.some((section) => (
-    section.index === 1 && section.title.includes('一句话学情判断')
+    section.index === 1 && (
+      section.title.includes('顾问先讲')
+      || section.title.includes('诊断总结')
+      || section.title.includes('一句话学情判断')
+    )
   )) || sections.some((section) => (
     section.index === 7 && section.title.includes('课程顾问可复制话术')
   ));

@@ -660,7 +660,7 @@ const Diagnosis: React.FC = () => {
                 <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
                 <p className="font-marker mt-2 text-2xl font-bold text-ink">生成学情诊断与升学规划报告</p>
                 <p className="font-hand mt-2 max-w-md text-sm text-muted-foreground">
-                  生成后按科目展示家长现象、关键根因、近期风险、行动方案和可直接复制的话术。
+                  生成后先给顾问可直接照读的诊断总结，再按需查看分科依据和三周期执行方案。
                 </p>
               </div>
             </WobblyCard>

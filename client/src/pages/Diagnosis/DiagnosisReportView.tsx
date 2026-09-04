@@ -219,22 +219,34 @@ const ActionPlanSection: React.FC<{ section: ReportSection }> = ({ section }) =>
   return (
     <section className="border-b-2 border-dashed border-ink/15 py-5">
       <SectionHeading section={section} />
-      <Tabs value={activePeriod} onValueChange={setActivePeriod}>
-        <TabsList className="mb-4 grid h-auto w-full grid-cols-3 border-2 border-ink bg-accent p-1">
-          {periods.map((period) => (
-            <TabsTrigger key={period.index} value={String(period.index)} className="font-marker py-2">
-              {periodLabels[period.index] || period.title}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        {periods.map((period) => (
-          <TabsContent key={period.index} value={String(period.index)} className="mt-0 border-2 border-dashed border-ink/20 bg-white p-4">
-            <div className="font-hand overflow-x-auto text-sm leading-6">
-              <Streamdown>{period.content}</Streamdown>
-            </div>
-          </TabsContent>
-        ))}
-      </Tabs>
+      <p className="font-hand mb-3 text-sm text-ink/60">
+        顶部总结已包含三个周期的核心方向，需要落地时再展开查看执行明细。
+      </p>
+      <Accordion type="single" collapsible>
+        <AccordionItem value="action-details" className="border-2 border-ink bg-white px-4 shadow-hard-sm">
+          <AccordionTrigger className="font-marker font-bold no-underline hover:no-underline">
+            查看具体执行方案
+          </AccordionTrigger>
+          <AccordionContent className="pt-2">
+            <Tabs value={activePeriod} onValueChange={setActivePeriod}>
+              <TabsList className="mb-4 grid h-auto w-full grid-cols-3 border-2 border-ink bg-accent p-1">
+                {periods.map((period) => (
+                  <TabsTrigger key={period.index} value={String(period.index)} className="font-marker py-2">
+                    {periodLabels[period.index] || period.title}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              {periods.map((period) => (
+                <TabsContent key={period.index} value={String(period.index)} className="mt-0 border-2 border-dashed border-ink/20 bg-white p-4">
+                  <div className="font-hand overflow-x-auto text-sm leading-6">
+                    <Streamdown>{period.content}</Streamdown>
+                  </div>
+                </TabsContent>
+              ))}
+            </Tabs>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </section>
   );
 };
@@ -246,6 +258,45 @@ function cleanScriptText(content: string): string {
     .replace(/__+/gu, '')
     .trim();
 }
+
+const ConsultantSummarySection: React.FC<{ section: ReportSection }> = ({ section }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async (): Promise<void> => {
+    const result = await copyText(cleanScriptText(section.content));
+    if (!result.ok) {
+      toast.error(result.message);
+      return;
+    }
+    setCopied(true);
+    toast.success('已复制诊断总结话术');
+    window.setTimeout(() => setCopied(false), 1800);
+  };
+
+  return (
+    <section className="border-b-2 border-dashed border-ink/15 bg-postit-yellow/55 px-4 py-5 first:pt-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="flex size-8 shrink-0 items-center justify-center border-2 border-ink bg-white shadow-hard-sm">
+            <MessageSquareQuote className="size-4 text-pen-blue" />
+          </span>
+          <h3 className="font-marker text-lg font-bold">{section.title}</h3>
+        </div>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="font-marker flex min-h-10 items-center gap-2 border-2 border-ink bg-white px-3 font-bold shadow-hard-sm transition-transform hover:-translate-y-0.5"
+        >
+          {copied ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
+          {copied ? '已复制' : '复制总结话术'}
+        </button>
+      </div>
+      <p className="font-hand mb-3 text-xs font-bold text-marker-red">结论先行 · 顾问可直接照读</p>
+      <div className="font-hand text-lg font-bold leading-8">
+        <Streamdown>{section.content}</Streamdown>
+      </div>
+    </section>
+  );
+};
 
 const CopyableScriptCard: React.FC<{
   title: string;
@@ -393,7 +444,7 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
 
     return (
       <div className="bg-white/70 px-4 py-2">
-        {sectionOne && <GenericSection section={sectionOne} highlighted />}
+        {sectionOne && <ConsultantSummarySection section={sectionOne} />}
         {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
         {sectionThree && <ProblemsSection section={sectionThree} />}
         {sectionFour && <RiskSection section={sectionFour} />}
