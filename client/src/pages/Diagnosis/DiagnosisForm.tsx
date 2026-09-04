@@ -1616,10 +1616,10 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
           name="problemDesc"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>当前最担心的问题（选填）</FormLabel>
+              <FormLabel>补充信息（选填）</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="请写最真实的担心或学习状态，例如：孩子一提数学就烦、拖延逃避；也可写当前章节、最近作业或考试范围"
+                  placeholder="可填写家长补充的信息，例如：孩子从小不喜欢数学、写作业拖拉、考试紧张、英语单词背不住、语文阅读总丢分、物理听不懂等。"
                   className="min-h-[64px] resize-none"
                   value={field.value ?? ''}
                   onChange={field.onChange}

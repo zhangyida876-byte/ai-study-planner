@@ -649,6 +649,7 @@ const Diagnosis: React.FC = () => {
                       grade={studentInfo?.grade}
                       semester={reportSemester}
                       filledSubjects={reportSubjects}
+                      supplementalInfo={studentInfo?.problemDesc}
                     />
                   </>
                 )}

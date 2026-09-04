@@ -40,6 +40,7 @@ interface DiagnosisReportViewProps {
   grade?: string;
   semester?: string;
   filledSubjects?: string[];
+  supplementalInfo?: string;
 }
 
 const SECTION_ICONS: Record<number, React.FC<{ className?: string }>> = {
@@ -280,10 +281,57 @@ function cleanScriptText(content: string): string {
     .trim();
 }
 
-const ConsultantSummarySection: React.FC<{ section: ReportSection }> = ({ section }) => {
+interface ConsultantSummaryParts {
+  summary: string;
+  concernAnalysis: string;
+}
+
+function splitConsultantSummary(content: string): ConsultantSummaryParts {
+  const heading = /^###\s*1[.、．]1\s*家长补充信息切入分析\s*$/mu;
+  const match = heading.exec(content);
+  if (!match || match.index == null) {
+    return { summary: content.trim(), concernAnalysis: '' };
+  }
+  return {
+    summary: content.slice(0, match.index).trim(),
+    concernAnalysis: content.slice(match.index + match[0].length).trim(),
+  };
+}
+
+const SupplementalInsightCard: React.FC<{
+  supplementalInfo: string;
+  analysis: string;
+}> = ({ supplementalInfo, analysis }) => (
+  <section className="border-b-2 border-dashed border-ink/15 bg-white px-4 py-5">
+    <div className="mb-4 flex flex-wrap items-center gap-3">
+      <span className="font-marker border-2 border-marker-red bg-marker-red/5 px-3 py-1 text-sm font-bold text-marker-red">
+        家长一手信息
+      </span>
+      <p className="font-hand min-w-0 flex-1 text-sm font-bold leading-6">{supplementalInfo}</p>
+    </div>
+    <h3 className="font-marker mb-3 text-lg font-bold">家长补充信息切入分析</h3>
+    {analysis ? (
+      <article className="border-2 border-ink bg-accent/25 p-4 shadow-hard-sm">
+        <ProblemFields content={analysis} />
+      </article>
+    ) : (
+      <article className="border-2 border-dashed border-marker-red/50 bg-marker-red/5 p-4">
+        <p className="font-hand text-sm leading-6">
+          本次 AI 未返回独立切入分析，但补充信息已保留。建议重新生成，系统会围绕这条信息补全成因、突破口与家长沟通边界。
+        </p>
+      </article>
+    )}
+  </section>
+);
+
+const ConsultantSummarySection: React.FC<{
+  section: ReportSection;
+  supplementalInfo?: string;
+}> = ({ section, supplementalInfo }) => {
+  const parts = splitConsultantSummary(section.content);
   const [copied, setCopied] = useState(false);
   const handleCopy = async (): Promise<void> => {
-    const result = await copyText(cleanScriptText(section.content));
+    const result = await copyText(cleanScriptText(parts.summary));
     if (!result.ok) {
       toast.error(result.message);
       return;
@@ -294,7 +342,8 @@ const ConsultantSummarySection: React.FC<{ section: ReportSection }> = ({ sectio
   };
 
   return (
-    <section className="border-b-2 border-dashed border-ink/15 bg-postit-yellow/55 px-4 py-5 first:pt-5">
+    <>
+      <section className="border-b-2 border-dashed border-ink/15 bg-postit-yellow/55 px-4 py-5 first:pt-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="flex size-8 shrink-0 items-center justify-center border-2 border-ink bg-white shadow-hard-sm">
@@ -312,10 +361,17 @@ const ConsultantSummarySection: React.FC<{ section: ReportSection }> = ({ sectio
         </button>
       </div>
       <p className="font-hand mb-3 text-xs font-bold text-marker-red">结论先行 · 顾问可直接照读</p>
-      <div className="font-hand text-lg font-bold leading-8">
-        <Streamdown>{section.content}</Streamdown>
-      </div>
-    </section>
+        <div className="font-hand text-lg font-bold leading-8">
+          <Streamdown>{parts.summary}</Streamdown>
+        </div>
+      </section>
+      {supplementalInfo?.trim() && (
+        <SupplementalInsightCard
+          supplementalInfo={supplementalInfo.trim()}
+          analysis={parts.concernAnalysis}
+        />
+      )}
+    </>
   );
 };
 
@@ -483,6 +539,7 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
   grade,
   semester,
   filledSubjects = [],
+  supplementalInfo,
 }) => {
   const sections = useMemo(() => parseReportSections(content), [content]);
   const byIndex = useMemo(() => new Map(sections.map((section) => [section.index, section])), [sections]);
@@ -515,7 +572,12 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
     if (isQuantifiedLayout) {
       return (
         <div className="bg-white/70 px-4 py-2">
-          {sectionOne && <ConsultantSummarySection section={sectionOne} />}
+          {sectionOne && (
+            <ConsultantSummarySection
+              section={sectionOne}
+              supplementalInfo={supplementalInfo}
+            />
+          )}
           {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
           {sectionThree && <ProblemsSection section={sectionThree} />}
           {sectionFour && <StructuredBusinessSection section={sectionFour} />}
@@ -528,7 +590,12 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
 
     return (
       <div className="bg-white/70 px-4 py-2">
-        {sectionOne && <ConsultantSummarySection section={sectionOne} />}
+        {sectionOne && (
+          <ConsultantSummarySection
+            section={sectionOne}
+            supplementalInfo={supplementalInfo}
+          />
+        )}
         {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
         {sectionThree && <ProblemsSection section={sectionThree} />}
         {sectionFour && <RiskSection section={sectionFour} />}

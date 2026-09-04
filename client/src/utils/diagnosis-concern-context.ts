@@ -10,8 +10,9 @@ interface DiagnosisConcernContextInput {
   date?: Date;
 }
 
-const RESISTANCE_PATTERN = /(?:不想学|逃避|没兴趣|没有兴趣|抗拒|一提.{0,6}(?:就烦|就躲|就吵)|厌学|拖延|不愿(?:意)?学|放弃|学也没用)/u;
+const RESISTANCE_PATTERN = /(?:不想学|不喜欢|讨厌|不爱学|逃避|没兴趣|没有兴趣|抗拒|一提.{0,6}(?:就烦|就躲|就吵)|厌学|拖延|不愿(?:意)?学|放弃|学也没用)/u;
 const PROGRESS_EVIDENCE_PATTERN = /(?:正在学|目前学到|当前章节|最近作业|近期作业|考试范围|老师说考|课本第|单元测|试卷范围)/u;
+const LONG_TERM_PATTERN = /(?:从小|一直|长期|好多年|很久)/u;
 
 function resolveConcernSubjects(concern: string, subjects: string[]): string[] {
   const mentioned = subjects.filter((subject) => concern.includes(subject));
@@ -47,6 +48,49 @@ function stageCommunicationBoundary(stage: StageSlug): string {
   return '家长只检查过程，不讽刺、不催促、不比较；只问“哪一步你能讲出来、从哪一步开始卡、下一题准备先做什么”。';
 }
 
+function buildStageResistanceCauses(stage: StageSlug, isMathConcern: boolean): string[] {
+  const shared = [
+    '长期正反馈不足：听不懂、做不对、考试拿不到分后，孩子可能形成“学了也没用”的预期',
+    '前置基础断层：旧知识缺口让新课启动成本越来越高，课堂某一步没听懂后容易整段掉线',
+    '错题复盘失效：只改答案、不归因、不做同类变式，导致同一种错误反复出现',
+    '亲子沟通强化抵触：催促、比较或“怎么又不会”可能让孩子把该学科与压力绑定',
+  ];
+  if (isMathConcern) {
+    shared.splice(
+      2,
+      0,
+      '学科体验与课堂节奏不匹配：数学抽象、反馈慢；计算、应用题读题、代数、几何或函数中的一个小断点，都可能让孩子不知道第一步从哪里开始',
+    );
+  }
+  if (stage === 'elementary') {
+    return [
+      ...shared,
+      '小学阶段重点核实计算挫败、应用题读题、注意力持续时间，以及家长陪学是否包办或高压',
+    ];
+  }
+  if (stage === 'high') {
+    return [
+      ...shared,
+      '高中阶段重点核实学考分离、题型迁移、作业耗时，以及数学函数与物理建模、化学计算等理科学习负担的联动；不得无证据硬判跨科因果',
+    ];
+  }
+  return [
+    ...shared,
+    '初中阶段重点核实科目增多后的时间竞争，以及代数、几何、函数等断层是否在月考、期中和中考节奏中持续放大',
+  ];
+}
+
+function buildResistanceProductPath(isMathConcern: boolean): string[] {
+  const subjectText = isMathConcern ? '数学' : '当前抵触学科';
+  return [
+    `洋葱承接顺序必须服务“降低${subjectText}启动阻力并重建正反馈”，不能只罗列产品名。`,
+    '先用5-8分钟动画短课降低进入门槛，再用知识点拆解把“大块不会”拆成一个可完成的小步骤。',
+    '用极速预习提前认识第二天课堂关键词，降低被动听课压力；用极速复习处理当天没听懂的小漏洞，避免拖成断层。',
+    '再用同步课跟学校进度、解题课完成“听懂到会做”的迁移，最后用练习、错题本和AI功能定位错因并验证是否真正掌握。',
+    '产品话术必须解释“为什么适合这个孩子”：课短、启动轻、步骤小、反馈快；不得只写“建议使用同步课/解题课”。',
+  ];
+}
+
 export function buildDiagnosisConcernPromptContext(input: DiagnosisConcernContextInput): string {
   const concern = input.concern?.trim();
   if (!concern) return '';
@@ -56,6 +100,9 @@ export function buildDiagnosisConcernPromptContext(input: DiagnosisConcernContex
   const concernSubjects = resolveConcernSubjects(concern, subjects);
   const hasResistance = RESISTANCE_PATTERN.test(concern);
   const hasProgressEvidence = PROGRESS_EVIDENCE_PATTERN.test(concern);
+  const isLongTermConcern = LONG_TERM_PATTERN.test(concern);
+  const isMathConcern = concern.includes('数学')
+    || (subjects.length === 1 && subjects[0] === '数学');
   const subjectScope = concernSubjects.length > 0
     ? concernSubjects.join('、')
     : '未能从原话中确认具体科目，必须先追问，不得擅自套到全部已填科目';
@@ -64,7 +111,8 @@ export function buildDiagnosisConcernPromptContext(input: DiagnosisConcernContex
     `用户补充原话（最高优先级证据）：${concern}`,
     `关联科目判断：${subjectScope}。`,
     `进度证据判断：${hasProgressEvidence ? '原话包含章节、作业或考试范围线索，必须优先于系统默认进度逐字使用。' : '原话未提供可确认的学校进度；具体知识点只能写“按常规进度推测”，并要求用课本目录、近期作业或学校课表核实。'}`,
-    '强制使用规则：第1节前两句话必须回应这条原话；第2节至少出现1个与原话对应的可观察现象；第3节解释并验证原因；第4-5节说明它在最近节点的现实后果；第6节据此调整动作；第7节的问诊、风险和产品话术必须再次回应。禁止只把原话抄在背景里。',
+    '强制生成“### 1.1 家长补充信息切入分析”，依次写出家长补充信息、核心问题、可能成因、当前最优突破口、不建议家长、建议家长；该小节必须位于诊断总结之后、分科分析之前。',
+    '强制使用规则：第1节前两句话必须回应这条原话；第2节至少出现1个与原话对应的可观察现象；第3节解释并验证原因；第4-5节说明它在最近节点的现实后果；第6节三个周期都据此调整；第7节洋葱承接、问诊、风险和产品话术必须再次回应。禁止只把原话抄在背景里。',
   ];
 
   if (!hasResistance) {
@@ -75,10 +123,14 @@ export function buildDiagnosisConcernPromptContext(input: DiagnosisConcernContex
   lines.push(
     '已触发学习动力/心理阻抗分析：不得把孩子简单归因为懒、没上进心或态度差，也不得做临床心理诊断。',
     '必须同时检验两条因果方向：A. 前置知识断层或连续失败导致“不想学”；B. 回避、拖延和练习中断反过来扩大“不会”。当前只能给待验证判断，不能凭一句家长描述定性。',
+    `持续时间判断：${isLongTermConcern ? '原话包含“从小/一直/长期”等长期线索，必须分析长期低反馈形成的学科自我判断，但仍需用成绩、作业和错题证据核实。' : '原话没有明确持续时间，不得擅自写成“从小如此”或长期厌学。'}`,
+    '可能成因不是六选一结论，必须结合证据按优先级给出2-4项待验证判断：',
+    ...buildStageResistanceCauses(input.stage, isMathConcern).map((item) => `- ${item}`),
     '优先核实4项证据：最近3次同科成绩趋势；孩子独立启动作业所需时间；卡住后是求助、抄答案还是直接离开；抽2道基础题和1道变式题时能否说出第一步。',
     `当前时间节点：${timing.queryDate}，${timing.phaseLabel}。行动必须先建立低阻启动和短反馈，不能直接要求大量刷题。`,
     ...buildResistanceActions(input.stage),
     stageCommunicationBoundary(input.stage),
+    ...buildResistanceProductPath(isMathConcern),
   );
 
   return lines.join('\n');

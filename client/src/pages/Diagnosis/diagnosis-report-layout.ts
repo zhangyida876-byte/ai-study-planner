@@ -48,6 +48,11 @@ const STRUCTURED_LABELS = [
   '信心与节奏',
   '目标差距',
   '家长现在验证',
+  '家长补充信息',
+  '可能成因',
+  '当前最优突破口',
+  '不建议家长',
+  '建议家长',
 ] as const;
 
 const CANONICAL_SECTION_TITLES: Record<number, string> = {

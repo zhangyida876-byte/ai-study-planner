@@ -5,44 +5,34 @@ import {
 } from '../../client/src/config/report-prompt-templates';
 
 describe('report prompt templates', () => {
-  it('unifies diagnosis, target gap and executable planning', () => {
+  it('builds the seven-section business diagnosis with supplemental analysis', () => {
     const prompt = buildProfessionalReportFramework('diagnosis');
 
-    expect(prompt).toContain('## 1. 当前节点与一句话结论');
-    expect(prompt).toContain('## 2. 家长看到的现象');
-    expect(prompt).toContain('## 3. 各科核心问题与根因');
-    expect(prompt).toContain('**问题：**');
+    expect(prompt).toContain('## 1. 顾问先讲：诊断总结');
+    expect(prompt).toContain('### 1.1 家长补充信息切入分析');
+    expect(prompt).toContain('## 2. 家长能看到的现象');
+    expect(prompt).toContain('## 3. 背后根因');
+    expect(prompt).toContain('**核心问题：**');
     expect(prompt).toContain('**背后根因：**');
-    expect(prompt).toContain('**怎么验证：**');
-    expect(prompt).toContain('不得使用竖线拼成一段');
-    expect(prompt).toContain('## 4. 各科本学期学情解读');
-    expect(prompt).toContain('## 5. 跨学科影响');
-    expect(prompt).toContain('底层能力');
-    expect(prompt).toContain('没有可靠关联时明确写');
-    expect(prompt).toContain('语文阅读只可关联数学应用题审题');
-    expect(prompt).toContain('禁止写成影响数学或物理符号运算');
-    expect(prompt).toContain('## 6. 行动方案');
+    expect(prompt).toContain('**家长怎么验证：**');
+    expect(prompt).toContain('## 4. 下一个关键节点预警');
+    expect(prompt).toContain('## 5. 量化危机链条');
+    expect(prompt).toContain('## 6. 家长可执行动作');
     expect(prompt).toContain('### 6.1 未来7天');
     expect(prompt).toContain('### 6.2 未来1个月');
     expect(prompt).toContain('### 6.3 当前学期');
-    expect(prompt).not.toContain('### B. 开学第一周');
-    expect(prompt).not.toContain('### C. 开学第一个月');
-    expect(prompt).toContain('## 7. 洋葱学园承接方案');
-    expect(prompt).toContain('## 8. 课程顾问转述话术');
-    expect(prompt).toContain('8个章节必须全部输出');
-    expect(prompt).toContain('禁止省略第7节或第8节');
-    expect(prompt).toContain('### 8.1 30秒短版');
-    expect(prompt).toContain('### 8.2 2分钟完整版');
-    expect(prompt).toContain('30秒短版');
-    expect(prompt).toContain('2分钟完整版');
-    expect(prompt).toContain('单科1400-2100个中文字符');
+    expect(prompt).toContain('## 7. 洋葱学园承接方案 + 可复制话术');
+    expect(prompt).toContain('7个章节必须全部输出');
+    expect(prompt).toContain('### 7.2 开场共鸣话术');
+    expect(prompt).toContain('### 7.6 促进行动话术');
+    expect(prompt).toContain('单科1400-2200个中文字符');
     expect(prompt).toContain('家长怎么检查');
     expect(prompt).toContain('教学进度校验（最高优先级）');
     expect(prompt).toContain('按常规校历推测，需用学校课表/教材目录/最近作业核实');
     expect(prompt).toContain('为什么现在做');
     expect(prompt).toContain('当前不适合提前做什么');
-    expect(prompt).toContain('当前年级、学期和科目上下文');
-    expect(prompt).toContain('具体知识点、题型或能力');
+    expect(prompt).toContain('用户补充信息使用规则（业务最高优先级）');
+    expect(prompt).toContain('5-8分钟动画短课');
   });
 
   it('keeps three observations and problems for one subject', () => {
