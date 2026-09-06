@@ -3,6 +3,8 @@ import type { EducationStage } from '@client/src/api/plugins';
 export type StageSlug = 'elementary' | 'middle' | 'high';
 
 export type FeatureSlug =
+  | 'phone'
+  | 'wechat'
   | 'diagnosis'
   | 'plan'
   | 'knowledge'
@@ -45,15 +47,30 @@ export interface StageConfig {
 
 const FEATURES: StageFeatureConfig[] = [
   {
+    slug: 'phone',
+    label: '电话学情话术系统',
+    description: '结论先行，生成可直接照读和复制的五步电话沟通话术',
+    pathSuffix: 'phone',
+    group: 'learning',
+  },
+  {
+    slug: 'wechat',
+    label: '微信学情跟进看板',
+    description: '把诊断、风险、行动和洋葱方案整理成可截图看板',
+    pathSuffix: 'wechat',
+    group: 'learning',
+  },
+  {
     slug: 'diagnosis',
     label: '学情诊断与升学规划',
     description: '一次完成水平定位、目标差距、家长行动和产品承接',
     pathSuffix: 'diagnosis',
     group: 'learning',
+    sidebarVisible: false,
   },
   {
     slug: 'knowledge',
-    label: '学情及知识点查询',
+    label: '专业学情查询',
     description: '查询共性学情、重难点、易错点与一周学习动作',
     pathSuffix: 'knowledge',
     group: 'learning',

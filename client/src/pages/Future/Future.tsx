@@ -9,7 +9,7 @@ import { isStageSlug } from '@client/src/config/stages';
 const Future: React.FC = () => {
   const { stage } = useParams<{ stage?: string }>();
   if (!isStageSlug(stage)) return <Navigate to="/" replace />;
-  return <Navigate to={`/${stage}/diagnosis`} replace />;
+  return <Navigate to={`/${stage}/phone`} replace />;
 };
 
 export default Future;

@@ -10,7 +10,7 @@ describe('stage feature navigation', () => {
     (stage) => {
       const knowledge = STAGE_CONFIGS[stage].features.find((feature) => feature.slug === 'knowledge');
 
-      expect(knowledge?.label).toBe('学情及知识点查询');
+      expect(knowledge?.label).toBe('专业学情查询');
       expect(stagePath(stage, 'knowledge')).toBe(`/${stage}/knowledge`);
     },
   );
@@ -38,14 +38,19 @@ describe('stage feature navigation', () => {
         '话术类',
       ]);
       expect(features.filter((feature) => feature.sidebarVisible !== false).map((feature) => feature.slug)).toEqual([
-        'diagnosis',
+        'phone',
+        'wechat',
         'knowledge',
         'history',
         'materials',
         'scripts',
       ]);
-      expect(features.find((feature) => feature.slug === 'diagnosis')?.label)
-        .toBe('学情诊断与升学规划');
+      expect(features.find((feature) => feature.slug === 'phone')?.label)
+        .toBe('电话学情话术系统');
+      expect(features.find((feature) => feature.slug === 'wechat')?.label)
+        .toBe('微信学情跟进看板');
+      expect(features.find((feature) => feature.slug === 'diagnosis')?.sidebarVisible)
+        .toBe(false);
       expect(features.find((feature) => feature.slug === 'future')?.sidebarVisible)
         .toBe(false);
       expect(stagePath(stage, 'future')).toBe(`/${stage}/future`);

@@ -40,6 +40,8 @@ import {
   Archive,
   Signpost,
   MessagesSquare,
+  PhoneCall,
+  Table2,
   LogOut,
   LogIn,
   Pen,
@@ -60,6 +62,8 @@ import {
 const GUEST_AVATAR = 'https://lf3-static.bytednsdoc.com/obj/eden-cn/LMfspH/ljhwZthlaukjlkulzlp/miao/no-person.svg';
 
 const FEATURE_ICONS: Record<FeatureSlug, React.FC<{ className?: string }>> = {
+  phone: PhoneCall,
+  wechat: Table2,
   diagnosis: Stethoscope,
   plan: GraduationCap,
   knowledge: BookOpen,
@@ -73,7 +77,8 @@ const FEATURE_ICONS: Record<FeatureSlug, React.FC<{ className?: string }>> = {
 
 function resolveFeatureFromPath(pathname: string, stage: StageSlug | null): FeatureSlug | null {
   if (!stage) return null;
-  if (pathname.includes('/diagnosis')) return 'diagnosis';
+  if (pathname.includes('/phone') || pathname.includes('/diagnosis')) return 'phone';
+  if (pathname.includes('/wechat')) return 'wechat';
   if (pathname.includes('/future') || pathname.includes('/plan')) return 'future';
   if (pathname.includes('/knowledge')) return 'knowledge';
   if (pathname.includes('/materials')) return 'materials';

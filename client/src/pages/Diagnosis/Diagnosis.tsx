@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Copy, Check, Loader2, Clock, Target, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Copy, Check, Loader2, Clock, Target, ArrowLeft, PhoneCall, Table2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import {
@@ -20,7 +20,6 @@ import {
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@client/src/components/ui/tabs';
 import DiagnosisForm, { type DiagnosisFormData } from './DiagnosisForm';
 import DiagnosisReportView from './DiagnosisReportView';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
@@ -177,10 +176,13 @@ function resolveFilledSubjects(data: DiagnosisFormData): DiagnosisSubjectKey[] {
 
 /* ===== Component ===== */
 
-const Diagnosis: React.FC = () => {
+interface DiagnosisProps {
+  experience?: 'phone' | 'wechat';
+}
+
+const Diagnosis: React.FC<DiagnosisProps> = ({ experience = 'phone' }) => {
   const { stageSlug, stageConfig } = useRequiredStage();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeView = searchParams.get('view') === 'onion' ? 'onion' : 'diagnosis';
+  const activeView = experience;
   const { profile, updateProfile } = useStageProfile(stageSlug);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationPhase, setGenerationPhase] = useState('');
@@ -192,13 +194,6 @@ const Diagnosis: React.FC = () => {
   const [profileDirty, setProfileDirty] = useState(false);
   const [formSnapshot, setFormSnapshot] = useState<DiagnosisFormData | null>(null);
   const regionPartsRef = useRef({ province: '', city: '', county: '' });
-
-  const handleViewChange = useCallback((value: string): void => {
-    const next = new URLSearchParams(searchParams);
-    if (value === 'onion') next.set('view', 'onion');
-    else next.delete('view');
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const cached = loadModuleSession<{
@@ -501,25 +496,41 @@ const Diagnosis: React.FC = () => {
               返回{stageConfig.label}主页
             </Link>
           </Button>
-          <h1 className="font-marker text-2xl font-bold">{stageConfig.label} · 学情诊断与升学规划</h1>
+          <h1 className="font-marker text-2xl font-bold">
+            {stageConfig.label} · {activeView === 'phone' ? '电话学情话术系统' : '微信学情跟进看板'}
+          </h1>
           <p className="font-hand mt-1 text-sm text-muted-foreground">
-            业务可讲版：把孩子的问题、关键节点、量化危机、下一步动作和顾问话术一次讲清
+            {activeView === 'phone'
+              ? '先给可直接照读的话术，再按需查看诊断依据和洋葱学习路径'
+              : '把同一份诊断整理成家长看得懂、销售方便截图发送的微信看板'}
           </p>
         </div>
 
-        <Tabs value={activeView} onValueChange={handleViewChange}>
-          <TabsList className="grid h-auto w-full max-w-xl grid-cols-2 border-2 border-ink bg-white p-1 shadow-hard-sm">
-            <TabsTrigger value="diagnosis" className="font-marker min-h-11 font-bold">
-              学情诊断
-            </TabsTrigger>
-            <TabsTrigger value="onion" className="font-marker min-h-11 font-bold">
-              洋葱承接方案
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="grid h-auto w-full max-w-xl grid-cols-2 border-2 border-ink bg-white p-1 shadow-hard-sm">
+          <Button
+            variant={activeView === 'phone' ? 'default' : 'ghost'}
+            className="font-marker min-h-11 rounded-none font-bold"
+            asChild
+          >
+            <Link to={stagePath(stageSlug, 'phone')}>
+              <PhoneCall className="mr-2 size-4" />
+              电话学情话术系统
+            </Link>
+          </Button>
+          <Button
+            variant={activeView === 'wechat' ? 'default' : 'ghost'}
+            className="font-marker min-h-11 rounded-none font-bold"
+            asChild
+          >
+            <Link to={stagePath(stageSlug, 'wechat')}>
+              <Table2 className="mr-2 size-4" />
+              微信学情跟进看板
+            </Link>
+          </Button>
+        </div>
 
       <div className="space-y-6">
-        {activeView === 'diagnosis' && <div className="min-w-0">
+        {activeView === 'phone' && <div className="min-w-0">
           <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false}>
             <div className="space-y-3 p-4">
               <div className="border-b-2 border-dashed border-ink/15 pb-3">
@@ -555,11 +566,11 @@ const Diagnosis: React.FC = () => {
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-hand text-xs font-bold text-marker-red">
-                      {activeView === 'diagnosis' ? 'STEP 2 · 现状与风险' : 'STEP 3 · 执行与承接'}
+                      {activeView === 'phone' ? 'STEP 2 · 顾问直接照读' : '微信跟进 · 可截图发送'}
                     </p>
                     <h2 className="font-marker mt-1 text-2xl font-bold">
                       {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}
-                      {activeView === 'diagnosis' ? '学情诊断报告' : '洋葱承接方案'}
+                      {activeView === 'phone' ? '电话学情话术' : '微信学情看板'}
                     </h2>
                   </div>
                   {reportContent && (
@@ -684,19 +695,19 @@ const Diagnosis: React.FC = () => {
             <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false}>
               <div className="flex min-h-[220px] flex-col items-center justify-center p-6 text-center">
                 <p className="font-hand text-xs font-bold text-marker-red">
-                  {activeView === 'diagnosis' ? 'STEP 2' : '需要先完成诊断'}
+                  {activeView === 'phone' ? 'STEP 2' : '需要先生成诊断'}
                 </p>
                 <p className="font-marker mt-2 text-2xl font-bold text-ink">
-                  {activeView === 'diagnosis' ? '生成学情诊断报告' : '洋葱承接方案将在诊断后生成'}
+                  {activeView === 'phone' ? '生成电话学情话术' : '微信学情看板将在诊断后生成'}
                 </p>
                 <p className="font-hand mt-2 max-w-md text-sm text-muted-foreground">
-                  {activeView === 'diagnosis'
-                    ? '先生成现状、根因和风险判断，再进入洋葱承接方案查看三周期执行路径。'
-                    : '先填写孩子成绩和补充信息，系统会基于诊断结果匹配洋葱功能、执行计划与顾问话术。'}
+                  {activeView === 'phone'
+                    ? '填写必要信息后，系统会生成五步电话沟通话术、诊断依据和洋葱承接路径。'
+                    : '微信页与电话页共用同一份学生诊断，不需要重复填写或重新生成。'}
                 </p>
-                {activeView === 'onion' && (
-                  <Button type="button" className="mt-4" onClick={() => handleViewChange('diagnosis')}>
-                    先去生成学情诊断
+                {activeView === 'wechat' && (
+                  <Button type="button" className="mt-4" asChild>
+                    <Link to={stagePath(stageSlug, 'phone')}>先去生成电话学情话术</Link>
                   </Button>
                 )}
               </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, LibraryBig, MessagesSquare, Stethoscope } from 'lucide-react';
+import { ArrowLeft, ArrowRight, LibraryBig, MessagesSquare, PhoneCall } from 'lucide-react';
 import WobblyCard from '@client/src/components/WobblyCard';
 import StageProfileEditor from '@client/src/components/StageProfileEditor';
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,9 @@ const SECTION_ENTRIES = [
   {
     key: 'learning',
     title: '学情类',
-    description: '一份报告完成诊断与规划，也可查询学情及知识点',
-    feature: 'diagnosis' as const,
-    icon: Stethoscope,
+    description: '优先生成销售可直接照读的电话话术，再用于微信跟进',
+    feature: 'phone' as const,
+    icon: PhoneCall,
   },
   {
     key: 'cases',

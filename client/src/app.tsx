@@ -26,7 +26,7 @@ const StageGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const StageLegacyRedirect: React.FC<{
-  target: 'diagnosis' | 'future' | 'scripts';
+  target: 'phone' | 'wechat' | 'future' | 'scripts';
   tab?: string;
 }> = ({ target, tab }) => {
   const { stage } = useParams<{ stage: string }>();
@@ -49,16 +49,25 @@ const RoutesComponent = () => {
           }
         />
         <Route
-          path=":stage/diagnosis"
+          path=":stage/phone"
           element={
             <StageGuard>
-              <Diagnosis />
+              <Diagnosis experience="phone" />
             </StageGuard>
           }
         />
         <Route
+          path=":stage/wechat"
+          element={
+            <StageGuard>
+              <Diagnosis experience="wechat" />
+            </StageGuard>
+          }
+        />
+        <Route path=":stage/diagnosis" element={<StageLegacyRedirect target="phone" />} />
+        <Route
           path=":stage/future"
-          element={<StageLegacyRedirect target="diagnosis" />}
+          element={<StageLegacyRedirect target="phone" />}
         />
         <Route
           path=":stage/knowledge"
@@ -96,13 +105,15 @@ const RoutesComponent = () => {
             </StageGuard>
           }
         />
-        <Route path=":stage/plan" element={<StageLegacyRedirect target="diagnosis" />} />
-        <Route path=":stage/study-plan" element={<StageLegacyRedirect target="diagnosis" />} />
+        <Route path=":stage/plan" element={<StageLegacyRedirect target="phone" />} />
+        <Route path=":stage/study-plan" element={<StageLegacyRedirect target="phone" />} />
         <Route path=":stage/advice" element={<StageLegacyRedirect target="scripts" tab="objection" />} />
         {/* 旧路径兼容 */}
-        <Route path="diagnosis" element={<Navigate to="/middle/diagnosis" replace />} />
-        <Route path="plan" element={<Navigate to="/middle/diagnosis" replace />} />
-        <Route path="study-plan" element={<Navigate to="/middle/diagnosis" replace />} />
+        <Route path="diagnosis" element={<Navigate to="/middle/phone" replace />} />
+        <Route path="phone" element={<Navigate to="/middle/phone" replace />} />
+        <Route path="wechat" element={<Navigate to="/middle/wechat" replace />} />
+        <Route path="plan" element={<Navigate to="/middle/phone" replace />} />
+        <Route path="study-plan" element={<Navigate to="/middle/phone" replace />} />
         <Route path="advice" element={<Navigate to="/middle/scripts?tab=objection" replace />} />
         <Route path="knowledge" element={<Navigate to="/middle/knowledge" replace />} />
         <Route path="materials" element={<Navigate to="/middle/materials" replace />} />

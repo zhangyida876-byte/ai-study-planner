@@ -10,7 +10,9 @@ import {
   GitBranch,
   MessageSquareQuote,
   PackageCheck,
+  PhoneCall,
   Sparkles,
+  Table2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { StageSlug } from '@client/src/config/stages';
@@ -41,7 +43,7 @@ interface DiagnosisReportViewProps {
   semester?: string;
   filledSubjects?: string[];
   supplementalInfo?: string;
-  view?: 'all' | 'diagnosis' | 'onion';
+  view?: 'all' | 'diagnosis' | 'onion' | 'phone' | 'wechat';
 }
 
 const SECTION_ICONS: Record<number, React.FC<{ className?: string }>> = {
@@ -548,6 +550,140 @@ const OnionAndScriptsSection: React.FC<{ section?: ReportSection }> = ({ section
   );
 };
 
+const PhoneScriptSequence: React.FC<{
+  scriptSection?: ReportSection;
+  onionSection?: ReportSection;
+}> = ({ scriptSection, onionSection }) => {
+  const scriptSubsections = scriptSection
+    ? parseNumberedSubsections(scriptSection.content, scriptSection.index)
+    : [];
+  const combinedOnion = scriptSubsections.find((item) => (
+    item.index === 1 && item.title.includes('洋葱')
+  ));
+  const scripts = combinedOnion
+    ? scriptSubsections.filter((item) => item.index > 1)
+    : scriptSubsections;
+  const onionContent = combinedOnion?.content || onionSection?.content || '';
+
+  return (
+    <section className="border-b-2 border-dashed border-ink/15 py-5">
+      <div className="mb-4 flex items-center gap-2">
+        <span className="flex size-8 items-center justify-center border-2 border-ink bg-white shadow-hard-sm">
+          <PhoneCall className="size-4 text-marker-red" />
+        </span>
+        <div>
+          <h3 className="font-marker text-lg font-bold">电话沟通 5 步</h3>
+          <p className="font-hand text-xs text-ink/60">按顺序照读，也可以按沟通进度单独复制</p>
+        </div>
+      </div>
+      {scripts.length > 0 ? (
+        <div className="space-y-3">
+          {scripts.map((script, position) => (
+            <div key={`${script.index}-${script.title}`} className="grid gap-3 sm:grid-cols-[48px_1fr]">
+              <span className="font-marker flex size-10 items-center justify-center border-2 border-ink bg-marker-red text-lg font-bold text-white shadow-hard-sm">
+                {position + 1}
+              </span>
+              <CopyableScriptCard
+                title={script.title.replace(/话术$/u, '')}
+                content={script.content}
+                featured={position === 0 || position === scripts.length - 1}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <MissingRequiredSection title="电话沟通五步话术" />
+      )}
+      {onionContent && (
+        <Accordion type="single" collapsible className="mt-4">
+          <AccordionItem value="phone-onion-basis" className="border-2 border-ink bg-white px-4 shadow-hard-sm">
+            <AccordionTrigger className="font-marker font-bold no-underline hover:no-underline">
+              查看话术背后的洋葱学习路径
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="font-hand overflow-x-auto pt-2 text-sm leading-6">
+                <Streamdown>{onionContent}</Streamdown>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      )}
+    </section>
+  );
+};
+
+const WechatMatrixSection: React.FC<{
+  section?: ReportSection;
+  title: string;
+}> = ({ section, title }) => {
+  if (!section) return <MissingRequiredSection title={title} />;
+  const subjects = parseSubjectSections(section.content);
+  return (
+    <section className="border-b-2 border-dashed border-ink/15 py-5">
+      <div className="mb-3 flex items-center gap-2">
+        <Table2 className="size-5 text-pen-blue" />
+        <h3 className="font-marker text-lg font-bold">{title}</h3>
+      </div>
+      {subjects.length > 0 ? (
+        <div className="overflow-x-auto border-2 border-ink bg-white shadow-hard-sm">
+          <table className="w-full min-w-[640px] border-collapse text-left">
+            <thead className="bg-postit-yellow/55">
+              <tr>
+                <th className="font-marker w-32 border-b-2 border-r-2 border-ink p-3">科目</th>
+                <th className="font-marker border-b-2 border-ink p-3">家长可直接查看的结论</th>
+              </tr>
+            </thead>
+            <tbody>
+              {subjects.map((subject) => (
+                <tr key={subject.title} className="align-top even:bg-accent/20">
+                  <th className="font-marker border-r-2 border-t border-ink/20 p-3 font-bold text-pen-blue">
+                    {subject.title}
+                  </th>
+                  <td className="font-hand border-t border-ink/20 p-3 text-sm leading-6">
+                    <Streamdown>{subject.content}</Streamdown>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <article className="border-2 border-ink bg-white p-4 shadow-hard-sm">
+          <div className="font-hand text-sm leading-6"><Streamdown>{section.content}</Streamdown></div>
+        </article>
+      )}
+    </section>
+  );
+};
+
+const WechatPlanSection: React.FC<{
+  actionSection?: ReportSection;
+  onionSection?: ReportSection;
+}> = ({ actionSection, onionSection }) => {
+  const onionSubsections = onionSection
+    ? parseNumberedSubsections(onionSection.content, onionSection.index)
+    : [];
+  const onionPlan = onionSubsections.find((item) => item.index === 1 && item.title.includes('洋葱'));
+  return (
+    <>
+      {actionSection
+        ? <ActionPlanSection section={actionSection} />
+        : <MissingRequiredSection title="微信跟进行动表" />}
+      <section className="border-b-2 border-dashed border-ink/15 py-5">
+        <div className="mb-3 flex items-center gap-2">
+          <PackageCheck className="size-5 text-marker-red" />
+          <h3 className="font-marker text-lg font-bold">洋葱学习路径表</h3>
+        </div>
+        <article className="border-2 border-ink bg-white p-4 shadow-hard-sm">
+          <div className="font-hand overflow-x-auto text-sm leading-6">
+            <Streamdown>{onionPlan?.content || onionSection?.content || '本次未生成洋葱学习路径，请重新生成。'}</Streamdown>
+          </div>
+        </article>
+      </section>
+    </>
+  );
+};
+
 const DetailSection: React.FC<{
   section: ReportSection;
   children: React.ReactNode;
@@ -576,6 +712,106 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
         <div className="font-hand prose-headings:font-marker"><Streamdown>{content}</Streamdown></div>
         <MissingRequiredSection title="洋葱学园承接方案" />
         <MissingRequiredSection title="课程顾问转述话术" />
+      </div>
+    );
+  }
+
+  const sectionOneForExperience = byIndex.get(1);
+  const sectionTwoForExperience = byIndex.get(2);
+  const sectionThreeForExperience = byIndex.get(3);
+  const sectionFourForExperience = byIndex.get(4);
+  const sectionFiveForExperience = byIndex.get(5);
+  const sectionSixForExperience = byIndex.get(6);
+  const sectionSevenForExperience = byIndex.get(7);
+  const sectionEightForExperience = byIndex.get(8);
+  const hasCombinedOnionAndScripts = Boolean(
+    sectionSevenForExperience?.title.includes('+')
+    || sectionSevenForExperience?.content.includes('### 7.1 洋葱'),
+  );
+  const experienceActionSection = sectionSixForExperience?.title.includes('行动')
+    || sectionSixForExperience?.title.includes('执行')
+    ? sectionSixForExperience
+    : sectionFiveForExperience?.title.includes('动作')
+      ? sectionFiveForExperience
+      : undefined;
+  const experienceOnionSection = hasCombinedOnionAndScripts
+    ? sectionSevenForExperience
+    : sectionSevenForExperience?.title.includes('洋葱')
+      ? sectionSevenForExperience
+      : sectionSixForExperience?.title.includes('洋葱')
+        ? sectionSixForExperience
+        : undefined;
+  const experienceScriptSection = hasCombinedOnionAndScripts
+    ? sectionSevenForExperience
+    : sectionEightForExperience
+      || (sectionSevenForExperience?.title.includes('话术') ? sectionSevenForExperience : undefined);
+
+  if (view === 'phone') {
+    const evidenceSections = Array.from(
+      new Map(
+        [
+          sectionTwoForExperience,
+          sectionThreeForExperience,
+          sectionFourForExperience,
+          sectionFiveForExperience,
+          experienceActionSection,
+        ]
+          .filter((section): section is ReportSection => Boolean(section))
+          .map((section) => [`${section.index}-${section.title}`, section]),
+      ).values(),
+    );
+    return (
+      <div className="bg-white/70 px-4 py-2">
+        {sectionOneForExperience ? (
+          <ConsultantSummarySection
+            section={sectionOneForExperience}
+            supplementalInfo={supplementalInfo}
+          />
+        ) : (
+          <MissingRequiredSection title="顾问先讲：诊断总结" />
+        )}
+        <PhoneScriptSequence
+          scriptSection={experienceScriptSection}
+          onionSection={experienceOnionSection}
+        />
+        {evidenceSections.length > 0 && (
+          <Accordion type="single" collapsible className="mt-4">
+            <AccordionItem value="phone-evidence" className="border-2 border-dashed border-ink/25 bg-white px-4">
+              <AccordionTrigger className="font-marker font-bold no-underline hover:no-underline">
+                查看专业诊断依据与具体执行表
+              </AccordionTrigger>
+              <AccordionContent>
+                {evidenceSections.map((section) => (
+                  <GenericSection key={`${section.index}-${section.title}`} section={section} />
+                ))}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        )}
+      </div>
+    );
+  }
+
+  if (view === 'wechat') {
+    return (
+      <div className="bg-white/70 px-4 py-2">
+        {sectionOneForExperience && (
+          <GenericSection section={sectionOneForExperience} highlighted />
+        )}
+        <WechatMatrixSection section={sectionTwoForExperience} title="孩子目前的具体表现" />
+        <WechatMatrixSection section={sectionThreeForExperience} title="问题、根因与验证方法" />
+        <div className="grid gap-4 lg:grid-cols-2">
+          {sectionFourForExperience && (
+            <StructuredBusinessSection section={sectionFourForExperience} />
+          )}
+          {sectionFiveForExperience && sectionFiveForExperience !== experienceActionSection && (
+            <StructuredBusinessSection section={sectionFiveForExperience} tone="warning" />
+          )}
+        </div>
+        <WechatPlanSection
+          actionSection={experienceActionSection}
+          onionSection={experienceOnionSection}
+        />
       </div>
     );
   }

@@ -423,7 +423,7 @@ const Knowledge: React.FC = () => {
           </Link>
         </Button>
         <h1 className="mb-2 font-marker text-3xl font-bold">
-          {stageConfig.label} · 学情及知识点查询
+          {stageConfig.label} · 专业学情查询
         </h1>
         <p className="font-hand mb-4 text-sm text-muted-foreground">
           {activeView === 'subject'
