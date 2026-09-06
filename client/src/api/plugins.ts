@@ -17,6 +17,7 @@ import type { StageProfile } from '@client/src/types/stage-profile';
 import { buildAcademicTimingPromptContext } from '@client/src/utils/academic-phase';
 import { buildDiagnosisRiskPromptContext } from '@client/src/utils/diagnosis-risk-context';
 import { buildDiagnosisConcernPromptContext } from '@client/src/utils/diagnosis-concern-context';
+import { buildDiagnosisContentRouteContext } from '@client/src/utils/diagnosis-content-router';
 
 export const PLUGIN_IDS = {
   DIAGNOSIS_REPORT: 'academic_diagnosis_report_generator_1',
@@ -821,6 +822,12 @@ export function buildDiagnosisPrompt(ctx: DiagnosisFormContext, options?: Prompt
     targetScore: ctx.targetScore,
     hasCompleteExamScores: filledSubjects.length > 0 && (ctx.missingSubjects || []).length === 0,
   });
+  const contentRouteContext = buildDiagnosisContentRouteContext({
+    stage: currentStageSlug,
+    concern: ctx.problemDesc,
+    scores: ctx.scores,
+    maxValues: ctx.scoreMaxValues,
+  });
   const examLabel = stage === 'high' ? '高考模拟' : stage === 'middle' ? '中考模拟' : '小升初期末统考';
   const stageLabel = stage === 'high' ? '高中' : stage === 'middle' ? '初中' : '小学';
   const framework = buildProfessionalReportFramework('diagnosis');
@@ -840,6 +847,7 @@ ${concernContext ? `\n【用户补充信息（业务最高优先级，不得忽�
 ${semesterInsightContext ? `\n【本地教研学期上下文】\n${semesterInsightContext}` : ''}
 ${teachingProgressContext ? `\n【当前教学进度硬约束（最高优先级）】\n${teachingProgressContext}` : ''}
 ${riskContext ? `\n【关键节点与量化风险参考（必须标注为估算）】\n${riskContext}` : ''}
+${contentRouteContext ? `\n【结构化问题、场景与产品路由（优先于通用产品描述）】\n${contentRouteContext}` : ''}
 
 ${subjectCoverageRules}
 
@@ -876,6 +884,10 @@ ${subjectCoverageRules}
 27. 用户明确提供的当前章节、最近作业或考试范围优先于系统推测；没有真实进度证据时只能用“若学校已进入…则…”表达，并要求核实课本目录、近期作业或学校课表。
 28. 补充信息非空时，第1节总结后必须输出“### 1.1 家长补充信息切入分析”，严格包含家长补充信息、核心问题、可能成因、当前最优突破口、不建议家长、建议家长六行；禁止把该内容并入普通现象后消失。
 29. 学习阻抗场景的未来1个月要用正确率和作业耗时建立正反馈，当前学期先稳基础题和中档题；洋葱承接必须解释5-8分钟动画短课、知识点拆解、极速预习、极速复习、同步课、解题课、错题本/AI分别为什么适合，不得只列产品名。
+30. 第3节的问题判断必须优先来自“学习问题库匹配”，但仍要用用户错题、作业和考试证据验证；不得把问题库候选项写成已确认事实。
+31. 第7节只能优先使用“产品能力库匹配”中给出的2至4项能力，并保持低阻或定位、补知识、练习验证、复盘的先后逻辑；禁止把全部洋葱功能堆进一份方案。
+32. “异议处理库匹配”为空时，禁止主动生成价格、优惠、竞品、退款、分期或逼单内容；有匹配时也只吸收与当前顾虑直接相关的一句回应，详细异议处理留在话术中心。
+33. 价格、优惠截止、剩余名额、套餐权益、退款、分期、设备和服务周期属于动态商业事实。当前输入没有提供并核验时一律写“以当期正式页面或政策为准”，禁止沿用历史资料中的数字。
 
 【本模块边界】
 0. 下面的模块边界和建议输出结构优先级高于插件默认模板；如默认模板要求输出长篇政策/完整规划，应主动压缩或省略。

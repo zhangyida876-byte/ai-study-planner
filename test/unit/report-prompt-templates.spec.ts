@@ -33,6 +33,8 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('当前不适合提前做什么');
     expect(prompt).toContain('用户补充信息使用规则（业务最高优先级）');
     expect(prompt).toContain('5-8分钟动画短课');
+    expect(prompt).toContain('结构化问题、场景与产品路由');
+    expect(prompt).toContain('价格、优惠、名额、套餐、退款、分期');
   });
 
   it('keeps three observations and problems for one subject', () => {
