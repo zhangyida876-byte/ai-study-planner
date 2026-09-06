@@ -55,7 +55,7 @@ export function resolveDiagnosisContentRoute(
 
 function formatProblem(problem: LearningProblem): string {
   return [
-    `${problem.problemId}｜${problem.name}`,
+    `问题名称：${problem.name}`,
     `可观察证据：${problem.observableEvidence.join('；')}`,
     `待验证根因：${problem.possibleCauses.join('；')}`,
     `验证方式：${problem.verification.join('；')}`,
@@ -66,17 +66,16 @@ function formatProblem(problem: LearningProblem): string {
 
 function formatScenario(scenario: SalesScenario): string {
   return [
-    `${scenario.sceneId}｜${scenario.name}`,
-    `关联问题：${scenario.problemIds.join('、')}`,
+    `场景名称：${scenario.name}`,
     `问诊问题：${scenario.questionsToAsk.join('；')}`,
     `短期成功信号：${scenario.successSignals.join('；')}`,
-    `当前禁止优先推荐：${scenario.excludedCapabilityIds.join('、') || '无'}`,
   ].join('\n');
 }
 
 function formatCapability(capability: ProductCapability): string {
   return [
-    `${capability.capabilityId}｜${capability.name}｜${capability.status}`,
+    `功能名称：${capability.name}`,
+    `资料状态：${capability.status === 'available' ? '已核实' : '使用前需核实适用范围'}`,
     `解决：${capability.solves}`,
     `用法：${capability.usage}`,
     `频率：${capability.frequency}`,
@@ -88,7 +87,7 @@ function formatCapability(capability: ProductCapability): string {
 
 function formatObjection(objection: ObjectionRecord): string {
   return [
-    `${objection.objectionId}｜${objection.name}`,
+    `家长顾虑：${objection.name}`,
     `回应原则：${objection.responsePrinciple}`,
     `需追问：${objection.questionsToAsk.join('；')}`,
     `清洗后话术：${objection.script}`,

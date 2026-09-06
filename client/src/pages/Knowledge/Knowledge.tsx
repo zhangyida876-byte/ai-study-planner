@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, BookOpen, Layers, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@client/src/components/ui/tabs';
 import { knowledge } from '@client/src/api';
 import type { KnowledgePoint, KnowledgePointListItem, ChapterUnit } from '@shared/api.interface';
 import KnowledgeDetailPanel from './KnowledgeDetailPanel';
@@ -37,6 +38,8 @@ interface KnowledgeSessionState {
 
 const Knowledge: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeView = searchParams.get('view') === 'point' ? 'point' : 'subject';
   const { profile, regionText, updateProfile } = useStageProfile(stageSlug);
   const [province, setProvince] = useState('');
   const [city, setCity] = useState('');
@@ -62,6 +65,13 @@ const Knowledge: React.FC = () => {
   const [hasQueried, setHasQueried] = useState(false);
   const hydratedRef = useRef(false);
   const applyingProfileRef = useRef(false);
+
+  const handleViewChange = useCallback((value: string): void => {
+    const next = new URLSearchParams(searchParams);
+    if (value === 'point') next.set('view', 'point');
+    else next.delete('view');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const effectiveVersion = version === '__all__'
     ? (province ? REGION_VERSION_MAP[province] || '' : '')
@@ -416,8 +426,21 @@ const Knowledge: React.FC = () => {
           {stageConfig.label} · 学情及知识点查询
         </h1>
         <p className="font-hand mb-4 text-sm text-muted-foreground">
-          专业补充版：查询共性学情、重难点、易错卡点和知识点影响，不替代个体诊断
+          {activeView === 'subject'
+            ? '学科解读：查看当前年级、学期和教材版本下的共性学习重点与卡点'
+            : '知识点解读：定位具体知识点，查看概念、题型、易错原因和后续影响'}
         </p>
+
+        <Tabs value={activeView} onValueChange={handleViewChange} className="mb-5">
+          <TabsList className="grid h-auto w-full max-w-xl grid-cols-2 border-2 border-ink bg-white p-1 shadow-hard-sm">
+            <TabsTrigger value="subject" className="font-marker min-h-11 font-bold">
+              学科解读
+            </TabsTrigger>
+            <TabsTrigger value="point" className="font-marker min-h-11 font-bold">
+              知识点解读
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         <ProfileAutofillBanner
           stageSlug={stageSlug}
@@ -458,10 +481,11 @@ const Knowledge: React.FC = () => {
             onCustomRegionTextChange={setCustomRegionText}
             onCustomRegionSubmit={handleCustomRegionSubmit}
             allowedGrades={stageConfig.knowledgeGrades}
+            showSearch={activeView === 'point'}
           />
         </WobblyCard>
 
-        <ErrorBoundary
+        {activeView === 'subject' && <ErrorBoundary
           resetKeys={[stageSlug, grade, semester, subject]}
           onError={(error) => logger.error('学期画像渲染失败', error)}
           fallbackRender={({ resetErrorBoundary }) => (
@@ -487,8 +511,9 @@ const Knowledge: React.FC = () => {
             subject={subject}
             onSubjectChange={handleSubjectChange}
           />
-        </ErrorBoundary>
+        </ErrorBoundary>}
 
+        {activeView === 'point' && <>
         {(hasQueried || selectedId || effectiveSubject) && (
           <div className="mb-3 flex items-center gap-2">
             <BookOpen className="size-5 text-pen-blue" />
@@ -733,6 +758,7 @@ const Knowledge: React.FC = () => {
             )}
           </div>
         )}
+        </>}
       </div>
     </div>
   );

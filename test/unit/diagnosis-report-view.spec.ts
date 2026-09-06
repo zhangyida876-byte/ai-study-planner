@@ -105,6 +105,20 @@ describe('diagnosis report view layout', () => {
     expect(resolveReportSectionLayout(sections).version).toBe('current-eight');
   });
 
+  it('recognizes the Onion execution plan as section six', () => {
+    const sections = parseReportSections([
+      '## 1. 顾问先讲：诊断总结',
+      '结论',
+      '## 6. 洋葱执行计划',
+      '三个周期',
+      '## 7. 洋葱学园承接方案 + 可复制话术',
+      '承接',
+    ].join('\n'));
+
+    expect(sections.find((section) => section.index === 6)?.title).toBe('洋葱执行计划');
+    expect(resolveReportSectionLayout(sections).version).toBe('business-seven');
+  });
+
   it('keeps archived eight-section reports readable', () => {
     const sections = Array.from({ length: 8 }, (_, index) => ({
       index: index + 1,

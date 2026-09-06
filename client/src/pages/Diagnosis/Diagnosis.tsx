@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Copy, Check, Loader2, Clock, Target, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@lark-apaas/client-toolkit/logger';
@@ -20,6 +20,7 @@ import {
 import WobblyCard from '@client/src/components/WobblyCard';
 import { Streamdown } from '@client/src/components/ui/streamdown';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@client/src/components/ui/tabs';
 import DiagnosisForm, { type DiagnosisFormData } from './DiagnosisForm';
 import DiagnosisReportView from './DiagnosisReportView';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
@@ -178,6 +179,8 @@ function resolveFilledSubjects(data: DiagnosisFormData): DiagnosisSubjectKey[] {
 
 const Diagnosis: React.FC = () => {
   const { stageSlug, stageConfig } = useRequiredStage();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeView = searchParams.get('view') === 'onion' ? 'onion' : 'diagnosis';
   const { profile, updateProfile } = useStageProfile(stageSlug);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationPhase, setGenerationPhase] = useState('');
@@ -189,6 +192,13 @@ const Diagnosis: React.FC = () => {
   const [profileDirty, setProfileDirty] = useState(false);
   const [formSnapshot, setFormSnapshot] = useState<DiagnosisFormData | null>(null);
   const regionPartsRef = useRef({ province: '', city: '', county: '' });
+
+  const handleViewChange = useCallback((value: string): void => {
+    const next = new URLSearchParams(searchParams);
+    if (value === 'onion') next.set('view', 'onion');
+    else next.delete('view');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const cached = loadModuleSession<{
@@ -497,8 +507,19 @@ const Diagnosis: React.FC = () => {
           </p>
         </div>
 
+        <Tabs value={activeView} onValueChange={handleViewChange}>
+          <TabsList className="grid h-auto w-full max-w-xl grid-cols-2 border-2 border-ink bg-white p-1 shadow-hard-sm">
+            <TabsTrigger value="diagnosis" className="font-marker min-h-11 font-bold">
+              学情诊断
+            </TabsTrigger>
+            <TabsTrigger value="onion" className="font-marker min-h-11 font-bold">
+              洋葱承接方案
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
       <div className="space-y-6">
-        <div className="min-w-0">
+        {activeView === 'diagnosis' && <div className="min-w-0">
           <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false}>
             <div className="space-y-3 p-4">
               <div className="border-b-2 border-dashed border-ink/15 pb-3">
@@ -525,7 +546,7 @@ const Diagnosis: React.FC = () => {
               </div>
             </div>
           </WobblyCard>
-        </div>
+        </div>}
 
         <div className="min-w-0 space-y-4">
           {isGenerating || reportContent ? (
@@ -533,9 +554,12 @@ const Diagnosis: React.FC = () => {
               <div className="p-5">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-hand text-xs font-bold text-marker-red">STEP 2 · 业务可讲版</p>
+                    <p className="font-hand text-xs font-bold text-marker-red">
+                      {activeView === 'diagnosis' ? 'STEP 2 · 现状与风险' : 'STEP 3 · 执行与承接'}
+                    </p>
                     <h2 className="font-marker mt-1 text-2xl font-bold">
-                      {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}学情诊断与升学规划报告
+                      {studentInfo?.studentName ? `${studentInfo.studentName}的` : ''}
+                      {activeView === 'diagnosis' ? '学情诊断报告' : '洋葱承接方案'}
                     </h2>
                   </div>
                   {reportContent && (
@@ -650,6 +674,7 @@ const Diagnosis: React.FC = () => {
                       semester={reportSemester}
                       filledSubjects={reportSubjects}
                       supplementalInfo={studentInfo?.problemDesc}
+                      view={activeView}
                     />
                   </>
                 )}
@@ -658,11 +683,22 @@ const Diagnosis: React.FC = () => {
           ) : (
             <WobblyCard variant="yellow" decoration="tack" wobblyIndex={1} hoverable={false}>
               <div className="flex min-h-[220px] flex-col items-center justify-center p-6 text-center">
-                <p className="font-hand text-xs font-bold text-marker-red">STEP 2</p>
-                <p className="font-marker mt-2 text-2xl font-bold text-ink">生成学情诊断与升学规划报告</p>
-                <p className="font-hand mt-2 max-w-md text-sm text-muted-foreground">
-                  生成后先给顾问可直接照读的诊断总结，再按需查看分科依据和三周期执行方案。
+                <p className="font-hand text-xs font-bold text-marker-red">
+                  {activeView === 'diagnosis' ? 'STEP 2' : '需要先完成诊断'}
                 </p>
+                <p className="font-marker mt-2 text-2xl font-bold text-ink">
+                  {activeView === 'diagnosis' ? '生成学情诊断报告' : '洋葱承接方案将在诊断后生成'}
+                </p>
+                <p className="font-hand mt-2 max-w-md text-sm text-muted-foreground">
+                  {activeView === 'diagnosis'
+                    ? '先生成现状、根因和风险判断，再进入洋葱承接方案查看三周期执行路径。'
+                    : '先填写孩子成绩和补充信息，系统会基于诊断结果匹配洋葱功能、执行计划与顾问话术。'}
+                </p>
+                {activeView === 'onion' && (
+                  <Button type="button" className="mt-4" onClick={() => handleViewChange('diagnosis')}>
+                    先去生成学情诊断
+                  </Button>
+                )}
               </div>
             </WobblyCard>
           )}

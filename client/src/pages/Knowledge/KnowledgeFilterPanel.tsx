@@ -126,6 +126,7 @@ interface KnowledgeFilterPanelProps {
   onCustomRegionTextChange: (val: string) => void;
   onCustomRegionSubmit: () => void;
   allowedGrades?: string[];
+  showSearch?: boolean;
 }
 
 const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
@@ -152,6 +153,7 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
   onCustomRegionTextChange,
   onCustomRegionSubmit,
   allowedGrades,
+  showSearch = true,
 }) => {
   const cities = PROVINCE_CITIES[province] || [];
   const gradeOptions = allowedGrades?.length
@@ -278,7 +280,7 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
       </div>
 
       {/* Row 3: Search */}
-      <div className="flex items-center gap-3">
+      {showSearch && <div className="flex items-center gap-3">
         <Input
           className="font-hand h-11 flex-1"
           placeholder="输入知识点关键词搜索..."
@@ -300,7 +302,7 @@ const KnowledgeFilterPanel: React.FC<KnowledgeFilterPanelProps> = ({
         >
           重置
         </button>
-      </div>
+      </div>}
     </div>
   );
 };

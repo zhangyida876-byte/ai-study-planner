@@ -41,6 +41,7 @@ interface DiagnosisReportViewProps {
   semester?: string;
   filledSubjects?: string[];
   supplementalInfo?: string;
+  view?: 'all' | 'diagnosis' | 'onion';
 }
 
 const SECTION_ICONS: Record<number, React.FC<{ className?: string }>> = {
@@ -540,6 +541,7 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
   semester,
   filledSubjects = [],
   supplementalInfo,
+  view = 'all',
 }) => {
   const sections = useMemo(() => parseReportSections(content), [content]);
   const byIndex = useMemo(() => new Map(sections.map((section) => [section.index, section])), [sections]);
@@ -570,6 +572,32 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
     );
 
     if (isQuantifiedLayout) {
+      if (view === 'diagnosis') {
+        return (
+          <div className="bg-white/70 px-4 py-2">
+            {sectionOne && (
+              <ConsultantSummarySection
+                section={sectionOne}
+                supplementalInfo={supplementalInfo}
+              />
+            )}
+            {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
+            {sectionThree && <ProblemsSection section={sectionThree} />}
+            {sectionFour && <StructuredBusinessSection section={sectionFour} />}
+            {sectionFive && <StructuredBusinessSection section={sectionFive} tone="warning" />}
+          </div>
+        );
+      }
+      if (view === 'onion') {
+        return (
+          <div className="bg-white/70 px-4 py-2">
+            {sectionSix
+              ? <ActionPlanSection section={sectionSix} />
+              : <MissingRequiredSection title="洋葱执行计划" />}
+            <OnionAndScriptsSection section={sectionSeven} />
+          </div>
+        );
+      }
       return (
         <div className="bg-white/70 px-4 py-2">
           {sectionOne && (
@@ -584,6 +612,35 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
           {sectionFive && <StructuredBusinessSection section={sectionFive} tone="warning" />}
           {sectionSix && <ActionPlanSection section={sectionSix} />}
           <OnionAndScriptsSection section={sectionSeven} />
+        </div>
+      );
+    }
+
+    if (view === 'diagnosis') {
+      return (
+        <div className="bg-white/70 px-4 py-2">
+          {sectionOne && (
+            <ConsultantSummarySection
+              section={sectionOne}
+              supplementalInfo={supplementalInfo}
+            />
+          )}
+          {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
+          {sectionThree && <ProblemsSection section={sectionThree} />}
+          {sectionFour && <RiskSection section={sectionFour} />}
+        </div>
+      );
+    }
+    if (view === 'onion') {
+      return (
+        <div className="bg-white/70 px-4 py-2">
+          {sectionFive
+            ? <ActionPlanSection section={sectionFive} />
+            : <MissingRequiredSection title="洋葱执行计划" />}
+          {sectionSix
+            ? <GenericSection section={sectionSix} />
+            : <MissingRequiredSection title="洋葱学园承接方案" />}
+          <AdvisorScriptSection section={sectionSeven} />
         </div>
       );
     }
@@ -615,12 +672,22 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
     const detailSections = layout.detailIndexes
       .map((index) => byIndex.get(index))
       .filter((section): section is ReportSection => Boolean(section));
+    const visiblePrimarySections = view === 'all'
+      ? primarySections
+      : primarySections.filter((section) => (
+          view === 'diagnosis' ? section.index <= 5 : section.index >= 6
+        ));
+    const visibleDetailSections = view === 'all'
+      ? detailSections
+      : detailSections.filter((section) => (
+          view === 'diagnosis' ? section.index <= 5 : section.index >= 6
+        ));
     return (
       <div className="bg-white/70 px-4 py-2">
-        {primarySections.map((section) => <GenericSection key={section.index} section={section} highlighted={section.index === 1} />)}
-        {detailSections.length > 0 && (
+        {visiblePrimarySections.map((section) => <GenericSection key={section.index} section={section} highlighted={section.index === 1} />)}
+        {visibleDetailSections.length > 0 && (
           <Accordion type="multiple" className="mt-3 space-y-3">
-            {detailSections.map((section) => (
+            {visibleDetailSections.map((section) => (
               <AccordionItem key={section.index} value={`section-${section.index}`} className="border-2 border-dashed border-ink/15 bg-white/55 px-4">
                 <AccordionTrigger className="font-marker text-base font-bold no-underline hover:no-underline">
                   查看{section.title}
@@ -642,6 +709,32 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
   const sectionSix = byIndex.get(6);
   const sectionSeven = byIndex.get(7);
   const sectionEight = byIndex.get(8);
+
+  if (view === 'diagnosis') {
+    return (
+      <div className="bg-white/70 px-4 py-2">
+        {sectionOne && <GenericSection section={sectionOne} highlighted />}
+        {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
+        {sectionThree && <ProblemsSection section={sectionThree} />}
+        {sectionFour && <GenericSection section={sectionFour} />}
+        {sectionFive && <CrossSubjectSection section={sectionFive} />}
+      </div>
+    );
+  }
+
+  if (view === 'onion') {
+    return (
+      <div className="bg-white/70 px-4 py-2">
+        {sectionSix
+          ? <ActionPlanSection section={sectionSix} />
+          : <MissingRequiredSection title="洋葱执行计划" />}
+        {sectionSeven
+          ? <GenericSection section={sectionSeven} />
+          : <MissingRequiredSection title="洋葱学园承接方案" />}
+        <AdvisorScriptSection section={sectionEight} />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white/70 px-4 py-2">

@@ -35,7 +35,7 @@ describe('diagnosis content router', () => {
     expect(route.problems.map((problem) => problem.problemId)).toContain('PRB-HOMEWORK-SLOW-01');
   });
 
-  it('builds a traceable prompt context with ids, checks and acceptance criteria', () => {
+  it('builds a traceable prompt context without exposing internal ids', () => {
     const context = buildDiagnosisContentRouteContext({
       stage: 'high',
       concern: '上课听不懂，例题会看但换个问法就没有思路',
@@ -44,11 +44,12 @@ describe('diagnosis content router', () => {
     });
 
     expect(context).toContain('【学习问题库匹配】');
-    expect(context).toContain('PRB-CLASS-PASSIVE-01');
+    expect(context).toContain('课堂跟进被动');
     expect(context).toContain('【场景索引匹配】');
-    expect(context).toContain('SCN-CLASS-CATCHUP-001');
+    expect(context).toContain('课堂听不懂或跟不上');
     expect(context).toContain('【产品能力库匹配：只允许从以下能力中选择2至4项】');
     expect(context).toContain('验收：');
     expect(context).toContain('边界：');
+    expect(context).not.toMatch(/(?:CAP|PRB|SCN|OBJ)-/u);
   });
 });

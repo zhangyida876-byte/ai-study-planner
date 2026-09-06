@@ -17,7 +17,7 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('**家长怎么验证：**');
     expect(prompt).toContain('## 4. 下一个关键节点预警');
     expect(prompt).toContain('## 5. 量化危机链条');
-    expect(prompt).toContain('## 6. 家长可执行动作');
+    expect(prompt).toContain('## 6. 洋葱执行计划');
     expect(prompt).toContain('### 6.1 未来7天');
     expect(prompt).toContain('### 6.2 未来1个月');
     expect(prompt).toContain('### 6.3 当前学期');
@@ -27,6 +27,7 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('### 7.6 促进行动话术');
     expect(prompt).toContain('单科1400-2200个中文字符');
     expect(prompt).toContain('家长怎么检查');
+    expect(prompt).toContain('洋葱功能介入');
     expect(prompt).toContain('教学进度校验（最高优先级）');
     expect(prompt).toContain('按常规校历推测，需用学校课表/教材目录/最近作业核实');
     expect(prompt).toContain('为什么现在做');
@@ -35,6 +36,7 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('5-8分钟动画短课');
     expect(prompt).toContain('结构化问题、场景与产品路由');
     expect(prompt).toContain('价格、优惠、名额、套餐、退款、分期');
+    expect(prompt).toContain('CAP、PRB、SCN、OBJ等编号仅用于系统内部关联');
   });
 
   it('keeps three observations and problems for one subject', () => {
@@ -44,7 +46,7 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('数学');
     expect(prompt).toContain('3个家长可观察现象');
     expect(prompt).toContain('3个核心问题');
-    expect(prompt).toContain('按三个周期输出该科行动方案');
+    expect(prompt).toContain('按三个周期输出该科洋葱执行方案');
     expect(prompt).toContain('不输出跨科共性问题');
   });
 
