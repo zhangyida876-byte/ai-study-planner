@@ -14,6 +14,11 @@ export interface ProductCapability {
   acceptance: string;
   boundary: string;
   consultantSummary: string;
+  mechanism?: string;
+  workflow?: string[];
+  worksWith?: string;
+  parentExplanation?: string;
+  stageGuidance?: Partial<Record<StageSlug, string>>;
   sourceRefs: string[];
   verifiedAt: string;
 }
@@ -34,6 +39,15 @@ export const PRODUCT_CAPABILITIES: ProductCapability[] = [
     acceptance: '脱离答案后能说出考点和第一步，24至48小时后换题仍能起步',
     boundary: '具体题目、设备和学科覆盖使用前核实，不能替代独立思考',
     consultantSummary: '不是帮孩子搜答案，而是把题拆回真正没懂的知识点',
+    mechanism: '从具体错题反查考点和卡住步骤，把“不会这道题”转成“需要补哪个最小知识点”。',
+    workflow: ['拍下代表性错题并识别考点', '先看思路和对应微课，不直接抄答案', '脱离提示完成同类题和隔天变式题'],
+    worksWith: '先接AI错题本完成归因，再衔接知识点课、同步解题课或培优课处理对应漏洞。',
+    parentExplanation: '它不是搜答案，而是顺着一道错题找到孩子真正断在哪一步，再把这一小块补回来。',
+    stageGuidance: {
+      elementary: '用于定位计算、应用题读题和基础概念卡点，重点让孩子说清题意与第一步。',
+      middle: '用于定位代数、几何、理化题型中的考点与起步步骤，再对接月考和中考常考题型。',
+      high: '用于定位函数、模型、实验或材料题中的条件转化与方法选择，再衔接高考题型训练。',
+    },
     sourceRefs: ['SRC-PRODUCT-01', 'SRC-PRODUCT-03'],
     verifiedAt: VERIFIED_AT,
   },
@@ -49,6 +63,10 @@ export const PRODUCT_CAPABILITIES: ProductCapability[] = [
     acceptance: '同类错误下降，孩子能说清错在哪里和下次先检查什么',
     boundary: '录入不等于掌握，必须重新作答并延迟复测',
     consultantSummary: '错题本不是存得多，而是让孩子知道为什么总在同一处丢分',
+    mechanism: '把错题按概念、审题、计算、步骤和方法归因，再通过延迟复测判断是真掌握还是只记住答案。',
+    workflow: ['当天只收录代表性错题', '标记错因并关联知识点或题型', '隔天和一周后用同类变式复测'],
+    worksWith: '前接AI拍题精学定位，后接同步课或培优课补学，再用复测决定是否升级难度。',
+    parentExplanation: '不是把错题存起来就结束，而是看孩子为什么总在同一类题上丢分，并确认下次还会不会错。',
     sourceRefs: ['SRC-PRODUCT-01', 'SRC-PRODUCT-03'],
     verifiedAt: VERIFIED_AT,
   },
@@ -64,6 +82,10 @@ export const PRODUCT_CAPABILITIES: ProductCapability[] = [
     acceptance: '任务完成率稳定，薄弱点减少，作业和自主学习时间可控',
     boundary: '班型、覆盖年级和具体权益以当期产品为准，不承诺自动提分',
     consultantSummary: '把大目标拆成孩子今天该完成的那一小块',
+    mechanism: '根据当前水平、目标和完成反馈动态拆分任务，减少多科冲突和无效平均用力。',
+    workflow: ['确定本周一个主问题', '拆成每天可完成的同步与培优任务', '依据完成率、正确率和耗时调整下一周'],
+    worksWith: '用于编排同步课、培优课、练习和错题复盘，不替代各课程本身。',
+    parentExplanation: '它解决的是孩子每天到底先学什么，不让计划看起来很满、真正的问题却一直没动。',
     sourceRefs: ['SRC-PRODUCT-02'],
     verifiedAt: VERIFIED_AT,
   },
@@ -94,6 +116,15 @@ export const PRODUCT_CAPABILITIES: ProductCapability[] = [
     acceptance: '能说出课程主题和两至三个关键词，课后能说明疑问是否解决',
     boundary: '具体学段和学科覆盖使用前核实，不能替代学校课堂',
     consultantSummary: '预习先混个脸熟，让第二天课堂不再全程被动',
+    mechanism: '先降低新概念的陌生度和课堂认知负荷，让孩子正式听课时能抓住关键词和老师的推导重点。',
+    workflow: ['课前只看即将学习的一个最小知识点', '记住两至三个关键词并标记一个疑问', '第二天听课后确认疑问是否解决'],
+    worksWith: '极速预习之后回到学校课堂；当天仍未解决的疑问用极速复习或同步概念课闭环。',
+    parentExplanation: '不是让孩子提前学完整章，而是先认识明天要讲的关键词，避免老师开讲后一直跟不上。',
+    stageGuidance: {
+      elementary: '控制在短时、低负担，重点认识新词、算理或课文主题，不做超前难题。',
+      middle: '提前熟悉新章节的符号、概念和基本关系，缓解科目增多后的课堂跟进压力。',
+      high: '提前熟悉抽象定义、模型变量和公式条件，降低初高中衔接及高难新课的理解门槛。',
+    },
     sourceRefs: ['SRC-PRODUCT-01', 'SRC-PRODUCT-03'],
     verifiedAt: VERIFIED_AT,
   },
@@ -109,6 +140,15 @@ export const PRODUCT_CAPABILITIES: ProductCapability[] = [
     acceptance: '基础题正确率约80%，并能说出规则或方法',
     boundary: '具体学段和学科覆盖使用前核实',
     consultantSummary: '当天的小漏洞当天补，成本最低',
+    mechanism: '利用当天记忆仍清晰的窗口及时修补课堂断点，避免一个小疑问叠加成整章前置漏洞。',
+    workflow: ['课后说出当天最不懂的一步', '快速回看对应讲解并做两至三道基础题', '用口述规则或隔天一题确认没有假懂'],
+    worksWith: '基础验证仍未通过时转同步概念课；已经听懂但不会做时转同步解题课。',
+    parentExplanation: '今天没懂的今天补，只处理一个小漏洞，比周末从头重学更省时间。',
+    stageGuidance: {
+      elementary: '当天处理字词、算理、句型等小卡点，避免孩子因连续不会而产生抵触。',
+      middle: '当天补回代数步骤、几何语言、理化概念等断点，避免影响后续连续章节。',
+      high: '当天补回定义条件、推导链和模型环节，防止抽象知识在下一节课继续放大。',
+    },
     sourceRefs: ['SRC-PRODUCT-01', 'SRC-PRODUCT-03'],
     verifiedAt: VERIFIED_AT,
   },
@@ -124,6 +164,15 @@ export const PRODUCT_CAPABILITIES: ProductCapability[] = [
     acceptance: '能解释概念、判断典型正误并完成基础应用',
     boundary: '具体时长、教材版本和覆盖范围以当期产品页面为准',
     consultantSummary: '先把学校当天那一个小概念拆开讲清楚，再去做题',
+    mechanism: '按教材进度把大章节拆成短小知识单元，通过动画、情境和交互讲清概念为什么成立。',
+    workflow: ['核实学校正在学的章节', '选择一个最小概念完成短课与随堂练习', '让孩子口述概念并完成基础应用'],
+    worksWith: '前接极速预习，后接同步解题课和培优课，把“听懂”逐步转成“会用、会得分”。',
+    parentExplanation: '同步课解决的是学校正在讲的内容能不能听懂，不让当天的小漏洞继续积累。',
+    stageGuidance: {
+      elementary: '重在算理、阅读方法和基础表达，让孩子听懂并能说出来。',
+      middle: '重在教材概念、公式条件和章节联系，稳住月考与中考的基础盘。',
+      high: '重在抽象定义、推导和模型条件，保证课堂进度与学考、高考基础要求不断层。',
+    },
     sourceRefs: ['SRC-PRODUCT-01', 'SRC-PRODUCT-03'],
     verifiedAt: VERIFIED_AT,
   },
@@ -139,6 +188,15 @@ export const PRODUCT_CAPABILITIES: ProductCapability[] = [
     acceptance: '新题能独立判断题型并完成第一步，同类变式正确率稳定',
     boundary: '不能用解题课掩盖尚未补清的概念断点',
     consultantSummary: '概念课解决听懂，解题课解决怎么用',
+    mechanism: '把知识点转成可识别的题型条件和起手步骤，通过模仿题到变式题建立方法迁移。',
+    workflow: ['确认概念基础已经过关', '学习典型题的识别条件和第一步', '完成同类题与变式题并解释方法为什么适用'],
+    worksWith: '前接同步概念课，后接培优课、专项突破和错题复盘，形成从基础题到考试题的梯度。',
+    parentExplanation: '孩子听懂概念还不等于考试会做，解题课专门解决“什么时候用、第一步怎么走”。',
+    stageGuidance: {
+      elementary: '训练应用题数量关系、阅读答题步骤和计算方法迁移，不追求偏难怪题。',
+      middle: '训练月考和中考常见题型、步骤得分及变式起步，稳住基础和中档题。',
+      high: '训练学考、高考题型识别、模型调用和规范步骤，为综合题建立方法入口。',
+    },
     sourceRefs: ['SRC-PRODUCT-01', 'SRC-PRODUCT-03'],
     verifiedAt: VERIFIED_AT,
   },
@@ -148,12 +206,21 @@ export const PRODUCT_CAPABILITIES: ProductCapability[] = [
     category: 'course',
     status: 'scope-check-required',
     stageScopes: ALL_STAGES,
-    solves: '基础和中档题较稳，但高阶模型、综合迁移和拔高题缺少方法',
-    usage: '确认前置知识达标后学习高阶模型，完成典型题并复盘适用条件',
-    frequency: '基础与中档题稳定后按模块安排',
-    acceptance: '能识别同类模型并解释适用条件，而非只会一道难题',
-    boundary: '基础未稳时不应优先使用，具体适用范围需核实',
-    consultantSummary: '培优不是先上难题，而是基础稳后再补高阶方法',
+    solves: '从“听懂知识”到“考试会用”之间的断层，包括常考题型、得分步骤、应试技巧、综合迁移和高阶模型',
+    usage: '所有分数段都先按当前基础选择合适层级：基础薄弱先学基础题型和得分步骤，中等段训练中档题与变式，基础稳定后再进入综合模型和拔高题',
+    frequency: '与同步课配套按模块安排；每次只处理一个题型层级，基础验证未通过时先回同步课',
+    acceptance: '能说出考点、题型条件、第一步和得分步骤，并在同层变式题中稳定迁移',
+    boundary: '培优不是只给高分学生，也不等于直接做难题；必须服从当前教学进度、考试范围和孩子基础层级，具体覆盖使用前核实',
+    consultantSummary: '同步课解决听懂，培优课解决考试怎么考、题型怎么变、步骤怎么拿分',
+    mechanism: '围绕考点和典型题型建立“条件识别—方法选择—规范步骤—变式迁移”的应试链路。',
+    workflow: ['先用同步课确认前置概念', '按当前分数段选择基础题型、应试方法或综合模型', '完成同层变式与阶段测评，不达标就回到对应知识点'],
+    worksWith: '固定与同步概念课或极速复习组成“双路径”，再用专项突破、试卷库和AI错题本验证得分稳定性。',
+    parentExplanation: '培优不是把孩子直接推去做难题，而是让他知道考试怎么考、第一步怎么做、哪些步骤能拿分。',
+    stageGuidance: {
+      elementary: '侧重计算方法、应用题模型、阅读表达和阶段测查题型，为小升初建立方法意识。',
+      middle: '侧重月考、中考常考题型、易错点、步骤得分和限时策略，由基础题型逐步过渡到中档与综合题。',
+      high: '侧重学考、高考考点、模型迁移、规范表达、限时策略和选科相关能力，不脱离当前进度盲目拔高。',
+    },
     sourceRefs: ['SRC-PRODUCT-01', 'SRC-PRODUCT-03'],
     verifiedAt: VERIFIED_AT,
   },
@@ -169,6 +236,10 @@ export const PRODUCT_CAPABILITIES: ProductCapability[] = [
     acceptance: '能说出模块关系，综合卷基础与中档题更稳定',
     boundary: '不是从第一页平均重学，必须服从当前考试范围',
     consultantSummary: '先用题把漏洞照出来，只补真正断掉的地方',
+    mechanism: '用模块诊断把零散失分归类，再针对当前考试范围重建知识关系和题型方法。',
+    workflow: ['先确认考试范围并完成诊断', '按失分模块选择同步补漏或培优强化', '用整卷或模块卷验证稳定性'],
+    worksWith: '与试卷库、同步课、培优课和AI错题本组合，避免从教材第一页平均重学。',
+    parentExplanation: '总复习不是把所有内容再看一遍，而是先找出最影响下一次考试的模块，再集中处理。',
     sourceRefs: ['SRC-PRODUCT-01', 'SRC-PRODUCT-03'],
     verifiedAt: VERIFIED_AT,
   },
@@ -184,6 +255,10 @@ export const PRODUCT_CAPABILITIES: ProductCapability[] = [
     acceptance: '基础题正确率稳定且能说出依据',
     boundary: '概念没懂或抵触明显时先降门槛，不用题量掩盖问题',
     consultantSummary: '学完马上用少量题确认，不靠刷很多制造安心感',
+    mechanism: '在知识学习后立即用少量同层题检验理解，及时暴露假懂和步骤不稳。',
+    workflow: ['完成一个知识点学习', '做少量同层题并口述依据', '错题回到对应讲解，正确后再进入培优变式'],
+    worksWith: '前接同步概念课，达标后接解题/培优课；错误进入AI错题本。',
+    parentExplanation: '不是靠题量堆安心感，而是学完马上用几道题确认孩子到底懂没懂。',
     sourceRefs: ['SRC-PRODUCT-01'],
     verifiedAt: VERIFIED_AT,
   },
@@ -214,6 +289,10 @@ export const PRODUCT_CAPABILITIES: ProductCapability[] = [
     acceptance: '专项正确率和稳定性达标',
     boundary: '不得超出学校当前进度或考试范围',
     consultantSummary: '一周只追一个关键漏洞，练完必须换题复测',
+    mechanism: '围绕一个高价值考点连续完成识别、方法、变式和复测，减少问题反复出现。',
+    workflow: ['从考试或错题中锁定一个专项', '按基础题到变式题逐级训练', '隔天复测并统计正确率与耗时'],
+    worksWith: '同步课补概念，培优课讲题型方法，专项突破负责集中训练，错题本负责复测。',
+    parentExplanation: '一周不追很多问题，只把最影响分数的一类题练到换个问法也能做。',
     sourceRefs: ['SRC-PRODUCT-01'],
     verifiedAt: VERIFIED_AT,
   },
@@ -229,6 +308,10 @@ export const PRODUCT_CAPABILITIES: ProductCapability[] = [
     acceptance: '能识别失分结构，而不是只看总分',
     boundary: '范围未确认时不使用整卷推断具体知识点',
     consultantSummary: '试卷不是为了再考一次，而是看分到底丢在哪一类题',
+    mechanism: '通过真实范围的限时作答，把知识漏洞、题型方法和时间分配问题分开识别。',
+    workflow: ['按学校范围选择试卷', '限时完成并记录每类题耗时', '按失分结构安排同步补漏或培优训练'],
+    worksWith: '用于阶段入口和出口诊断，中间用同步课、培优课、专项突破和错题本完成修复。',
+    parentExplanation: '做卷不是为了多考一次，而是看孩子是知识不会、题型不会，还是时间没分配好。',
     sourceRefs: ['SRC-PRODUCT-01'],
     verifiedAt: VERIFIED_AT,
   },
@@ -298,8 +381,9 @@ export function getProductCapabilities(
   capabilityIds: string[],
   stage: StageSlug,
 ): ProductCapability[] {
-  const uniqueIds = new Set(capabilityIds);
-  return PRODUCT_CAPABILITIES.filter((capability) => (
-    uniqueIds.has(capability.capabilityId) && capability.stageScopes.includes(stage)
-  ));
+  return [...new Set(capabilityIds)]
+    .map((capabilityId) => PRODUCT_CAPABILITIES.find((capability) => (
+      capability.capabilityId === capabilityId && capability.stageScopes.includes(stage)
+    )))
+    .filter((capability): capability is ProductCapability => Boolean(capability));
 }

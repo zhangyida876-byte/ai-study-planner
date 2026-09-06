@@ -17,9 +17,10 @@ describe('diagnosis content router', () => {
     expect(route.capabilities.map((capability) => capability.capabilityId)).toEqual(
       expect.arrayContaining(['CAP-AI-05', 'CAP-COURSE-01']),
     );
-    expect(route.capabilities.map((capability) => capability.capabilityId)).not.toContain(
+    expect(route.capabilities.map((capability) => capability.capabilityId)).toContain(
       'CAP-COURSE-03',
     );
+    expect(route.learningPaths[0]?.enrichmentFocus).toContain('入门培优');
     expect(route.objections.map((objection) => objection.objectionId)).toContain('OBJ-USAGE-01');
   });
 
@@ -47,9 +48,38 @@ describe('diagnosis content router', () => {
     expect(context).toContain('课堂跟进被动');
     expect(context).toContain('【场景索引匹配】');
     expect(context).toContain('课堂听不懂或跟不上');
-    expect(context).toContain('【产品能力库匹配：只允许从以下能力中选择2至4项】');
+    expect(context).toContain('【产品能力库匹配：只允许从以下能力中选择3至6项】');
+    expect(context).toContain('作用机制：');
+    expect(context).toContain('操作步骤：');
+    expect(context).toContain('功能组合：');
+    expect(context).toContain('【逐科“同步打底 + 分层培优”路径：必须全部使用】');
+    expect(context).toContain('同步路径：');
+    expect(context).toContain('培优路径：');
     expect(context).toContain('验收：');
     expect(context).toContain('边界：');
     expect(context).not.toMatch(/(?:CAP|PRB|SCN|OBJ)-/u);
   });
+
+  it.each([
+    ['elementary', 55, '入门培优', '阶段测查题型'],
+    ['middle', 74, '应试培优', '中考常考题型'],
+    ['high', 138, '能力培优', '高考考点'],
+  ] as const)(
+    'keeps synchronous and tiered enrichment paths for %s',
+    (stage, score, enrichmentLevel, stageFocus) => {
+      const maxValue = stage === 'high' ? 150 : 100;
+      const route = resolveDiagnosisContentRoute({
+        stage,
+        scores: { 数学: score },
+        maxValues: { 数学: maxValue },
+      });
+
+      expect(route.capabilities.map((capability) => capability.capabilityId)).toEqual(
+        expect.arrayContaining(['CAP-COURSE-01', 'CAP-COURSE-02', 'CAP-COURSE-03']),
+      );
+      expect(route.learningPaths[0]?.synchronousFocus).toContain('同步');
+      expect(route.learningPaths[0]?.enrichmentFocus).toContain(enrichmentLevel);
+      expect(route.learningPaths[0]?.enrichmentFocus).toContain(stageFocus);
+    },
+  );
 });

@@ -28,6 +28,12 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('单科1400-2200个中文字符');
     expect(prompt).toContain('家长怎么检查');
     expect(prompt).toContain('洋葱功能介入');
+    expect(prompt).toContain('为什么现在有效');
+    expect(prompt).toContain('同步打底安排');
+    expect(prompt).toContain('分层培优安排');
+    expect(prompt).toContain('每科至少2行');
+    expect(prompt).toContain('作用机制');
+    expect(prompt).toContain('功能组合顺序');
     expect(prompt).toContain('教学进度校验（最高优先级）');
     expect(prompt).toContain('按常规校历推测，需用学校课表/教材目录/最近作业核实');
     expect(prompt).toContain('为什么现在做');
@@ -47,6 +53,8 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('3个家长可观察现象');
     expect(prompt).toContain('3个核心问题');
     expect(prompt).toContain('按三个周期输出该科洋葱执行方案');
+    expect(prompt).toContain('同步打底');
+    expect(prompt).toContain('分层培优');
     expect(prompt).toContain('不输出跨科共性问题');
   });
 
@@ -62,7 +70,7 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('每科至少2个家长可观察现象');
     expect(prompt).toContain('每科至少2个核心问题');
     expect(prompt).toContain('跨科共性问题');
-    expect(prompt).toContain('每个科目至少1行产品承接');
+    expect(prompt).toContain('每个科目至少2行产品承接');
     expect(prompt).toContain('禁止只分析最低分科目');
     expect(prompt).toContain('禁止为了控制篇幅删掉已填写科目');
   });
@@ -123,5 +131,11 @@ describe('report prompt templates', () => {
     expect(rules).toContain('解题/培优课');
     expect(rules).toContain('阶段测评、练习与错题复盘');
     expect(rules).toContain('禁止保分、保录取');
+    expect(rules).toContain('禁止只抛出');
+    expect(rules).toContain('所有分数段、所有已填科目');
+    expect(rules).toContain('基础题型、常考点和得分步骤');
+    expect(rules).toContain('小学培优');
+    expect(rules).toContain('初中侧重');
+    expect(rules).toContain('高中侧重');
   });
 });

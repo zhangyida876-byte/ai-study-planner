@@ -424,6 +424,29 @@ const MissingRequiredSection: React.FC<{ title: string }> = ({ title }) => (
   </section>
 );
 
+const OnionDualPathIntro: React.FC = () => (
+  <section className="my-4 border-y-2 border-dashed border-ink/20 bg-postit-yellow/25 px-4 py-4">
+    <div className="mb-3 flex items-center gap-2">
+      <PackageCheck className="size-5 text-marker-red" />
+      <h3 className="font-marker text-lg font-bold">同步打底 + 分层培优</h3>
+    </div>
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className="border-l-4 border-pen-blue pl-3">
+        <p className="font-marker font-bold">同步打底：先解决听懂和跟上</p>
+        <p className="font-hand mt-1 text-sm leading-6 text-ink/75">
+          按学校真实进度补概念和前置断点，用基础题确认孩子能独立完成，再进入题型训练。
+        </p>
+      </div>
+      <div className="border-l-4 border-marker-red pl-3">
+        <p className="font-marker font-bold">分层培优：再解决会用和得分</p>
+        <p className="font-hand mt-1 text-sm leading-6 text-ink/75">
+          每个分数段都有适配层级，从基础题型、常考点和步骤得分，逐步升级到变式、应试策略与综合迁移。
+        </p>
+      </div>
+    </div>
+  </section>
+);
+
 const AdvisorScriptSection: React.FC<{ section?: ReportSection }> = ({ section }) => {
   if (!section) return <MissingRequiredSection title="课程顾问可复制话术" />;
   const scripts = parseNumberedSubsections(section.content, section.index);
@@ -591,6 +614,7 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
       if (view === 'onion') {
         return (
           <div className="bg-white/70 px-4 py-2">
+            <OnionDualPathIntro />
             {sectionSix
               ? <ActionPlanSection section={sectionSix} />
               : <MissingRequiredSection title="洋葱执行计划" />}
@@ -634,6 +658,7 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
     if (view === 'onion') {
       return (
         <div className="bg-white/70 px-4 py-2">
+          <OnionDualPathIntro />
           {sectionFive
             ? <ActionPlanSection section={sectionFive} />
             : <MissingRequiredSection title="洋葱执行计划" />}
@@ -725,6 +750,7 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
   if (view === 'onion') {
     return (
       <div className="bg-white/70 px-4 py-2">
+        <OnionDualPathIntro />
         {sectionSix
           ? <ActionPlanSection section={sectionSix} />
           : <MissingRequiredSection title="洋葱执行计划" />}
