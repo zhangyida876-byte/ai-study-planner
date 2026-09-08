@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Copy, Check, Loader2, Clock, Target, ArrowLeft, PhoneCall, Table2 } from 'lucide-react';
+import { Copy, Check, Loader2, Clock, Target, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@lark-apaas/client-toolkit/logger';
 import {
@@ -506,29 +506,6 @@ const Diagnosis: React.FC<DiagnosisProps> = ({ experience = 'phone' }) => {
           </p>
         </div>
 
-        <div className="grid h-auto w-full max-w-xl grid-cols-2 border-2 border-ink bg-white p-1 shadow-hard-sm">
-          <Button
-            variant={activeView === 'phone' ? 'default' : 'ghost'}
-            className="font-marker min-h-11 rounded-none font-bold"
-            asChild
-          >
-            <Link to={stagePath(stageSlug, 'phone')}>
-              <PhoneCall className="mr-2 size-4" />
-              电话学情话术系统
-            </Link>
-          </Button>
-          <Button
-            variant={activeView === 'wechat' ? 'default' : 'ghost'}
-            className="font-marker min-h-11 rounded-none font-bold"
-            asChild
-          >
-            <Link to={stagePath(stageSlug, 'wechat')}>
-              <Table2 className="mr-2 size-4" />
-              微信学情跟进看板
-            </Link>
-          </Button>
-        </div>
-
       <div className="space-y-6">
         {activeView === 'phone' && <div className="min-w-0">
           <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false}>
@@ -573,7 +550,7 @@ const Diagnosis: React.FC<DiagnosisProps> = ({ experience = 'phone' }) => {
                       {activeView === 'phone' ? '电话学情话术' : '微信学情看板'}
                     </h2>
                   </div>
-                  {reportContent && (
+                  {reportContent && activeView === 'phone' && (
                     <Button variant="outline" size="sm" onClick={handleCopy} disabled={isGenerating}>
                       {copied ? (
                         <><Check className="mr-1 size-4" />已复制</>
@@ -584,7 +561,7 @@ const Diagnosis: React.FC<DiagnosisProps> = ({ experience = 'phone' }) => {
                   )}
                 </div>
 
-                <div className="mb-5 rounded-lg border-2 border-dashed border-ink/15 bg-white/70 p-4">
+                <div className="mb-5 border-2 border-dashed border-ink/15 bg-white/70 p-4">
                   {/* Student info strip */}
                   {studentInfo && (
                     <div className="font-hand flex flex-wrap gap-2 text-sm text-ink/70">
@@ -659,7 +636,7 @@ const Diagnosis: React.FC<DiagnosisProps> = ({ experience = 'phone' }) => {
                   )}
 
                   {/* Major career info panel */}
-                  {majorInfoContent && studentStage === 'high' && (
+                  {majorInfoContent && studentStage === 'high' && activeView === 'phone' && (
                     <div className="mt-3 rounded-lg border-2 border-marker-red/20 bg-marker-red/5 p-4">
                       <h3 className="font-marker mb-2 text-lg font-bold text-marker-red">专业与职业信息</h3>
                       <div className="font-hand prose-sm">

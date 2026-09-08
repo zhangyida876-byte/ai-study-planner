@@ -651,9 +651,6 @@ const PhoneScriptSequence: React.FC<{
     ? scriptSubsections.filter((item) => item.index > 1)
     : scriptSubsections)
     .filter((item) => item.index < 7 && !item.title.includes('搭配素材'));
-  const material = scriptSubsections.find((item) => (
-    item.index === 7 || item.title.includes('搭配素材')
-  ));
   const onionContent = combinedOnion?.content || onionSection?.content || '';
   const supportPlan = actionSection
     ? parseNumberedSubsections(actionSection.content, actionSection.index)
@@ -690,71 +687,116 @@ const PhoneScriptSequence: React.FC<{
         <MissingRequiredSection title="电话沟通五步话术" />
       )}
       {onionContent && (
-        <Accordion type="single" collapsible className="mt-4">
-          <AccordionItem value="phone-onion-basis" className="border-2 border-ink bg-white px-4 shadow-hard-sm">
-            <AccordionTrigger className="font-marker font-bold no-underline hover:no-underline">
-              查看话术背后的洋葱学习路径
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="font-hand overflow-x-auto pt-2 text-sm leading-6">
-                <Streamdown>{onionContent}</Streamdown>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+        <article className="mt-5 border-2 border-marker-red/45 bg-marker-red/5 p-4 shadow-hard-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <PackageCheck className="size-5 text-marker-red" />
+            <div>
+              <h4 className="font-marker font-bold">洋葱具体承接方案</h4>
+              <p className="font-hand text-xs text-ink/60">
+                直接说明解决什么问题、怎么使用以及如何验收
+              </p>
+            </div>
+          </div>
+          <div className="font-hand overflow-x-auto text-sm leading-6">
+            <Streamdown>{onionContent}</Streamdown>
+          </div>
+        </article>
       )}
-      <SupportFollowupPanel
-        section={supportPlan}
-        required
-      />
-      <MaterialSuggestions
-        material={material}
-        required
-      />
+      {actionSection && <ActionPlanSection section={actionSection} />}
+      {!actionSection && <SupportFollowupPanel section={supportPlan} required />}
     </section>
   );
 };
 
-const WechatMatrixSection: React.FC<{
+function summarizeForSnapshot(content: string, maxLength = 170): string {
+  const plainText = content
+    .replace(/^#{1,6}\s+/gmu, '')
+    .replace(/\*\*/gu, '')
+    .replace(/^[-*]\s+/gmu, '')
+    .replace(/\|/gu, ' ')
+    .replace(/\s+/gu, ' ')
+    .trim();
+  if (plainText.length <= maxLength) return plainText;
+  return `${plainText.slice(0, maxLength).trim()}…`;
+}
+
+const WechatDiagnosisSnapshot: React.FC<{
   section?: ReportSection;
-  title: string;
-}> = ({ section, title }) => {
-  if (!section) return <MissingRequiredSection title={title} />;
+}> = ({ section }) => {
+  if (!section) return <MissingRequiredSection title="当前学情结论" />;
   const subjects = parseSubjectSections(section.content);
   return (
-    <section className="border-b-2 border-dashed border-ink/15 py-5">
+    <section className="py-4">
       <div className="mb-3 flex items-center gap-2">
         <Table2 className="size-5 text-pen-blue" />
-        <h3 className="font-marker text-lg font-bold">{title}</h3>
+        <div>
+          <h3 className="font-marker text-lg font-bold">当前学情结论</h3>
+          <p className="font-hand text-xs text-ink/60">只保留家长需要先看到的核心问题</p>
+        </div>
       </div>
       {subjects.length > 0 ? (
-        <div className="overflow-x-auto border-2 border-ink bg-white shadow-hard-sm">
-          <table className="w-full min-w-[640px] border-collapse text-left">
-            <thead className="bg-postit-yellow/55">
-              <tr>
-                <th className="font-marker w-32 border-b-2 border-r-2 border-ink p-3">科目</th>
-                <th className="font-marker border-b-2 border-ink p-3">家长可直接查看的结论</th>
-              </tr>
-            </thead>
-            <tbody>
-              {subjects.map((subject) => (
-                <tr key={subject.title} className="align-top even:bg-accent/20">
-                  <th className="font-marker border-r-2 border-t border-ink/20 p-3 font-bold text-pen-blue">
-                    {subject.title}
-                  </th>
-                  <td className="font-hand border-t border-ink/20 p-3 text-sm leading-6">
-                    <Streamdown>{subject.content}</Streamdown>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid gap-3 md:grid-cols-2">
+          {subjects.map((subject) => (
+            <article key={subject.title} className="border-2 border-ink bg-white p-4 shadow-hard-sm">
+              <h4 className="font-marker mb-2 border-l-4 border-pen-blue pl-2 font-bold text-pen-blue">
+                {subject.title}
+              </h4>
+              <p className="font-hand text-sm leading-6">
+                {summarizeForSnapshot(subject.content)}
+              </p>
+            </article>
+          ))}
         </div>
       ) : (
         <article className="border-2 border-ink bg-white p-4 shadow-hard-sm">
-          <div className="font-hand text-sm leading-6"><Streamdown>{section.content}</Streamdown></div>
+          <p className="font-hand text-sm leading-6">{summarizeForSnapshot(section.content, 260)}</p>
         </article>
       )}
+    </section>
+  );
+};
+
+const WechatActionPlanBoard: React.FC<{ section?: ReportSection }> = ({ section }) => {
+  const periods = section ? parseNumberedSubsections(section.content, section.index) : [];
+  const cadencePeriods = periods.filter((period) => period.index >= 1 && period.index <= 3);
+  const [activePeriod, setActivePeriod] = useState('1');
+  const periodLabels: Record<number, string> = {
+    1: '未来 7 天',
+    2: '未来 1 个月',
+    3: '当前学期',
+  };
+
+  if (!section || cadencePeriods.length === 0) {
+    return <MissingRequiredSection title="专属学习规划表" />;
+  }
+
+  return (
+    <section className="border-t-2 border-dashed border-ink/15 py-5">
+      <div className="mb-3 flex items-center gap-2">
+        <CheckSquare2 className="size-5 text-pen-blue" />
+        <div>
+          <h3 className="font-marker text-lg font-bold">专属学习规划表</h3>
+          <p className="font-hand text-xs text-ink/60">选择一个周期后直接截图发送</p>
+        </div>
+      </div>
+      <Tabs value={activePeriod} onValueChange={setActivePeriod}>
+        <TabsList className="mb-3 grid h-auto w-full grid-cols-3 border-2 border-ink bg-accent p-1">
+          {cadencePeriods.map((period) => (
+            <TabsTrigger key={period.index} value={String(period.index)} className="font-marker py-2">
+              {periodLabels[period.index] || period.title}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {cadencePeriods.map((period) => (
+          <TabsContent key={period.index} value={String(period.index)} className="mt-0">
+            <article className="border-2 border-ink bg-white p-4 shadow-hard-sm">
+              <div className="font-hand overflow-x-auto text-sm leading-6">
+                <Streamdown>{period.content}</Streamdown>
+              </div>
+            </article>
+          </TabsContent>
+        ))}
+      </Tabs>
     </section>
   );
 };
@@ -767,23 +809,16 @@ const WechatPlanSection: React.FC<{
     ? parseNumberedSubsections(onionSection.content, onionSection.index)
     : [];
   const onionPlan = onionSubsections.find((item) => item.index === 1 && item.title.includes('洋葱'));
-  const material = onionSubsections.find((item) => (
-    item.index === 7 || item.title.includes('搭配素材')
-  ));
   return (
     <>
-      {actionSection
-        ? <ActionPlanSection section={actionSection} />
-        : (
-          <>
-            <MissingRequiredSection title="微信跟进行动表" />
-            <SupportFollowupPanel required />
-          </>
-        )}
+      <WechatActionPlanBoard section={actionSection} />
       <section className="border-b-2 border-dashed border-ink/15 py-5">
         <div className="mb-3 flex items-center gap-2">
           <PackageCheck className="size-5 text-marker-red" />
-          <h3 className="font-marker text-lg font-bold">洋葱学习路径表</h3>
+          <div>
+            <h3 className="font-marker text-lg font-bold">洋葱解决方案表</h3>
+            <p className="font-hand text-xs text-ink/60">问题、使用路径和验收标准一张图讲清</p>
+          </div>
         </div>
         <article className="border-2 border-ink bg-white p-4 shadow-hard-sm">
           <div className="font-hand overflow-x-auto text-sm leading-6">
@@ -791,10 +826,6 @@ const WechatPlanSection: React.FC<{
           </div>
         </article>
       </section>
-      <MaterialSuggestions
-        material={material}
-        required
-      />
     </>
   );
 };
@@ -869,7 +900,6 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
           sectionTwoForExperience,
           sectionFourForExperience,
           sectionFiveForExperience,
-          experienceActionSection,
         ]
           .filter((section): section is ReportSection => Boolean(section))
           .map((section) => [`${section.index}-${section.title}`, section]),
@@ -911,24 +941,7 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
   if (view === 'wechat') {
     return (
       <div className="bg-white/70 px-4 py-2">
-        {sectionOneForExperience ? (
-          <ConsultantSummarySection
-            section={sectionOneForExperience}
-            supplementalInfo={supplementalInfo}
-          />
-        ) : (
-          <MissingRequiredSection title="顾问先讲：诊断总结" />
-        )}
-        <WechatMatrixSection section={sectionThreeForExperience} title="问题、根因与验证方法" />
-        <WechatMatrixSection section={sectionTwoForExperience} title="孩子目前的具体表现" />
-        <div className="grid gap-4 lg:grid-cols-2">
-          {sectionFourForExperience && (
-            <StructuredBusinessSection section={sectionFourForExperience} />
-          )}
-          {sectionFiveForExperience && sectionFiveForExperience !== experienceActionSection && (
-            <StructuredBusinessSection section={sectionFiveForExperience} tone="warning" />
-          )}
-        </div>
+        <WechatDiagnosisSnapshot section={sectionThreeForExperience || sectionTwoForExperience} />
         <WechatPlanSection
           actionSection={experienceActionSection}
           onionSection={experienceOnionSection}
