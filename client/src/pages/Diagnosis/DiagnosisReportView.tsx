@@ -38,6 +38,7 @@ import {
 
 interface DiagnosisReportViewProps {
   content: string;
+  studentName?: string;
   stageSlug?: StageSlug;
   grade?: string;
   semester?: string;
@@ -231,11 +232,15 @@ const CrossSubjectSection: React.FC<{ section: ReportSection }> = ({ section }) 
 };
 
 const SUPPORT_FOLLOWUP_FALLBACK = `
-这不是让孩子买完课自己摸索。顾问老师先结合本次诊断确定优先科目、阶段目标和考试节点，助教老师再按家长确认的可学时间把任务落到每天。
+这不是让孩子买完课后自己摸索。顾问老师先确定方向，洋葱课程和练习负责解决具体问题，助教老师按实际服务范围协助制定周计划并做周期性跟进，家长只需配合简短检查。
 
 **顾问老师负责：** 学情判断、升学目标、阶段规划、关键考试节点和重难点方向。
 
-**助教老师负责：** 按周一至周日安排课程、练习、复习和错题回看，记录完成情况，并在服务范围内跟进提醒。
+**课程与练习负责：** 用同步课补清概念，用培优课训练考点、题型和得分步骤，再通过练习、试卷与错题复盘验证。
+
+**助教老师负责：** 在实际服务范围内协助制定周计划，按约定周期（通常每周）查看完成和测评反馈，再提出下一周调整建议；不承诺每日人工陪学或实时答疑。
+
+**家长配合：** 每天只问完成了什么、卡在哪里、下次先改哪一步，不替孩子讲题，也不靠反复催促推进。
 
 **不会题处理：** 不只报答案，先判断背后的知识点、题型和错因，再对应知识点课程、解题课或培优课及变式练习，解决一类题。
 
@@ -260,9 +265,9 @@ const SupportFollowupPanel: React.FC<{
       <div className="mb-3 flex items-center gap-2">
         <CheckSquare2 className="size-5 text-pen-blue" />
         <div>
-          <h4 className="font-marker font-bold">专属学习规划与助教跟进方案</h4>
+          <h4 className="font-marker font-bold">专属学习规划与协同跟进</h4>
           <p className="font-hand text-xs text-ink/60">
-            顾问定方向，助教落到每天，按完成与测评反馈持续调整
+            顾问定方向，课程解决问题，助教按实际服务周期跟进，家长配合检查
           </p>
           {isFallback && (
             <p className="font-hand mt-1 text-xs text-pen-blue">已按现有诊断补全基础跟进框架</p>
@@ -494,20 +499,23 @@ const OnionDualPathIntro: React.FC = () => (
       <PackageCheck className="size-5 text-marker-red" />
       <h3 className="font-marker text-lg font-bold">同步打底 + 分层培优</h3>
     </div>
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-[2fr_3fr]">
       <div className="border-l-4 border-pen-blue pl-3">
-        <p className="font-marker font-bold">同步打底：先解决听懂和跟上</p>
+        <p className="font-marker font-bold">同步打底 · 方案呈现约 40%</p>
         <p className="font-hand mt-1 text-sm leading-6 text-ink/75">
           按学校真实进度补概念和前置断点，用基础题确认孩子能独立完成，再进入题型训练。
         </p>
       </div>
       <div className="border-l-4 border-marker-red pl-3">
-        <p className="font-marker font-bold">分层培优：再解决会用和得分</p>
+        <p className="font-marker font-bold">分层培优 · 方案呈现约 60%</p>
         <p className="font-hand mt-1 text-sm leading-6 text-ink/75">
-          每个分数段都有适配层级，从基础题型、常考点和步骤得分，逐步升级到变式、应试策略与综合迁移。
+          每个分数段都有适配层级，围绕考点、典型题型、变式、新题型、规范步骤和应试策略训练，再用范围匹配的试卷验证能否稳定得分。
         </p>
       </div>
     </div>
+    <p className="font-hand mt-3 text-xs text-ink/55">
+      40/60 是方案内容与价值说明的侧重，不代表固定学习时长、课程数量或考试卷面占分。
+    </p>
   </section>
 );
 
@@ -756,7 +764,10 @@ const WechatDiagnosisSnapshot: React.FC<{
   );
 };
 
-const WechatActionPlanBoard: React.FC<{ section?: ReportSection }> = ({ section }) => {
+const WechatActionPlanBoard: React.FC<{
+  section?: ReportSection;
+  studentName?: string;
+}> = ({ section, studentName }) => {
   const periods = section ? parseNumberedSubsections(section.content, section.index) : [];
   const cadencePeriods = periods.filter((period) => period.index >= 1 && period.index <= 3);
   const [activePeriod, setActivePeriod] = useState('1');
@@ -775,7 +786,9 @@ const WechatActionPlanBoard: React.FC<{ section?: ReportSection }> = ({ section 
       <div className="mb-3 flex items-center gap-2">
         <CheckSquare2 className="size-5 text-pen-blue" />
         <div>
-          <h3 className="font-marker text-lg font-bold">专属学习规划表</h3>
+          <h3 className="font-marker text-lg font-bold">
+            {studentName?.trim() ? `${studentName.trim()}同学专属学习规划表` : '专属学习规划表'}
+          </h3>
           <p className="font-hand text-xs text-ink/60">选择一个周期后直接截图发送</p>
         </div>
       </div>
@@ -789,8 +802,8 @@ const WechatActionPlanBoard: React.FC<{ section?: ReportSection }> = ({ section 
         </TabsList>
         {cadencePeriods.map((period) => (
           <TabsContent key={period.index} value={String(period.index)} className="mt-0">
-            <article className="border-2 border-ink bg-white p-4 shadow-hard-sm">
-              <div className="font-hand overflow-x-auto text-sm leading-6">
+            <article className="border-2 border-ink bg-white shadow-hard-sm">
+              <div className="diagnosis-plan-table font-hand overflow-x-auto text-sm leading-6">
                 <Streamdown>{period.content}</Streamdown>
               </div>
             </article>
@@ -804,14 +817,16 @@ const WechatActionPlanBoard: React.FC<{ section?: ReportSection }> = ({ section 
 const WechatPlanSection: React.FC<{
   actionSection?: ReportSection;
   onionSection?: ReportSection;
-}> = ({ actionSection, onionSection }) => {
+  studentName?: string;
+}> = ({ actionSection, onionSection, studentName }) => {
   const onionSubsections = onionSection
     ? parseNumberedSubsections(onionSection.content, onionSection.index)
     : [];
   const onionPlan = onionSubsections.find((item) => item.index === 1 && item.title.includes('洋葱'));
   return (
     <>
-      <WechatActionPlanBoard section={actionSection} />
+      <OnionDualPathIntro />
+      <WechatActionPlanBoard section={actionSection} studentName={studentName} />
       <section className="border-b-2 border-dashed border-ink/15 py-5">
         <div className="mb-3 flex items-center gap-2">
           <PackageCheck className="size-5 text-marker-red" />
@@ -820,8 +835,8 @@ const WechatPlanSection: React.FC<{
             <p className="font-hand text-xs text-ink/60">问题、使用路径和验收标准一张图讲清</p>
           </div>
         </div>
-        <article className="border-2 border-ink bg-white p-4 shadow-hard-sm">
-          <div className="font-hand overflow-x-auto text-sm leading-6">
+        <article className="border-2 border-ink bg-white shadow-hard-sm">
+          <div className="diagnosis-plan-table font-hand overflow-x-auto text-sm leading-6">
             <Streamdown>{onionPlan?.content || onionSection?.content || '本次未生成洋葱学习路径，请重新生成。'}</Streamdown>
           </div>
         </article>
@@ -841,6 +856,7 @@ const DetailSection: React.FC<{
 
 const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
   content,
+  studentName,
   stageSlug,
   grade,
   semester,
@@ -941,10 +957,32 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
   if (view === 'wechat') {
     return (
       <div className="bg-white/70 px-4 py-2">
+        <header className="mt-2 border-2 border-ink shadow-hard-sm">
+          <div className="bg-marker-red px-4 py-3 text-center text-white">
+            <h2 className="font-marker text-xl font-bold sm:text-2xl">
+              {studentName?.trim() ? `${studentName.trim()}同学专属学情分析与学习规划` : '学生专属学情分析与学习规划'}
+            </h2>
+          </div>
+          <div className="grid divide-y-2 divide-ink bg-postit-yellow sm:grid-cols-3 sm:divide-x-2 sm:divide-y-0">
+            <div className="px-3 py-2 text-center">
+              <span className="font-hand text-xs text-ink/55">当前年级</span>
+              <p className="font-marker font-bold">{grade || '待补充'}</p>
+            </div>
+            <div className="px-3 py-2 text-center">
+              <span className="font-hand text-xs text-ink/55">诊断科目</span>
+              <p className="font-marker font-bold">{filledSubjects.length > 0 ? filledSubjects.join('、') : '待补充'}</p>
+            </div>
+            <div className="px-3 py-2 text-center">
+              <span className="font-hand text-xs text-ink/55">规划属性</span>
+              <p className="font-marker font-bold">一对一专属定制</p>
+            </div>
+          </div>
+        </header>
         <WechatDiagnosisSnapshot section={sectionThreeForExperience || sectionTwoForExperience} />
         <WechatPlanSection
           actionSection={experienceActionSection}
           onionSection={experienceOnionSection}
+          studentName={studentName}
         />
       </div>
     );

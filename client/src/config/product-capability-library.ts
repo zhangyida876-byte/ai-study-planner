@@ -18,6 +18,8 @@ export interface ProductCapability {
   workflow?: string[];
   worksWith?: string;
   parentExplanation?: string;
+  valueRole?: string;
+  assessmentAssets?: string[];
   stageGuidance?: Partial<Record<StageSlug, string>>;
   sourceRefs: string[];
   verifiedAt: string;
@@ -216,6 +218,8 @@ export const PRODUCT_CAPABILITIES: ProductCapability[] = [
     workflow: ['先用同步课确认前置概念', '按当前分数段选择基础题型、应试方法或综合模型', '完成同层变式与阶段测评，不达标就回到对应知识点'],
     worksWith: '固定与同步概念课或极速复习组成“双路径”，再用专项突破、试卷库和AI错题本验证得分稳定性。',
     parentExplanation: '培优不是把孩子直接推去做难题，而是让他知道考试怎么考、第一步怎么做、哪些步骤能拿分。',
+    valueRole: '承接同步课之后更接近考试得分的部分：聚焦考点、典型题型、变式、新题型、规范步骤、应试策略和综合迁移。方案呈现时应重点解释其价值，但不能把呈现权重冒充固定课时或卷面占分。',
+    assessmentAssets: ['当地近年常见考点与题型', '月考、期中、期末及升学考试真题/模拟题', '基础题到中档题、综合题的分层变式', '答题步骤、时间分配与试卷复盘'],
     stageGuidance: {
       elementary: '侧重计算方法、应用题模型、阅读表达和阶段测查题型，为小升初建立方法意识。',
       middle: '侧重月考、中考常考题型、易错点、步骤得分和限时策略，由基础题型逐步过渡到中档与综合题。',
@@ -312,6 +316,8 @@ export const PRODUCT_CAPABILITIES: ProductCapability[] = [
     workflow: ['按学校范围选择试卷', '限时完成并记录每类题耗时', '按失分结构安排同步补漏或培优训练'],
     worksWith: '用于阶段入口和出口诊断，中间用同步课、培优课、专项突破和错题本完成修复。',
     parentExplanation: '做卷不是为了多考一次，而是看孩子是知识不会、题型不会，还是时间没分配好。',
+    valueRole: '作为同步补漏和培优训练的入口、出口验证，不用一张卷子替代日常学习。',
+    assessmentAssets: ['与学校范围匹配的月考、期中、期末卷', '地区代表性真题与模拟题', '按题型和模块统计的失分结构', '限时作答与答题顺序记录'],
     sourceRefs: ['SRC-PRODUCT-01'],
     verifiedAt: VERIFIED_AT,
   },

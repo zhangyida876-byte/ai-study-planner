@@ -5,3 +5,37 @@
 
 @source "../../node_modules/streamdown/dist/index.js";
 @config "../../tailwind.config.ts";
+
+@layer components {
+  .diagnosis-plan-table table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+    border-spacing: 0;
+    table-layout: auto;
+  }
+
+  .diagnosis-plan-table th,
+  .diagnosis-plan-table td {
+    border: 1.5px solid var(--border);
+    padding: 0.7rem 0.75rem;
+    vertical-align: top;
+    text-align: left;
+    line-height: 1.55;
+  }
+
+  .diagnosis-plan-table th {
+    background: var(--postit-yellow);
+    font-family: Kalam, 'Segoe Print', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .diagnosis-plan-table tbody tr:nth-child(even) td {
+    background: color-mix(in srgb, var(--accent) 45%, white);
+  }
+
+  .diagnosis-plan-table p {
+    margin: 0;
+  }
+}

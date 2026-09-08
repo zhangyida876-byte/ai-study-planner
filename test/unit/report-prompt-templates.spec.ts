@@ -21,21 +21,21 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('### 6.1 未来7天');
     expect(prompt).toContain('### 6.2 未来1个月');
     expect(prompt).toContain('### 6.3 当前学期');
-    expect(prompt).toContain('### 6.4 专属学习规划与助教跟进方案');
+    expect(prompt).toContain('### 6.4 专属学习规划与协同跟进');
     expect(prompt).toContain('## 7. 洋葱学园承接方案 + 可复制话术');
     expect(prompt).toContain('7个章节必须全部输出');
     expect(prompt).toContain('### 7.2 开场共鸣话术');
     expect(prompt).toContain('### 7.6 促进行动话术');
     expect(prompt).toContain('### 7.7 可搭配素材');
     expect(prompt).toContain('单科1400-2200个中文字符');
-    expect(prompt).toContain('家长怎么检查');
-    expect(prompt).toContain('洋葱功能介入');
-    expect(prompt).toContain('为什么现在有效');
-    expect(prompt).toContain('同步打底安排');
-    expect(prompt).toContain('分层培优安排');
-    expect(prompt).toContain('每科至少2行');
+    expect(prompt).toContain('把家长检查方法写进验收标准');
+    expect(prompt).toContain('洋葱怎么介入');
     expect(prompt).toContain('作用机制');
-    expect(prompt).toContain('功能组合顺序');
+    expect(prompt).toContain('同步打底');
+    expect(prompt).toContain('分层培优');
+    expect(prompt).toContain('每科1行但两个路径都必须完整');
+    expect(prompt).toContain('作用机制');
+    expect(prompt).toContain('选择与顺序');
     expect(prompt).toContain('教学进度校验（最高优先级）');
     expect(prompt).toContain('按常规校历推测，需用学校课表/教材目录/最近作业核实');
     expect(prompt).toContain('为什么现在做');
@@ -46,12 +46,14 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('价格、优惠、名额、套餐、退款、分期');
     expect(prompt).toContain('CAP、PRB、SCN、OBJ等编号仅用于系统内部关联');
     expect(prompt).toContain('顾问老师负责');
-    expect(prompt).toContain('助教老师负责');
+    expect(prompt).toContain('助教只在实际服务范围内');
     expect(prompt).toContain('诊断 → 规划 → 学习 → 练习 → 反馈 → 调整');
-    expect(prompt).toContain('不直接报答案或只讲完一道题');
+    expect(prompt).toContain('不直接代做或只报答案');
     expect(prompt).toContain('助教规划截图');
     expect(prompt).toContain('生成优先级为“第1节诊断话术 > 第7节洋葱承接和可复制话术 > 第6节执行与助教跟进');
     expect(prompt).toContain('不得截掉6.4、7.1或7.2-7.7');
+    expect(prompt).toContain('同步约40%、培优约60%');
+    expect(prompt).toContain('题型/试卷验证');
   });
 
   it('keeps three observations and problems for one subject', () => {
@@ -146,7 +148,9 @@ describe('report prompt templates', () => {
     expect(rules).toContain('小学培优');
     expect(rules).toContain('初中侧重');
     expect(rules).toContain('高中侧重');
-    expect(rules).toContain('助教老师负责把规划落实到周一至周日');
+    expect(rules).toContain('助教只在实际服务范围内协助制定周计划');
+    expect(rules).toContain('同步约40%、培优约60%');
+    expect(rules).toContain('试卷库');
     expect(rules).toContain('解决一类题');
     expect(rules).toContain('诊断 → 规划 → 学习 → 练习 → 反馈 → 调整');
   });

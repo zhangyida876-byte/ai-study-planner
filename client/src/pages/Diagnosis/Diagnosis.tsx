@@ -65,6 +65,14 @@ async function resolveAutomaticTargetContext(
     ].join('\n');
   }
 
+  if (!region.trim()) {
+    return [
+      '本次未填写地区，不匹配具体本地学校、招生政策或分数线。',
+      '先依据已填年级、科目、得分率和目标完成学情诊断；地区升学参照需补充省市后再核实。',
+      '不得因缺少地区阻止报告生成，也不得编造学校名称或录取线。',
+    ].join('\n');
+  }
+
   const currentYear: string = String(new Date().getFullYear());
   let databaseContext = '';
 
@@ -514,7 +522,7 @@ const Diagnosis: React.FC<DiagnosisProps> = ({ experience = 'phone' }) => {
                 <p className="font-hand text-xs font-bold text-marker-red">STEP 1 · 只填必要信息</p>
                 <h2 className="font-marker mt-1 text-xl font-bold">确认孩子现状与目标</h2>
                 <p className="font-hand mt-1 text-sm text-ink/60">
-                  档案自动带入；核对年级、地区、成绩与满分即可，目标和担忧都可选填。
+                  档案自动带入；核对年级和成绩即可，姓名、地区、目标与补充信息均可选填。
                 </p>
               </div>
               <div className="space-y-4">
@@ -573,9 +581,11 @@ const Diagnosis: React.FC<DiagnosisProps> = ({ experience = 'phone' }) => {
                       <span className="rounded-full border-2 border-ink/20 bg-card px-3 py-1">
                         {studentInfo.grade}
                       </span>
-                      <span className="rounded-full border-2 border-ink/20 bg-card px-3 py-1">
-                        {studentInfo.region}
-                      </span>
+                      {studentInfo.region && (
+                        <span className="rounded-full border-2 border-ink/20 bg-card px-3 py-1">
+                          {studentInfo.region}
+                        </span>
+                      )}
                       {countdown != null && (
                         <span className="flex items-center gap-1 rounded-full border-2 border-marker-red/30 bg-marker-red/5 px-3 py-1 font-bold text-marker-red">
                           <Clock className="size-3.5" />
@@ -657,6 +667,7 @@ const Diagnosis: React.FC<DiagnosisProps> = ({ experience = 'phone' }) => {
                   <>
                     <DiagnosisReportView
                       content={reportContent}
+                      studentName={studentInfo?.studentName}
                       stageSlug={stageSlug}
                       grade={studentInfo?.grade}
                       semester={reportSemester}

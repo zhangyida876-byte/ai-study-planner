@@ -65,7 +65,7 @@ const optionalScore = () => z.number().min(0, '得分不能小于0').optional();
 const diagnosisFormSchema = z.object({
   studentName: z.string().optional(),
   grade: z.string().min(1, '请选择年级'),
-  region: z.string().min(1, '请选择地区'),
+  region: z.string(),
   boardingType: z.string().optional(),
   monthlyStudyHours: z.number().optional(),
   examMode: z.string().optional(),
@@ -842,8 +842,6 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
     let message = '表单信息不完整，请检查红色提示项';
     if (errors.grade) {
       message = '缺少年级：请回到学段首页补齐年级，或刷新后再试';
-    } else if (errors.region) {
-      message = '缺少地区：请回到学段首页补齐省市地区';
     } else {
       const firstScoreError = ALL_SCORE_SUBJECTS.find(
         (subject) => errors[subject.name],
@@ -942,7 +940,24 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
         noValidate
         className="space-y-3"
       >
-        <div className="grid gap-3 border-2 border-dashed border-ink/15 bg-white/70 p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <div className="grid gap-3 border-2 border-dashed border-ink/15 bg-white/70 p-3 md:grid-cols-2 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,1fr)_auto]">
+          <FormField
+            control={form.control}
+            name="studentName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>孩子姓名/昵称（选填）</FormLabel>
+                <FormControl>
+                  <Input
+                    className="mt-1 h-10"
+                    placeholder="用于生成专属规划表头"
+                    {...field}
+                    value={field.value || ''}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
           <FormField
             control={form.control}
             name="grade"
@@ -968,11 +983,11 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
             name="region"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>地区 <span className="text-marker-red">*</span></FormLabel>
+                <FormLabel>地区（选填）</FormLabel>
                 <FormControl>
                   <Input
                     className="mt-1 h-10"
-                    placeholder="省 市（区县可选）"
+                    placeholder="填写后可匹配本地升学参照"
                     value={field.value || ''}
                     onChange={(event) => {
                       const value = event.target.value;
@@ -1197,7 +1212,7 @@ const DiagnosisForm: React.FC<DiagnosisFormProps> = ({
           render={() => (
             <FormItem className="md:col-span-2">
               <FormLabel>
-                地区 <span className="text-marker-red">*</span>
+                地区（选填）
               </FormLabel>
               <div className="mb-2 rounded-md border border-dashed border-pen-blue/30 bg-pen-blue/5 px-3 py-2 text-xs text-ink/70">
                 当前地区：{watchedRegion || '未选择'}

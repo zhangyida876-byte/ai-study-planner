@@ -44,6 +44,7 @@ const CORE_DUAL_PATH_CAPABILITY_IDS = [
   'CAP-COURSE-01',
   'CAP-COURSE-02',
   'CAP-COURSE-03',
+  'CAP-PRACTICE-06',
 ];
 
 function buildSubjectLearningPaths(input: DiagnosisContentRouterInput): SubjectLearningPath[] {
@@ -64,7 +65,7 @@ function buildSubjectLearningPaths(input: DiagnosisContentRouterInput): SubjectL
                 ? '中等偏上'
                 : '优势明显';
     const synchronousFocus = scoreRate != null && scoreRate < 0.7
-      ? '同步打底为主：补当前进度所需的最小概念和前置断点，先稳基础题与作业独立完成'
+      ? '同步先行：补当前进度所需的最小概念和前置断点，先稳基础题与作业独立完成；达标后必须进入当前层级的培优题型训练'
       : '同步查漏为辅：只补影响当前课堂和考试稳定性的具体断点，不从头平均重学';
     const bandFocus = scoreRate == null || scoreRate < 0.7
       ? '入门培优：当前范围内的基础题型、常考点、起手步骤和过程得分，不直接上高难综合题'
@@ -82,7 +83,7 @@ function buildSubjectLearningPaths(input: DiagnosisContentRouterInput): SubjectL
       level,
       synchronousFocus,
       enrichmentFocus: `${bandFocus}；${stageFocus}`,
-      progressionRule: '每个模块先用同步课确认听懂，再用解题/培优课确认会用；同层变式未达标就回补知识点，达标后再提高难度。',
+      progressionRule: '每个模块先用同步课确认听懂，再用解题/培优课确认会用，最后用范围匹配的试卷或阶段测评确认能得分；同层变式未达标就回补知识点，达标后再提高难度。',
     };
   });
 }
@@ -107,8 +108,8 @@ export function resolveDiagnosisContentRoute(
   ].filter((capabilityId) => !excludedIds.has(capabilityId));
   const capabilityIds = [
     ...new Set([
-      ...matchedCapabilityIds.slice(0, 3),
       ...CORE_DUAL_PATH_CAPABILITY_IDS,
+      ...matchedCapabilityIds.slice(0, 2),
     ]),
   ];
   const capabilities = getProductCapabilities(capabilityIds, input.stage).slice(0, 6);
@@ -151,6 +152,8 @@ function formatCapability(capability: ProductCapability): string {
   if (capability.workflow?.length) lines.splice(5, 0, `操作步骤：${capability.workflow.join(' → ')}`);
   if (capability.worksWith) lines.push(`功能组合：${capability.worksWith}`);
   if (capability.parentExplanation) lines.push(`家长听懂：${capability.parentExplanation}`);
+  if (capability.valueRole) lines.push(`方案价值：${capability.valueRole}`);
+  if (capability.assessmentAssets?.length) lines.push(`题型与试卷依据：${capability.assessmentAssets.join('；')}`);
   if (capability.stageGuidance) {
     const stageLabels: Record<StageSlug, string> = {
       elementary: '小学',
@@ -209,8 +212,9 @@ export function buildDiagnosisContentRouteContext(
   if (route.learningPaths.length > 0) {
     sections.push([
       '【逐科“同步打底 + 分层培优”路径：必须全部使用】',
+      '方案内容呈现侧重：同步约40%，重点解释“听懂和跟上”；培优约60%，重点解释“考点、题型、变式、步骤得分、应试策略与试卷验证”。这是报告价值表达权重，不是固定学习时长、课程数量或考试占分。',
       route.learningPaths.map(formatLearningPath).join('\n\n'),
-      '培优不等于直接做难题。任何分数段都要说明当前适合的培优层级，但必须以同步基础验证、当前教学进度和近期考试范围为前提。',
+      '培优不等于直接做难题。任何分数段都要说明当前适合的培优层级，并用范围匹配的题型或试卷验证；必须以同步基础验证、当前教学进度和近期考试范围为前提。',
     ].join('\n'));
   }
   if (route.objections.length > 0) {
