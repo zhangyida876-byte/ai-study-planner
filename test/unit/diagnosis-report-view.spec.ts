@@ -140,6 +140,28 @@ describe('diagnosis report view layout', () => {
       .toBe('可搭配素材');
   });
 
+  it('recognizes lightly changed or unnumbered sales subsection headings', () => {
+    const planSubsections = parseNumberedSubsections([
+      '#### **6.4：专属学习规划与助教跟进方案**',
+      '顾问定方向，助教落到每天',
+    ].join('\n'), 6);
+    const productSubsections = parseNumberedSubsections([
+      '### 洋葱承接方案',
+      '同步打底与分层培优',
+      '### 可搭配素材',
+      '助教规划截图',
+    ].join('\n'), 7);
+
+    expect(planSubsections).toEqual([
+      {
+        index: 4,
+        title: '专属学习规划与助教跟进方案',
+        content: '顾问定方向，助教落到每天',
+      },
+    ]);
+    expect(productSubsections.map((section) => section.index)).toEqual([1, 7]);
+  });
+
   it('keeps archived eight-section reports readable', () => {
     const sections = Array.from({ length: 8 }, (_, index) => ({
       index: index + 1,

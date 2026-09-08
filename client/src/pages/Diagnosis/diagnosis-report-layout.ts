@@ -250,12 +250,51 @@ export function parseNumberedSubsections(
   const lines = content.split('\n');
   const blocks: ReportSubsection[] = [];
   let active: ReportSubsection | null = null;
-  const expression = new RegExp(`^###\\s*${sectionIndex}[.、．](\\d+)\\s*(.+?)\\s*$`, 'u');
+  const numberedExpression = new RegExp(
+    `^#{3,4}\\s*\\*{0,2}${sectionIndex}[.、．](\\d+)\\s*[：:]?\\s*(.+?)\\*{0,2}\\s*$`,
+    'u',
+  );
+  const titleAliases: Record<number, Array<[number, string[]]>> = {
+    6: [
+      [1, ['未来7天', '未来 7 天']],
+      [2, ['未来1个月', '未来 1 个月']],
+      [3, ['当前学期', '本学期']],
+      [4, ['专属学习规划与助教跟进', '助教跟进方案']],
+    ],
+    7: [
+      [1, ['洋葱学园承接方案', '洋葱承接方案']],
+      [2, ['开场共鸣话术', '开场共鸣']],
+      [3, ['问诊追问话术', '问诊追问']],
+      [4, ['风险提醒话术', '风险提醒']],
+      [5, ['产品承接话术', '产品承接']],
+      [6, ['促进行动话术', '促进行动']],
+      [7, ['可搭配素材', '素材推荐']],
+    ],
+  };
+
+  const resolveTitleOnlyIndex = (title: string): number | null => {
+    const normalizedTitle = normalizeHeading(title);
+    const aliases = titleAliases[sectionIndex] || [];
+    const matched = aliases.find(([, names]) => (
+      names.some((name) => normalizedTitle.includes(normalizeHeading(name)))
+    ));
+    return matched?.[0] ?? null;
+  };
+
   for (const line of lines) {
-    const match = line.match(expression);
-    if (match) {
+    const numberedMatch = line.match(numberedExpression);
+    const titleMatch = line.match(/^#{3,4}\s*\*{0,2}(.+?)\*{0,2}\s*$/u);
+    const inferredIndex = !numberedMatch && titleMatch
+      ? resolveTitleOnlyIndex(titleMatch[1])
+      : null;
+    const subsectionIndex = numberedMatch ? Number(numberedMatch[1]) : inferredIndex;
+    if (titleMatch && subsectionIndex != null) {
       if (active) blocks.push({ ...active, content: active.content.trim() });
-      active = { index: Number(match[1]), title: match[2].trim(), content: '' };
+      active = {
+        index: subsectionIndex,
+        title: (numberedMatch?.[2] || titleMatch[1]).replace(/\*+$/u, '').trim(),
+        content: '',
+      };
       continue;
     }
     if (active) active.content += `${line}\n`;

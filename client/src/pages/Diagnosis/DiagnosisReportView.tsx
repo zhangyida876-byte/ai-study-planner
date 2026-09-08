@@ -230,13 +230,31 @@ const CrossSubjectSection: React.FC<{ section: ReportSection }> = ({ section }) 
   );
 };
 
+const SUPPORT_FOLLOWUP_FALLBACK = `
+这不是让孩子买完课自己摸索。顾问老师先结合本次诊断确定优先科目、阶段目标和考试节点，助教老师再按家长确认的可学时间把任务落到每天。
+
+**顾问老师负责：** 学情判断、升学目标、阶段规划、关键考试节点和重难点方向。
+
+**助教老师负责：** 按周一至周日安排课程、练习、复习和错题回看，记录完成情况，并在服务范围内跟进提醒。
+
+**不会题处理：** 不只报答案，先判断背后的知识点、题型和错因，再对应知识点课程、解题课或培优课及变式练习，解决一类题。
+
+**跟进闭环：** 诊断 → 规划 → 学习 → 练习 → 反馈 → 调整。具体日程需结合孩子回家时间和学校作业量排定。`;
+
+const MATERIAL_SUGGESTIONS_FALLBACK = `
+| 素材类型 | 适合接在哪条话术后 | 发送目的 | 使用前核实 |
+|---|---|---|---|
+| 助教规划截图 | 产品承接话术后 | 让家长看到每日安排和跟进方式 | 核实是当前服务范围和最新界面 |
+| 家长好评反馈 | 开场共鸣或风险提醒后 | 补充同类问题的真实参考 | 核实学段、科目和案例来源 |
+| 提分规划图 | 促进行动话术后 | 展示从诊断到复盘调整的路径 | 核实不含提分保证或夸大承诺 |`;
+
 const SupportFollowupPanel: React.FC<{
   section?: ReportSection;
   required?: boolean;
-}> = ({ section, required = false }) => {
-  if (!section?.content.trim()) {
-    return required ? <MissingRequiredSection title="专属学习规划与助教跟进方案" /> : null;
-  }
+}> = ({ section, required = true }) => {
+  const content = section?.content.trim() || (required ? SUPPORT_FOLLOWUP_FALLBACK : '');
+  if (!content) return null;
+  const isFallback = !section?.content.trim();
   return (
     <article className="mt-4 border-2 border-pen-blue bg-pen-blue/5 p-4 shadow-hard-sm">
       <div className="mb-3 flex items-center gap-2">
@@ -246,10 +264,13 @@ const SupportFollowupPanel: React.FC<{
           <p className="font-hand text-xs text-ink/60">
             顾问定方向，助教落到每天，按完成与测评反馈持续调整
           </p>
+          {isFallback && (
+            <p className="font-hand mt-1 text-xs text-pen-blue">已按现有诊断补全基础跟进框架</p>
+          )}
         </div>
       </div>
       <div className="font-hand overflow-x-auto text-sm leading-6">
-        <Streamdown>{section.content}</Streamdown>
+        <Streamdown>{content}</Streamdown>
       </div>
       <div className="font-marker mt-4 flex flex-wrap items-center gap-2 text-xs font-bold text-ink/70">
         {['诊断', '规划', '学习', '练习', '反馈', '调整'].map((step, index) => (
@@ -311,7 +332,7 @@ const ActionPlanSection: React.FC<{ section: ReportSection }> = ({ section }) =>
       </Accordion>
       <SupportFollowupPanel
         section={supportPlan}
-        required={section.title.includes('洋葱执行计划')}
+        required
       />
     </section>
   );
@@ -550,10 +571,9 @@ const AdvisorScriptSection: React.FC<{ section?: ReportSection }> = ({ section }
 const MaterialSuggestions: React.FC<{
   material?: { title: string; content: string };
   required?: boolean;
-}> = ({ material, required = false }) => {
-  if (!material?.content.trim()) {
-    return required ? <MissingRequiredSection title="可搭配素材" /> : null;
-  }
+}> = ({ material, required = true }) => {
+  const content = material?.content.trim() || (required ? MATERIAL_SUGGESTIONS_FALLBACK : '');
+  if (!content) return null;
   return (
     <section className="mt-4 border-2 border-dashed border-marker-red/55 bg-postit-yellow/35 p-4">
       <div className="mb-2 flex items-center gap-2">
@@ -564,7 +584,7 @@ const MaterialSuggestions: React.FC<{
         按当前沟通进度选择，涉及价格、名额或报名政策时请先核实当期口径。
       </p>
       <div className="font-hand text-sm leading-6">
-        <Streamdown>{material.content}</Streamdown>
+        <Streamdown>{content}</Streamdown>
       </div>
     </section>
   );
@@ -685,11 +705,11 @@ const PhoneScriptSequence: React.FC<{
       )}
       <SupportFollowupPanel
         section={supportPlan}
-        required={Boolean(actionSection?.title.includes('洋葱执行计划'))}
+        required
       />
       <MaterialSuggestions
         material={material}
-        required={Boolean(scriptSection?.title.includes('可复制话术'))}
+        required
       />
     </section>
   );
@@ -754,7 +774,12 @@ const WechatPlanSection: React.FC<{
     <>
       {actionSection
         ? <ActionPlanSection section={actionSection} />
-        : <MissingRequiredSection title="微信跟进行动表" />}
+        : (
+          <>
+            <MissingRequiredSection title="微信跟进行动表" />
+            <SupportFollowupPanel required />
+          </>
+        )}
       <section className="border-b-2 border-dashed border-ink/15 py-5">
         <div className="mb-3 flex items-center gap-2">
           <PackageCheck className="size-5 text-marker-red" />
@@ -768,7 +793,7 @@ const WechatPlanSection: React.FC<{
       </section>
       <MaterialSuggestions
         material={material}
-        required={Boolean(onionSection?.title.includes('可复制话术'))}
+        required
       />
     </>
   );
@@ -840,8 +865,8 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
     const evidenceSections = Array.from(
       new Map(
         [
-          sectionTwoForExperience,
           sectionThreeForExperience,
+          sectionTwoForExperience,
           sectionFourForExperience,
           sectionFiveForExperience,
           experienceActionSection,
@@ -886,11 +911,16 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
   if (view === 'wechat') {
     return (
       <div className="bg-white/70 px-4 py-2">
-        {sectionOneForExperience && (
-          <GenericSection section={sectionOneForExperience} highlighted />
+        {sectionOneForExperience ? (
+          <ConsultantSummarySection
+            section={sectionOneForExperience}
+            supplementalInfo={supplementalInfo}
+          />
+        ) : (
+          <MissingRequiredSection title="顾问先讲：诊断总结" />
         )}
-        <WechatMatrixSection section={sectionTwoForExperience} title="孩子目前的具体表现" />
         <WechatMatrixSection section={sectionThreeForExperience} title="问题、根因与验证方法" />
+        <WechatMatrixSection section={sectionTwoForExperience} title="孩子目前的具体表现" />
         <div className="grid gap-4 lg:grid-cols-2">
           {sectionFourForExperience && (
             <StructuredBusinessSection section={sectionFourForExperience} />
@@ -931,8 +961,8 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
                 supplementalInfo={supplementalInfo}
               />
             )}
-            {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
             {sectionThree && <ProblemsSection section={sectionThree} />}
+            {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
             {sectionFour && <StructuredBusinessSection section={sectionFour} />}
             {sectionFive && <StructuredBusinessSection section={sectionFive} tone="warning" />}
           </div>
@@ -957,8 +987,8 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
               supplementalInfo={supplementalInfo}
             />
           )}
-          {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
           {sectionThree && <ProblemsSection section={sectionThree} />}
+          {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
           {sectionFour && <StructuredBusinessSection section={sectionFour} />}
           {sectionFive && <StructuredBusinessSection section={sectionFive} tone="warning" />}
           {sectionSix && <ActionPlanSection section={sectionSix} />}
@@ -976,8 +1006,8 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
               supplementalInfo={supplementalInfo}
             />
           )}
-          {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
           {sectionThree && <ProblemsSection section={sectionThree} />}
+          {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
           {sectionFour && <RiskSection section={sectionFour} />}
         </div>
       );
@@ -1005,8 +1035,8 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
             supplementalInfo={supplementalInfo}
           />
         )}
-        {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
         {sectionThree && <ProblemsSection section={sectionThree} />}
+        {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
         {sectionFour && <RiskSection section={sectionFour} />}
         {sectionFive && <ActionPlanSection section={sectionFive} />}
         {sectionSix
@@ -1065,9 +1095,11 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
   if (view === 'diagnosis') {
     return (
       <div className="bg-white/70 px-4 py-2">
-        {sectionOne && <GenericSection section={sectionOne} highlighted />}
-        {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
+        {sectionOne && (
+          <ConsultantSummarySection section={sectionOne} supplementalInfo={supplementalInfo} />
+        )}
         {sectionThree && <ProblemsSection section={sectionThree} />}
+        {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
         {sectionFour && <GenericSection section={sectionFour} />}
         {sectionFive && <CrossSubjectSection section={sectionFive} />}
       </div>
@@ -1091,9 +1123,11 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
 
   return (
     <div className="bg-white/70 px-4 py-2">
-      {sectionOne && <GenericSection section={sectionOne} highlighted />}
-      {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
+      {sectionOne && (
+        <ConsultantSummarySection section={sectionOne} supplementalInfo={supplementalInfo} />
+      )}
       {sectionThree && <ProblemsSection section={sectionThree} />}
+      {sectionTwo && <SubjectGroupedSection section={sectionTwo} />}
       {sectionSix && <ActionPlanSection section={sectionSix} />}
       {sectionSeven
         ? <GenericSection section={sectionSeven} />

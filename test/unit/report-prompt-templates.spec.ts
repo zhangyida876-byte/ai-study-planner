@@ -50,6 +50,8 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('诊断 → 规划 → 学习 → 练习 → 反馈 → 调整');
     expect(prompt).toContain('不直接报答案或只讲完一道题');
     expect(prompt).toContain('助教规划截图');
+    expect(prompt).toContain('生成优先级为“第1节诊断话术 > 第7节洋葱承接和可复制话术 > 第6节执行与助教跟进');
+    expect(prompt).toContain('不得截掉6.4、7.1或7.2-7.7');
   });
 
   it('keeps three observations and problems for one subject', () => {
