@@ -1,4 +1,5 @@
 import {
+  parseNumberedSubsections,
   parseLabeledFields,
   parseReportSections,
   resolveReportSectionLayout,
@@ -117,6 +118,26 @@ describe('diagnosis report view layout', () => {
 
     expect(sections.find((section) => section.index === 6)?.title).toBe('洋葱执行计划');
     expect(resolveReportSectionLayout(sections).version).toBe('business-seven');
+  });
+
+  it('keeps assistant follow-up and material suggestions as separate subsections', () => {
+    const planSubsections = parseNumberedSubsections([
+      '### 6.1 未来7天',
+      '近期行动',
+      '### 6.4 专属学习规划与助教跟进方案',
+      '顾问定方向，助教落到每天',
+    ].join('\n'), 6);
+    const productSubsections = parseNumberedSubsections([
+      '### 7.5 产品承接话术',
+      '承接内容',
+      '### 7.7 可搭配素材',
+      '助教规划截图',
+    ].join('\n'), 7);
+
+    expect(planSubsections.find((section) => section.index === 4)?.title)
+      .toContain('助教跟进');
+    expect(productSubsections.find((section) => section.index === 7)?.title)
+      .toBe('可搭配素材');
   });
 
   it('keeps archived eight-section reports readable', () => {

@@ -230,8 +230,45 @@ const CrossSubjectSection: React.FC<{ section: ReportSection }> = ({ section }) 
   );
 };
 
+const SupportFollowupPanel: React.FC<{
+  section?: ReportSection;
+  required?: boolean;
+}> = ({ section, required = false }) => {
+  if (!section?.content.trim()) {
+    return required ? <MissingRequiredSection title="专属学习规划与助教跟进方案" /> : null;
+  }
+  return (
+    <article className="mt-4 border-2 border-pen-blue bg-pen-blue/5 p-4 shadow-hard-sm">
+      <div className="mb-3 flex items-center gap-2">
+        <CheckSquare2 className="size-5 text-pen-blue" />
+        <div>
+          <h4 className="font-marker font-bold">专属学习规划与助教跟进方案</h4>
+          <p className="font-hand text-xs text-ink/60">
+            顾问定方向，助教落到每天，按完成与测评反馈持续调整
+          </p>
+        </div>
+      </div>
+      <div className="font-hand overflow-x-auto text-sm leading-6">
+        <Streamdown>{section.content}</Streamdown>
+      </div>
+      <div className="font-marker mt-4 flex flex-wrap items-center gap-2 text-xs font-bold text-ink/70">
+        {['诊断', '规划', '学习', '练习', '反馈', '调整'].map((step, index) => (
+          <React.Fragment key={step}>
+            <span className="border-2 border-ink bg-white px-2 py-1">{step}</span>
+            {index < 5 && <span aria-hidden="true">→</span>}
+          </React.Fragment>
+        ))}
+      </div>
+    </article>
+  );
+};
+
 const ActionPlanSection: React.FC<{ section: ReportSection }> = ({ section }) => {
   const periods = parseNumberedSubsections(section.content, section.index);
+  const supportPlan = periods.find((period) => (
+    period.index === 4 || period.title.includes('助教跟进')
+  ));
+  const cadencePeriods = periods.filter((period) => period !== supportPlan);
   const [activePeriod, setActivePeriod] = useState('1');
   if (periods.length === 0) return <GenericSection section={section} />;
 
@@ -255,13 +292,13 @@ const ActionPlanSection: React.FC<{ section: ReportSection }> = ({ section }) =>
           <AccordionContent className="pt-2">
             <Tabs value={activePeriod} onValueChange={setActivePeriod}>
               <TabsList className="mb-4 grid h-auto w-full grid-cols-3 border-2 border-ink bg-accent p-1">
-                {periods.map((period) => (
+                {cadencePeriods.map((period) => (
                   <TabsTrigger key={period.index} value={String(period.index)} className="font-marker py-2">
                     {periodLabels[period.index] || period.title}
                   </TabsTrigger>
                 ))}
               </TabsList>
-              {periods.map((period) => (
+              {cadencePeriods.map((period) => (
                 <TabsContent key={period.index} value={String(period.index)} className="mt-0 border-2 border-dashed border-ink/20 bg-white p-4">
                   <div className="font-hand overflow-x-auto text-sm leading-6">
                     <Streamdown>{period.content}</Streamdown>
@@ -272,6 +309,10 @@ const ActionPlanSection: React.FC<{ section: ReportSection }> = ({ section }) =>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
+      <SupportFollowupPanel
+        section={supportPlan}
+        required={section.title.includes('洋葱执行计划')}
+      />
     </section>
   );
 };
@@ -506,12 +547,36 @@ const AdvisorScriptSection: React.FC<{ section?: ReportSection }> = ({ section }
   );
 };
 
+const MaterialSuggestions: React.FC<{
+  material?: { title: string; content: string };
+  required?: boolean;
+}> = ({ material, required = false }) => {
+  if (!material?.content.trim()) {
+    return required ? <MissingRequiredSection title="可搭配素材" /> : null;
+  }
+  return (
+    <section className="mt-4 border-2 border-dashed border-marker-red/55 bg-postit-yellow/35 p-4">
+      <div className="mb-2 flex items-center gap-2">
+        <PackageCheck className="size-4 text-marker-red" />
+        <h4 className="font-marker font-bold">可搭配素材</h4>
+      </div>
+      <p className="font-hand mb-2 text-xs text-ink/60">
+        按当前沟通进度选择，涉及价格、名额或报名政策时请先核实当期口径。
+      </p>
+      <div className="font-hand text-sm leading-6">
+        <Streamdown>{material.content}</Streamdown>
+      </div>
+    </section>
+  );
+};
+
 const OnionAndScriptsSection: React.FC<{ section?: ReportSection }> = ({ section }) => {
   if (!section) return <MissingRequiredSection title="洋葱学园承接方案 + 可复制话术" />;
   const subsections = parseNumberedSubsections(section.content, section.index);
   if (subsections.length === 0) return <GenericSection section={section} />;
   const onion = subsections.find((item) => item.index === 1);
-  const scripts = subsections.filter((item) => item.index > 1);
+  const scripts = subsections.filter((item) => item.index > 1 && item.index < 7);
+  const material = subsections.find((item) => item.index === 7 || item.title.includes('搭配素材'));
 
   return (
     <section className="border-b-2 border-dashed border-ink/15 py-5">
@@ -546,6 +611,7 @@ const OnionAndScriptsSection: React.FC<{ section?: ReportSection }> = ({ section
       ) : (
         <MissingRequiredSection title="课程顾问可复制话术" />
       )}
+      <MaterialSuggestions material={material} required={section.title.includes('可复制话术')} />
     </section>
   );
 };
@@ -553,17 +619,26 @@ const OnionAndScriptsSection: React.FC<{ section?: ReportSection }> = ({ section
 const PhoneScriptSequence: React.FC<{
   scriptSection?: ReportSection;
   onionSection?: ReportSection;
-}> = ({ scriptSection, onionSection }) => {
+  actionSection?: ReportSection;
+}> = ({ scriptSection, onionSection, actionSection }) => {
   const scriptSubsections = scriptSection
     ? parseNumberedSubsections(scriptSection.content, scriptSection.index)
     : [];
   const combinedOnion = scriptSubsections.find((item) => (
     item.index === 1 && item.title.includes('洋葱')
   ));
-  const scripts = combinedOnion
+  const scripts = (combinedOnion
     ? scriptSubsections.filter((item) => item.index > 1)
-    : scriptSubsections;
+    : scriptSubsections)
+    .filter((item) => item.index < 7 && !item.title.includes('搭配素材'));
+  const material = scriptSubsections.find((item) => (
+    item.index === 7 || item.title.includes('搭配素材')
+  ));
   const onionContent = combinedOnion?.content || onionSection?.content || '';
+  const supportPlan = actionSection
+    ? parseNumberedSubsections(actionSection.content, actionSection.index)
+      .find((item) => item.index === 4 || item.title.includes('助教跟进'))
+    : undefined;
 
   return (
     <section className="border-b-2 border-dashed border-ink/15 py-5">
@@ -608,6 +683,14 @@ const PhoneScriptSequence: React.FC<{
           </AccordionItem>
         </Accordion>
       )}
+      <SupportFollowupPanel
+        section={supportPlan}
+        required={Boolean(actionSection?.title.includes('洋葱执行计划'))}
+      />
+      <MaterialSuggestions
+        material={material}
+        required={Boolean(scriptSection?.title.includes('可复制话术'))}
+      />
     </section>
   );
 };
@@ -664,6 +747,9 @@ const WechatPlanSection: React.FC<{
     ? parseNumberedSubsections(onionSection.content, onionSection.index)
     : [];
   const onionPlan = onionSubsections.find((item) => item.index === 1 && item.title.includes('洋葱'));
+  const material = onionSubsections.find((item) => (
+    item.index === 7 || item.title.includes('搭配素材')
+  ));
   return (
     <>
       {actionSection
@@ -680,6 +766,10 @@ const WechatPlanSection: React.FC<{
           </div>
         </article>
       </section>
+      <MaterialSuggestions
+        material={material}
+        required={Boolean(onionSection?.title.includes('可复制话术'))}
+      />
     </>
   );
 };
@@ -773,6 +863,7 @@ const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({
         <PhoneScriptSequence
           scriptSection={experienceScriptSection}
           onionSection={experienceOnionSection}
+          actionSection={experienceActionSection}
         />
         {evidenceSections.length > 0 && (
           <Accordion type="single" collapsible className="mt-4">

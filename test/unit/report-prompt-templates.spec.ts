@@ -21,10 +21,12 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('### 6.1 未来7天');
     expect(prompt).toContain('### 6.2 未来1个月');
     expect(prompt).toContain('### 6.3 当前学期');
+    expect(prompt).toContain('### 6.4 专属学习规划与助教跟进方案');
     expect(prompt).toContain('## 7. 洋葱学园承接方案 + 可复制话术');
     expect(prompt).toContain('7个章节必须全部输出');
     expect(prompt).toContain('### 7.2 开场共鸣话术');
     expect(prompt).toContain('### 7.6 促进行动话术');
+    expect(prompt).toContain('### 7.7 可搭配素材');
     expect(prompt).toContain('单科1400-2200个中文字符');
     expect(prompt).toContain('家长怎么检查');
     expect(prompt).toContain('洋葱功能介入');
@@ -43,6 +45,11 @@ describe('report prompt templates', () => {
     expect(prompt).toContain('结构化问题、场景与产品路由');
     expect(prompt).toContain('价格、优惠、名额、套餐、退款、分期');
     expect(prompt).toContain('CAP、PRB、SCN、OBJ等编号仅用于系统内部关联');
+    expect(prompt).toContain('顾问老师负责');
+    expect(prompt).toContain('助教老师负责');
+    expect(prompt).toContain('诊断 → 规划 → 学习 → 练习 → 反馈 → 调整');
+    expect(prompt).toContain('不直接报答案或只讲完一道题');
+    expect(prompt).toContain('助教规划截图');
   });
 
   it('keeps three observations and problems for one subject', () => {
@@ -137,5 +144,8 @@ describe('report prompt templates', () => {
     expect(rules).toContain('小学培优');
     expect(rules).toContain('初中侧重');
     expect(rules).toContain('高中侧重');
+    expect(rules).toContain('助教老师负责把规划落实到周一至周日');
+    expect(rules).toContain('解决一类题');
+    expect(rules).toContain('诊断 → 规划 → 学习 → 练习 → 反馈 → 调整');
   });
 });
