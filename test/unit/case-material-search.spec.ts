@@ -1,5 +1,7 @@
 import {
+  matchesCaseMaterialScenes,
   matchesCaseMaterialTags,
+  normalizeCaseMaterialStage,
   scoreCaseMaterial,
   violatesCaseMaterialProtectedTerm,
   type SearchableCaseMaterial,
@@ -52,5 +54,27 @@ describe('case material search', () => {
 
     expect(matchesCaseMaterialTags(caseItem, ['主动学习', '成绩提升'])).toBe(true);
     expect(matchesCaseMaterialTags(caseItem, ['主动学习', '竞品对比'])).toBe(false);
+  });
+
+  it('normalizes grade-shaped stage values from the updated source', () => {
+    expect(normalizeCaseMaterialStage('小四')).toBe('小学');
+    expect(normalizeCaseMaterialStage('七年级')).toBe('初中');
+    expect(normalizeCaseMaterialStage('高二')).toBe('高中');
+    expect(normalizeCaseMaterialStage('通用')).toBe('通用');
+  });
+
+  it('matches the updated business scene filters using weighted evidence', () => {
+    const trustCase = material({
+      manualTag: '家长担心不靠谱，先看真实反馈',
+      imageType: '好评',
+      evidence: '家长反馈课程使用后更愿意主动学习',
+    });
+    const unrelatedCase = material({
+      manualTag: '课程目录截图',
+      imageType: '其他',
+    });
+
+    expect(matchesCaseMaterialScenes(trustCase, ['trustConcern'])).toBe(true);
+    expect(matchesCaseMaterialScenes(unrelatedCase, ['trustConcern'])).toBe(false);
   });
 });

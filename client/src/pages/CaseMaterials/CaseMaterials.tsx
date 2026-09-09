@@ -18,7 +18,9 @@ import { Input } from '@/components/ui/input';
 import caseMaterialsData from '@client/src/data/case-materials.json';
 import CaseMaterialMultiFilter from './CaseMaterialMultiFilter';
 import {
-  matchesCaseMaterialTags,
+  CASE_MATERIAL_SCENE_FILTERS,
+  matchesCaseMaterialScenes,
+  normalizeCaseMaterialStage,
   scoreCaseMaterial,
   violatesCaseMaterialProtectedTerm,
 } from '@client/src/utils/case-material-search';
@@ -56,7 +58,10 @@ interface RankedMaterial extends CaseMaterial {
 const SOURCE_BASE_URL =
   'https://guanghe.feishu.cn/wiki/HdqqwpMKbi0pmvkhWWQcXLtNnOd?table=tbl8Xeiesb4nJkn6&view=vewc8sRCjT';
 const PAGE_SIZE = 12;
-const MATERIALS: CaseMaterial[] = caseMaterialsData;
+const MATERIALS: CaseMaterial[] = caseMaterialsData.map((material: CaseMaterial) => ({
+  ...material,
+  stage: normalizeCaseMaterialStage(material.stage),
+}));
 
 function buildShareText(material: CaseMaterial): string {
   return material.pitch.trim()
@@ -95,7 +100,7 @@ const CaseMaterials: React.FC = () => {
   const [selectedStages, setSelectedStages] = useState<string[]>([stageConfig.label]);
   const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
   const [selectedImageTypes, setSelectedImageTypes] = useState<string[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedSceneKeys, setSelectedSceneKeys] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [copiedId, setCopiedId] = useState('');
   const [imagePreparation, setImagePreparation] = useState<Record<string, ImagePreparationState>>({});
@@ -120,24 +125,13 @@ const CaseMaterials: React.FC = () => {
     () => [...new Set(MATERIALS.map((item) => item.imageType).filter(Boolean))],
     [],
   );
-  const commonTags = useMemo(() => {
-    const counts = new Map<string, number>();
-    MATERIALS.forEach((item) => item.aiTags.forEach((tag) => {
-      counts.set(tag, (counts.get(tag) || 0) + 1);
-    }));
-    return [...counts.entries()]
-      .sort((left, right) => right[1] - left[1])
-      .slice(0, 10)
-      .map(([tag]) => tag);
-  }, []);
-
   const results = useMemo<RankedMaterial[]>(() => MATERIALS
     .map((item) => ({ ...item, relevance: scoreCaseMaterial(item, query) }))
     .filter((item) => {
       if (selectedStages.length && item.stage !== '通用' && !selectedStages.includes(item.stage)) return false;
       if (selectedGrades.length && !selectedGrades.includes(item.grade)) return false;
       if (selectedImageTypes.length && !selectedImageTypes.includes(item.imageType)) return false;
-      if (!matchesCaseMaterialTags(item, selectedTags)) return false;
+      if (!matchesCaseMaterialScenes(item, selectedSceneKeys)) return false;
       if (violatesCaseMaterialProtectedTerm(item, query)) return false;
       if (query.trim() && item.relevance <= 0) return false;
       return true;
@@ -147,7 +141,7 @@ const CaseMaterials: React.FC = () => {
       selectedGrades,
       selectedImageTypes,
       selectedStages,
-      selectedTags,
+      selectedSceneKeys,
     ]);
   const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
   const visibleResults = useMemo(
@@ -157,7 +151,7 @@ const CaseMaterials: React.FC = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [query, selectedStages, selectedGrades, selectedImageTypes, selectedTags]);
+  }, [query, selectedStages, selectedGrades, selectedImageTypes, selectedSceneKeys]);
 
   useEffect(() => {
     let active = true;
@@ -211,7 +205,7 @@ const CaseMaterials: React.FC = () => {
     setSelectedStages([stageConfig.label]);
     setSelectedGrades([]);
     setSelectedImageTypes([]);
-    setSelectedTags([]);
+    setSelectedSceneKeys([]);
   };
 
   return (
@@ -271,23 +265,26 @@ const CaseMaterials: React.FC = () => {
               <X className="mr-1 size-4" />清空筛选
             </Button>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {commonTags.map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => setSelectedTags((current) => (
-                  current.includes(tag)
-                    ? current.filter((item) => item !== tag)
-                    : [...current, tag]
-                ))}
-                className={`border-2 border-ink px-2.5 py-1 font-hand text-xs transition-transform hover:-translate-y-0.5 ${
-                  selectedTags.includes(tag) ? 'bg-postit-yellow font-bold' : 'bg-white'
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
+          <div>
+            <p className="font-hand mb-2 text-xs text-ink/55">按家长当前顾虑快速找素材</p>
+            <div className="flex flex-wrap gap-2">
+              {CASE_MATERIAL_SCENE_FILTERS.map((scene) => (
+                <button
+                  key={scene.key}
+                  type="button"
+                  onClick={() => setSelectedSceneKeys((current) => (
+                    current.includes(scene.key)
+                      ? current.filter((item) => item !== scene.key)
+                      : [...current, scene.key]
+                  ))}
+                  className={`border-2 border-ink px-2.5 py-1 font-hand text-xs transition-transform hover:-translate-y-0.5 ${
+                    selectedSceneKeys.includes(scene.key) ? 'bg-postit-yellow font-bold' : 'bg-white'
+                  }`}
+                >
+                  {scene.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </WobblyCard>

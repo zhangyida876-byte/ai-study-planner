@@ -24,6 +24,98 @@ interface SemanticIntent {
   terms: string[];
 }
 
+export interface CaseMaterialSceneFilter {
+  key: string;
+  label: string;
+  minScore: number;
+  imageTypes: string[];
+  terms: string[];
+}
+
+const ELEMENTARY_GRADE_VALUES = new Set([
+  '一年级', '二年级', '三年级', '四年级', '五年级', '六年级',
+  '小一', '小二', '小三', '小四', '小五', '小六',
+]);
+const MIDDLE_GRADE_VALUES = new Set([
+  '初一', '初二', '初三', '七年级', '八年级', '九年级',
+]);
+const HIGH_GRADE_VALUES = new Set(['高一', '高二', '高三']);
+
+export const CASE_MATERIAL_SCENE_FILTERS: CaseMaterialSceneFilter[] = [
+  {
+    key: 'timeObjection',
+    label: '没时间',
+    minScore: 40,
+    imageTypes: ['好评', '异议', '教育理念/老师推荐图'],
+    terms: [
+      '没时间', '没有时间', '没空', '时间少', '时间不够', '抽不出时间',
+      '太忙', '作业多', '学习时长', '每天学', '碎片时间', '坚持学习', '学习计划',
+    ],
+  },
+  {
+    key: 'priceValue',
+    label: '太贵了',
+    minScore: 40,
+    imageTypes: ['异议', '好评'],
+    terms: [
+      '太贵', '价格贵', '值不值', '划算', '多少钱', '费用', '预算', '舍不得',
+      '不便宜', '投入', '没钱', '压力大', '物超所值', '值得', '性价比', '价格认可',
+    ],
+  },
+  {
+    key: 'parentDecision',
+    label: '不同意/商量下',
+    minScore: 40,
+    imageTypes: ['异议', '学生没钱/跟家长沟通', '教育理念/老师推荐图', '成交确认'],
+    terms: [
+      '不同意', '不支持', '商量', '考虑一下', '再考虑', '问家长', '问妈妈',
+      '问爸爸', '父母', '家长沟通', '孩子愿意', '决定报', '给孩子机会', '家长支持',
+    ],
+  },
+  {
+    key: 'trustConcern',
+    label: '不信任',
+    minScore: 80,
+    imageTypes: ['好评', '教育理念/老师推荐图'],
+    terms: [
+      '不信任', '不相信', '信不过', '不放心', '靠谱吗', '真的假的', '真实吗',
+      '怕被骗', '怀疑', '质疑', '没听过', '不了解', '家长反馈', '使用记录', '课程认可',
+    ],
+  },
+  {
+    key: 'effectConcern',
+    label: '效果/坚持等担心',
+    minScore: 100,
+    imageTypes: ['好评', '异议', '教育理念/老师推荐图'],
+    terms: [
+      '担心效果', '怕没效果', '有没有效果', '坚持不了', '坚持不下来', '孩子不学',
+      '不愿意学', '学不下去', '会不会闲置', '三分钟热度', '怕浪费', '使用记录',
+      '主动学习', '愿意学', '学习习惯', '查漏补缺',
+    ],
+  },
+  {
+    key: 'competitor',
+    label: '竞品',
+    minScore: 60,
+    imageTypes: ['竞品对比', '报过辅导班对比图', '平板'],
+    terms: [
+      '报过班', '补课', '线下课', '辅导班', '补习班', '一对一', '其他机构',
+      '竞品', '科大讯飞', '学习机', '平板', '作业帮', '猿辅导', '学而思', '效果不好',
+    ],
+  },
+  {
+    key: 'lowUrgency',
+    label: '不需要/不着急',
+    minScore: 80,
+    imageTypes: ['好评', '异议', '教育理念/老师推荐图'],
+    terms: [
+      '不需要', '暂时不需要', '不着急', '以后再说', '再等等', '先看看',
+      '寒假再说', '暑假再说', '开学再说', '先不报', '后悔没早点', '早点用',
+      '及时查漏补缺', '现在开始', '提前学习', '提前规划', '衔接课',
+    ],
+  },
+];
+
 const SEARCH_EXPANSION_GROUPS: SearchExpansionGroup[] = [
   {
     key: 'timeObjection',
@@ -151,6 +243,62 @@ function buildSearchCorpus(material: SearchableCaseMaterial): Record<string, str
   };
   corpus.all = normalizeSearchText(Object.values(corpus).join('\n'));
   return corpus;
+}
+
+export function normalizeCaseMaterialStage(value: string): string {
+  const stage = String(value || '').trim();
+  if (ELEMENTARY_GRADE_VALUES.has(stage)) return '小学';
+  if (MIDDLE_GRADE_VALUES.has(stage)) return '初中';
+  if (HIGH_GRADE_VALUES.has(stage)) return '高中';
+  return stage;
+}
+
+export function scoreCaseMaterialScene(
+  material: SearchableCaseMaterial,
+  sceneKey: string,
+): number {
+  const scene = CASE_MATERIAL_SCENE_FILTERS.find(
+    (item: CaseMaterialSceneFilter) => item.key === sceneKey,
+  );
+  if (!scene) return 0;
+  const corpus = buildSearchCorpus(material);
+  const weightedFields: Array<[string, number]> = [
+    ['manualTag', 62],
+    ['focus', 54],
+    ['evidence', 46],
+    ['summary', 34],
+    ['scenario', 30],
+    ['aiTags', 28],
+    ['keywords', 28],
+    ['imageType', 24],
+    ['title', 20],
+  ];
+  const hitTerms = new Set<string>();
+  let score = 0;
+  weightedFields.forEach(([field, weight]: [string, number]) => {
+    const hits = scene.terms.filter((term: string) => (
+      containsSearchTerm(corpus[field] || '', term)
+    ));
+    if (!hits.length) return;
+    hits.forEach((term: string) => hitTerms.add(term));
+    score += weight + Math.min(42, (hits.length - 1) * 6);
+  });
+  if (scene.imageTypes.includes(material.imageType)) score += 28;
+  if (!hitTerms.size) return 0;
+  return score + Math.min(48, hitTerms.size * 6);
+}
+
+export function matchesCaseMaterialScenes(
+  material: SearchableCaseMaterial,
+  selectedSceneKeys: string[],
+): boolean {
+  if (!selectedSceneKeys.length) return true;
+  return selectedSceneKeys.every((sceneKey: string) => {
+    const scene = CASE_MATERIAL_SCENE_FILTERS.find(
+      (item: CaseMaterialSceneFilter) => item.key === sceneKey,
+    );
+    return scoreCaseMaterialScene(material, sceneKey) >= (scene?.minScore || 1);
+  });
 }
 
 function buildIntentVector(text: string): number[] {

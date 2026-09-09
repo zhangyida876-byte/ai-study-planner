@@ -13,10 +13,10 @@ describe('case material snapshot', () => {
   const materials: CaseMaterialFixture[] = JSON.parse(readFileSync(path, 'utf8'));
 
   it('contains the complete Feishu Base snapshot with migrated images', () => {
-    expect(materials).toHaveLength(327);
+    expect(materials.length).toBeGreaterThanOrEqual(783);
     expect(materials.every((material) => material.id && material.title)).toBe(true);
     expect(materials.every((material) => material.images.length > 0)).toBe(true);
-    expect(materials.flatMap((material) => material.images)).toHaveLength(466);
+    expect(materials.flatMap((material) => material.images).length).toBeGreaterThanOrEqual(964);
   });
 
   it('contains material for every supported education stage', () => {

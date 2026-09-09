@@ -29,6 +29,14 @@ const fields = [
   'AI素材价值',
   'AI分析状态',
 ];
+const elementaryGradeValues = new Set([
+  '一年级', '二年级', '三年级', '四年级', '五年级', '六年级',
+  '小一', '小二', '小三', '小四', '小五', '小六',
+]);
+const middleGradeValues = new Set([
+  '初一', '初二', '初三', '七年级', '八年级', '九年级',
+]);
+const highGradeValues = new Set(['高一', '高二', '高三']);
 
 function parseEnvelope(raw) {
   const start = raw.indexOf('{');
@@ -74,6 +82,14 @@ function splitTerms(value) {
     .split(/[、,，;；\n]+/u)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function normalizeStage(value) {
+  const stage = String(value || '').trim();
+  if (elementaryGradeValues.has(stage)) return '小学';
+  if (middleGradeValues.has(stage)) return '初中';
+  if (highGradeValues.has(stage)) return '高中';
+  return stage;
 }
 
 function extensionFor(file) {
@@ -224,7 +240,7 @@ async function main() {
       images,
       title: String(value['AI标题'] || value['人工标签'] || '案例素材'),
       manualTag: String(value['人工标签'] || ''),
-      stage: firstValue(value['所属学段']) || '通用',
+      stage: normalizeStage(firstValue(value['所属学段'])) || '通用',
       grade: firstValue(value['具体年级']),
       imageType: firstValue(value['图片类型']) || '其他',
       aiTags: splitTerms(value['AI推荐标签']),
