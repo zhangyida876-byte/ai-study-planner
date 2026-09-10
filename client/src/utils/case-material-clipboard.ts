@@ -1,4 +1,5 @@
 import { logger } from '@lark-apaas/client-toolkit/logger';
+import { fetchImageProxyBlob } from '../api/image-proxy';
 
 const MAX_COMPOSITE_WIDTH = 1200;
 const MAX_COMPOSITE_HEIGHT = 14000;
@@ -35,6 +36,10 @@ export function buildCaseMaterialProxyUrl(
   return proxyUrl.toString();
 }
 
+export function resolveCaseMaterialStoragePath(imageUrl: string, origin: string): string {
+  return new URL(imageUrl, origin).pathname;
+}
+
 async function decodeClipboardImage(src: string, objectUrl?: string): Promise<LoadedClipboardImage> {
   const element = new Image();
   element.decoding = 'async';
@@ -58,15 +63,9 @@ async function decodeClipboardImage(src: string, objectUrl?: string): Promise<Lo
 }
 
 async function loadClipboardImage(imageUrl: string): Promise<LoadedClipboardImage> {
-  const response = await fetch(imageUrl, {
-    credentials: 'include',
-    cache: 'no-store',
-  });
-  const contentType = response.headers.get('content-type') || '';
-  logger.info(`clipboard image response status=${response.status} type=${contentType || 'unknown'} url=${imageUrl}`);
-  if (!response.ok) throw new Error(`Image request failed: ${response.status}`);
-  const blob = await response.blob();
-  logger.info(`clipboard image blob type=${blob.type || 'unknown'} size=${blob.size}`);
+  const storagePath = resolveCaseMaterialStoragePath(imageUrl, window.location.origin);
+  const blob = await fetchImageProxyBlob(storagePath);
+  logger.info(`clipboard image proxy blob type=${blob.type || 'unknown'} size=${blob.size} path=${storagePath}`);
   if (blob.size === 0) throw new Error('Storage object is empty');
   if (!blob.type.startsWith('image/')) {
     throw new Error(`Storage response is not an image: ${blob.type || 'unknown type'}`);
@@ -218,7 +217,7 @@ function resolveClipboardOptions(options: {
 }): { absoluteUrls: string[]; compositeText: string } {
   return {
     absoluteUrls: options.imageUrls.map((url: string) => (
-      buildCaseMaterialProxyUrl(url, window.location.origin, window.location.pathname)
+      resolveCaseMaterialImageUrl(url, window.location.origin)
     )),
     compositeText: options.includeText ? options.text : '',
   };
