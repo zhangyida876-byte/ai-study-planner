@@ -18,6 +18,8 @@ import {
   getCaseMaterialStagePriority,
   matchesCaseMaterialScenes,
   normalizeCaseMaterialStage,
+  resolveCaseMaterialShareText,
+  resolveCaseMaterialUsageLabels,
   scoreCaseMaterial,
   violatesCaseMaterialProtectedTerm,
 } from '@client/src/utils/case-material-search';
@@ -52,13 +54,6 @@ const MATERIALS: CaseMaterial[] = caseMaterialsData.map((material: CaseMaterial)
   ...material,
   stage: normalizeCaseMaterialStage(material.stage),
 }));
-
-function buildShareText(material: CaseMaterial): string {
-  return material.pitch.trim()
-    || material.manualTag.trim()
-    || material.summary.trim()
-    || '您可以先看一下这个真实案例。';
-}
 
 const CaseMaterials: React.FC = () => {
   const { stageConfig } = useRequiredStage();
@@ -133,7 +128,7 @@ const CaseMaterials: React.FC = () => {
   }, [query, selectedStages, selectedGrades, selectedImageTypes, selectedSceneKeys]);
 
   const copyMaterialText = async (material: CaseMaterial): Promise<void> => {
-    const result = await copyText(buildShareText(material));
+    const result = await copyText(resolveCaseMaterialShareText(material));
     if (result.ok) {
       setCopiedId(material.id);
       toast.success('推荐话术已复制');
@@ -285,20 +280,20 @@ const CaseMaterials: React.FC = () => {
                   <span className="border border-marker-red/30 bg-marker-red/5 px-2 py-0.5 font-hand text-xs text-marker-red">
                     {material.imageType}
                   </span>
-                  {material.aiTags.slice(0, 3).map((tag) => (
+                  {resolveCaseMaterialUsageLabels(material).slice(0, 3).map((tag) => (
                     <span key={tag} className="border border-ink/20 bg-accent px-2 py-0.5 font-hand text-xs">
                       {tag}
                     </span>
                   ))}
                 </div>
-                {material.scenario && (
+                {resolveCaseMaterialUsageLabels(material).length > 0 && (
                   <p className="font-hand line-clamp-2 text-xs text-ink/55">
-                    适用：{material.scenario}
+                    适用：{resolveCaseMaterialUsageLabels(material).join('、')}
                   </p>
                 )}
                 <div className="border-l-[3px] border-pen-blue bg-pen-blue/5 p-3">
                   <p className="font-hand line-clamp-4 whitespace-pre-line text-sm leading-relaxed text-ink/80">
-                    {buildShareText(material)}
+                    {resolveCaseMaterialShareText(material)}
                   </p>
                 </div>
                 <div>

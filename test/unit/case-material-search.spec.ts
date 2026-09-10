@@ -3,6 +3,8 @@ import {
   matchesCaseMaterialScenes,
   matchesCaseMaterialTags,
   normalizeCaseMaterialStage,
+  resolveCaseMaterialShareText,
+  resolveCaseMaterialUsageLabels,
   scoreCaseMaterial,
   violatesCaseMaterialProtectedTerm,
   type SearchableCaseMaterial,
@@ -69,6 +71,32 @@ describe('case material search', () => {
     expect(getCaseMaterialStagePriority('七年级', ['初中'], '初中')).toBe(0);
     expect(getCaseMaterialStagePriority('通用', ['初中'], '初中')).toBe(1);
     expect(getCaseMaterialStagePriority('高中', ['初中'], '初中')).toBe(2);
+  });
+
+  it('separates applicable speech from short usage labels', () => {
+    const caseItem = material({
+      pitch: '成绩提升、中考成绩、提前学习',
+      scenario: '家长，您看看这个真实反馈。孩子愿意跟着洋葱把知识点拆开学，'
+        + '再配合练习巩固，学习会更有方向。咱们可以先看看从哪一科开始补。',
+    });
+
+    expect(resolveCaseMaterialShareText(caseItem)).toContain('家长，您看看');
+    expect(resolveCaseMaterialUsageLabels(caseItem)).toEqual([
+      '成绩提升',
+      '中考成绩',
+      '提前学习',
+    ]);
+  });
+
+  it('supports the corrected field mapping used by future syncs', () => {
+    const caseItem = material({
+      scenario: '成绩提升、家长好评',
+      pitch: '家长，您看这个案例和孩子现在的情况比较接近。我们先定位具体漏洞，'
+        + '再用对应课程解决，不让孩子继续盲目刷题，您看咱们先从数学开始可以吗？',
+    });
+
+    expect(resolveCaseMaterialShareText(caseItem)).toContain('家长，您看');
+    expect(resolveCaseMaterialUsageLabels(caseItem)).toEqual(['成绩提升', '家长好评']);
   });
 
   it('matches the updated business scene filters using weighted evidence', () => {

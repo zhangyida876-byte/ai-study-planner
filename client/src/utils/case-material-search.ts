@@ -13,6 +13,37 @@ export interface SearchableCaseMaterial {
   searchText?: string;
 }
 
+function looksLikeCaseMaterialSpeech(value: string): boolean {
+  const text = String(value || '').trim();
+  if (!text) return false;
+  return text.length >= 50;
+}
+
+export function resolveCaseMaterialShareText(
+  material: SearchableCaseMaterial,
+): string {
+  const candidates = [material.pitch, material.scenario];
+  return candidates.find((value: string) => looksLikeCaseMaterialSpeech(value))?.trim()
+    || material.scenario.trim()
+    || material.pitch.trim()
+    || material.manualTag.trim()
+    || material.summary.trim()
+    || '您可以先看一下这个真实案例。';
+}
+
+export function resolveCaseMaterialUsageLabels(
+  material: SearchableCaseMaterial,
+): string[] {
+  const candidates = [material.scenario, material.pitch];
+  const labelText = candidates.find((value: string) => (
+    value.trim() && !looksLikeCaseMaterialSpeech(value)
+  ));
+  const labels = labelText
+    ? labelText.split(/[、,，;；\n]+/u).map((item: string) => item.trim()).filter(Boolean)
+    : material.aiTags;
+  return [...new Set(labels)];
+}
+
 interface SearchExpansionGroup {
   key: string;
   triggers: string[];
