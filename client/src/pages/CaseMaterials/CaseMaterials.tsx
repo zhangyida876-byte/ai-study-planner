@@ -62,6 +62,7 @@ function buildShareText(material: CaseMaterial): string {
 
 const CaseMaterials: React.FC = () => {
   const { stageConfig } = useRequiredStage();
+  const [draftQuery, setDraftQuery] = useState('');
   const [query, setQuery] = useState('');
   const [selectedStages, setSelectedStages] = useState<string[]>([stageConfig.label]);
   const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
@@ -142,7 +143,14 @@ const CaseMaterials: React.FC = () => {
     toast.error(result.message);
   };
 
+  const submitSearch = (event: React.FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    setQuery(draftQuery.trim());
+    setPage(1);
+  };
+
   const clearFilters = (): void => {
+    setDraftQuery('');
     setQuery('');
     setSelectedStages([stageConfig.label]);
     setSelectedGrades([]);
@@ -166,15 +174,21 @@ const CaseMaterials: React.FC = () => {
 
       <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false}>
         <div className="space-y-3 p-4">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink/45" />
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索：价格贵、中考提分、孩子主动学习、补基础、竞品对比"
-              className="h-11 pl-9"
-            />
-          </div>
+          <form className="flex gap-2" onSubmit={submitSearch}>
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink/45" />
+              <Input
+                value={draftQuery}
+                onChange={(event) => setDraftQuery(event.target.value)}
+                placeholder="输入完整关键词后点击搜索"
+                className="h-11 pl-9"
+              />
+            </div>
+            <Button type="submit" className="h-11 shrink-0 px-5 font-hand">
+              <Search className="mr-1.5 size-4" />
+              搜索
+            </Button>
+          </form>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <CaseMaterialMultiFilter
               label="学段"
