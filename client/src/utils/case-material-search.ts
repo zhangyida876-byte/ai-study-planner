@@ -253,6 +253,18 @@ export function normalizeCaseMaterialStage(value: string): string {
   return stage;
 }
 
+export function getCaseMaterialStagePriority(
+  materialStage: string,
+  selectedStages: string[],
+  defaultStage: string,
+): number {
+  const normalizedStage = normalizeCaseMaterialStage(materialStage);
+  const activeStages = selectedStages.length > 0 ? selectedStages : [defaultStage];
+  if (activeStages.includes(normalizedStage)) return 0;
+  if (normalizedStage === '通用') return 1;
+  return 2;
+}
+
 export function scoreCaseMaterialScene(
   material: SearchableCaseMaterial,
   sceneKey: string,

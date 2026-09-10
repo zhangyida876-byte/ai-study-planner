@@ -1,4 +1,5 @@
 import {
+  getCaseMaterialStagePriority,
   matchesCaseMaterialScenes,
   matchesCaseMaterialTags,
   normalizeCaseMaterialStage,
@@ -61,6 +62,13 @@ describe('case material search', () => {
     expect(normalizeCaseMaterialStage('七年级')).toBe('初中');
     expect(normalizeCaseMaterialStage('高二')).toBe('高中');
     expect(normalizeCaseMaterialStage('通用')).toBe('通用');
+  });
+
+  it('places the selected stage before common materials', () => {
+    expect(getCaseMaterialStagePriority('初中', ['初中'], '初中')).toBe(0);
+    expect(getCaseMaterialStagePriority('七年级', ['初中'], '初中')).toBe(0);
+    expect(getCaseMaterialStagePriority('通用', ['初中'], '初中')).toBe(1);
+    expect(getCaseMaterialStagePriority('高中', ['初中'], '初中')).toBe(2);
   });
 
   it('matches the updated business scene filters using weighted evidence', () => {

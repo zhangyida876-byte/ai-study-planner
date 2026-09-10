@@ -17,6 +17,7 @@ import caseMaterialsData from '@client/src/data/case-materials.json';
 import CaseMaterialMultiFilter from './CaseMaterialMultiFilter';
 import {
   CASE_MATERIAL_SCENE_FILTERS,
+  getCaseMaterialStagePriority,
   matchesCaseMaterialScenes,
   normalizeCaseMaterialStage,
   scoreCaseMaterial,
@@ -132,12 +133,25 @@ const CaseMaterials: React.FC = () => {
       if (query.trim() && item.relevance <= 0) return false;
       return true;
     })
-    .sort((left, right) => right.relevance - left.relevance), [
+    .sort((left, right) => {
+      const stagePriorityDifference = getCaseMaterialStagePriority(
+        left.stage,
+        selectedStages,
+        stageConfig.label,
+      ) - getCaseMaterialStagePriority(
+        right.stage,
+        selectedStages,
+        stageConfig.label,
+      );
+      if (stagePriorityDifference !== 0) return stagePriorityDifference;
+      return right.relevance - left.relevance;
+    }), [
       query,
       selectedGrades,
       selectedImageTypes,
       selectedStages,
       selectedSceneKeys,
+      stageConfig.label,
     ]);
   const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
   const visibleResults = useMemo(
