@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Check,
-  Copy,
-  Images,
   LibraryBig,
   MessageSquareText,
   Search,
@@ -23,12 +21,7 @@ import {
   scoreCaseMaterial,
   violatesCaseMaterialProtectedTerm,
 } from '@client/src/utils/case-material-search';
-import {
-  getPreparedCaseMaterialPng,
-  peekPreparedCaseMaterialPng,
-  prepareCaseMaterialImages,
-} from '@client/src/utils/case-material-clipboard';
-import { copyPngBlob, copyText } from '@client/src/utils/clipboard';
+import { copyText } from '@client/src/utils/clipboard';
 
 interface CaseMaterial {
   id: string;
@@ -67,30 +60,6 @@ function buildShareText(material: CaseMaterial): string {
     || '您可以先看一下这个真实案例。';
 }
 
-function buildCompositeText(material: CaseMaterial): string {
-  const tags = [
-    material.stage,
-    material.grade,
-    material.imageType,
-    ...material.aiTags.slice(0, 5),
-  ].filter(Boolean);
-  return [
-    `案例：${material.title}`,
-    tags.length ? `标签：${tags.join('、')}` : '',
-    `推荐话术：${buildShareText(material)}`,
-  ].filter(Boolean).join('\n\n');
-}
-
-function clipboardOptions(material: CaseMaterial, includeText: boolean) {
-  return {
-    imageUrls: material.images,
-    text: includeText ? buildCompositeText(material) : '',
-    includeText,
-  };
-}
-
-type ImagePreparationState = 'loading' | 'ready' | 'error';
-
 const CaseMaterials: React.FC = () => {
   const { stageConfig } = useRequiredStage();
   const [query, setQuery] = useState('');
@@ -100,7 +69,6 @@ const CaseMaterials: React.FC = () => {
   const [selectedSceneKeys, setSelectedSceneKeys] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [copiedId, setCopiedId] = useState('');
-  const [imagePreparation, setImagePreparation] = useState<Record<string, ImagePreparationState>>({});
 
   useEffect(() => {
     setSelectedStages([stageConfig.label]);
@@ -163,48 +131,12 @@ const CaseMaterials: React.FC = () => {
     setPage(1);
   }, [query, selectedStages, selectedGrades, selectedImageTypes, selectedSceneKeys]);
 
-  useEffect(() => {
-    let active = true;
-    visibleResults.forEach((material) => {
-      [false, true].forEach((includeText) => {
-        const key = `${material.id}:${includeText ? 'rich' : 'image'}`;
-        setImagePreparation((current) => (
-          current[key] ? current : { ...current, [key]: 'loading' }
-        ));
-        void prepareCaseMaterialImages(clipboardOptions(material, includeText))
-          .then(() => {
-            if (active) setImagePreparation((current) => ({ ...current, [key]: 'ready' }));
-          })
-          .catch(() => {
-            if (active) setImagePreparation((current) => ({ ...current, [key]: 'error' }));
-          });
-      });
-    });
-    return () => {
-      active = false;
-    };
-  }, [visibleResults]);
-
   const copyMaterialText = async (material: CaseMaterial): Promise<void> => {
     const result = await copyText(buildShareText(material));
     if (result.ok) {
       setCopiedId(material.id);
       toast.success('推荐话术已复制');
       window.setTimeout(() => setCopiedId(''), 1600);
-      return;
-    }
-    toast.error(result.message);
-  };
-
-  const copyPackage = async (
-    material: CaseMaterial,
-    includeText: boolean,
-  ): Promise<void> => {
-    const imageBlob = peekPreparedCaseMaterialPng(clipboardOptions(material, includeText))
-      || getPreparedCaseMaterialPng(clipboardOptions(material, includeText));
-    const result = await copyPngBlob({ imageBlob, containsText: includeText });
-    if (result.ok) {
-      toast.success(includeText ? '已复制案例图文图片' : '已复制案例图片');
       return;
     }
     toast.error(result.message);
@@ -355,43 +287,18 @@ const CaseMaterials: React.FC = () => {
                     {buildShareText(material)}
                   </p>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="px-2 font-hand text-xs"
-                    title={imagePreparation[`${material.id}:image`] === 'error'
-                      ? '预加载失败，点击后将重新读取并复制图片'
-                      : '复制图片本体'}
-                    onClick={() => copyPackage(material, false)}
-                  >
-                    <Images className="mr-1 size-3.5" />
-                    图片
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="px-2 font-hand text-xs"
+                    className="w-full px-2 font-hand text-xs"
                     onClick={() => copyMaterialText(material)}
                   >
                     {copiedId === material.id
                       ? <Check className="mr-1 size-3.5" />
                       : <MessageSquareText className="mr-1 size-3.5" />}
                     话术
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="px-2 font-hand text-xs"
-                    title={imagePreparation[`${material.id}:rich`] === 'error'
-                      ? '预加载失败，点击后将重新生成图文图片'
-                      : '复制包含标题、标签和推荐话术的合成图片'}
-                    onClick={() => copyPackage(material, true)}
-                  >
-                    <Copy className="mr-1 size-3.5" />
-                    图文
                   </Button>
                 </div>
               </div>
