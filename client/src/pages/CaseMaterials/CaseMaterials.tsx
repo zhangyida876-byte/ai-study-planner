@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Check,
   Copy,
-  ExternalLink,
   Images,
   LibraryBig,
   MessageSquareText,
@@ -10,7 +9,6 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { UniversalLink } from '@lark-apaas/client-toolkit/components/UniversalLink';
 import WobblyCard from '@client/src/components/WobblyCard';
 import { useRequiredStage } from '@client/src/hooks/use-stage';
 import { Button } from '@/components/ui/button';
@@ -55,8 +53,6 @@ interface RankedMaterial extends CaseMaterial {
   relevance: number;
 }
 
-const SOURCE_BASE_URL =
-  'https://guanghe.feishu.cn/wiki/HdqqwpMKbi0pmvkhWWQcXLtNnOd?table=tbl8Xeiesb4nJkn6&view=vewc8sRCjT';
 const PAGE_SIZE = 12;
 const MATERIALS: CaseMaterial[] = caseMaterialsData.map((material: CaseMaterial) => ({
   ...material,
@@ -210,7 +206,7 @@ const CaseMaterials: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+      <header>
         <div>
           <h1 className="font-marker flex items-center gap-2 text-3xl font-bold text-ink">
             <LibraryBig className="size-7 text-pen-blue" />
@@ -220,12 +216,6 @@ const CaseMaterials: React.FC = () => {
             检索真实案例、推荐话术与沟通证据，当前默认展示{stageConfig.label}素材
           </p>
         </div>
-        <Button variant="outline" size="sm" className="font-hand" asChild>
-          <UniversalLink to={SOURCE_BASE_URL} target="_blank" rel="noreferrer">
-            <ExternalLink className="mr-1 size-4" />
-            打开素材原表
-          </UniversalLink>
-        </Button>
       </header>
 
       <WobblyCard variant="white" decoration="tape" wobblyIndex={0} hoverable={false}>
