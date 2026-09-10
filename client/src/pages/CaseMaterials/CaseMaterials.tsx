@@ -264,8 +264,8 @@ const CaseMaterials: React.FC = () => {
                   type="button"
                   onClick={() => setSelectedSceneKeys((current) => (
                     current.includes(scene.key)
-                      ? current.filter((item) => item !== scene.key)
-                      : [...current, scene.key]
+                      ? []
+                      : [scene.key]
                   ))}
                   className={`border-2 border-ink px-2.5 py-1 font-hand text-xs transition-transform hover:-translate-y-0.5 ${
                     selectedSceneKeys.includes(scene.key) ? 'bg-postit-yellow font-bold' : 'bg-white'
